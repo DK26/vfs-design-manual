@@ -1,4 +1,4 @@
-# VFS Container — Backend Implementer's Guide
+# AnyFS — Backend Implementer's Guide
 
 **Step-by-step guide for implementing a custom storage backend**
 
@@ -6,630 +6,373 @@
 
 ## Overview
 
-This guide walks you through implementing a custom `StorageBackend`. By the end, you'll have a working backend that passes the conformance test suite.
-
-**Time estimate:** 2-4 hours for a basic implementation
+This guide walks you through implementing a custom `VfsBackend`. By the end, you'll have a working backend that can be used with `FilesContainer`.
 
 ---
 
 ## What You're Building
 
-A backend is a **typed graph store** with transactions. It stores:
+A backend implements the `VfsBackend` trait — a simple, path-based interface for filesystem operations:
 
-- **Nodes**: Metadata about files, directories, and symlinks
-- **Edges**: Named parent→child relationships
-- **Chunks**: Binary content in fixed-size pieces
+```rust
+pub trait VfsBackend: Send {
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
+    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn list(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn mkdir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+}
+```
 
-The backend does NOT handle:
-- Path parsing or resolution
-- Symlink following
-- Permission checking
-- Capacity enforcement
-
-All of that lives in `FilesContainer`. Your backend just stores what it's told.
+**Key points:**
+- All paths are `&VirtualPath` — already validated, safe, normalized
+- 13 methods total — matches familiar `std::fs` operations
+- Backends handle storage; `FilesContainer` handles quotas and features
 
 ---
 
 ## Prerequisites
 
+Only depend on `anyfs-traits` — minimal dependencies:
+
 ```toml
 [dependencies]
-anyfs = "0.1"
-thiserror = "1"
+anyfs-traits = "0.1"
 ```
+
+You do NOT need `anyfs` (which has the built-in backends) or `anyfs-container`.
 
 ---
 
 ## Step 1: Define Your Backend Struct
 
 ```rust
-use anyfs::{
-    StorageBackend, BackendLifecycle, Snapshot, Transaction,
-    NodeId, ContentId, ChunkId, Name, Edge,
-    NodeRecord, BackendError,
-};
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError, Metadata, DirEntry, FileType};
+use std::time::SystemTime;
 
-pub struct MyBackend {
-    // Your storage state here
-    // For example, for a Redis backend:
-    // client: redis::Client,
-    // connection: redis::Connection,
+/// Example: A backend that stores files in Redis
+pub struct RedisBackend {
+    client: redis::Client,
+    prefix: String,
 }
 
-pub struct MyBackendConfig {
-    // Configuration options
-    // e.g., connection string, file path, etc.
-}
-```
-
----
-
-## Step 2: Implement BackendLifecycle
-
-This trait handles creation, opening, and destruction:
-
-```rust
-impl BackendLifecycle for MyBackend {
-    type Config = MyBackendConfig;
-    
-    fn create(config: Self::Config) -> Result<Self, BackendError> {
-        // Create new storage
-        // Fail if storage already exists
-        
-        // Initialize with root node (ID = 1, Directory)
-        let mut backend = Self::initialize(config)?;
-        backend.create_root_node()?;
-        Ok(backend)
+impl RedisBackend {
+    pub fn new(url: &str, prefix: &str) -> Result<Self, VfsError> {
+        let client = redis::Client::open(url)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+        Ok(Self {
+            client,
+            prefix: prefix.to_string(),
+        })
     }
-    
-    fn open(config: Self::Config) -> Result<Self, BackendError> {
-        // Open existing storage
-        // Fail if storage doesn't exist
-        
-        Self::connect(config)
-    }
-    
-    fn open_or_create(config: Self::Config) -> Result<Self, BackendError> {
-        match Self::open(config.clone()) {
-            Ok(backend) => Ok(backend),
-            Err(BackendError::NotFound(_)) => Self::create(config),
-            Err(e) => Err(e),
-        }
-    }
-    
-    fn destroy(self) -> Result<(), BackendError> {
-        // Delete all data
-        // For file-based: delete the file
-        // For database: drop tables or delete database
-        
-        self.delete_all_data()
+
+    fn key(&self, path: &VirtualPath) -> String {
+        format!("{}:{}", self.prefix, path.as_str())
     }
 }
 ```
 
 ---
 
-## Step 3: Implement Snapshot (Read Operations)
-
-`Snapshot` provides read-only access:
+## Step 2: Implement Read Operations
 
 ```rust
-pub struct MySnapshot<'a> {
-    backend: &'a MyBackend,
-}
+impl VfsBackend for RedisBackend {
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-impl<'a> Snapshot for MySnapshot<'a> {
-    fn get_node(&self, id: NodeId) -> Result<Option<NodeRecord>, BackendError> {
-        // Retrieve node by ID
-        // Return None if not found (don't error)
-        
-        self.backend.fetch_node(id)
+        let key = self.key(path);
+        let data: Option<Vec<u8>> = redis::cmd("GET")
+            .arg(&key)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        data.ok_or_else(|| VfsError::NotFound(path.clone()))
     }
-    
-    fn get_edge(&self, parent: NodeId, name: &Name) -> Result<Option<NodeId>, BackendError> {
-        // Look up child ID by parent + name
-        // Return None if edge doesn't exist
-        
-        self.backend.fetch_edge(parent, name.as_str())
+
+    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError> {
+        let data = self.read(path)?;
+        let start = offset as usize;
+        let end = (start + len).min(data.len());
+
+        if start >= data.len() {
+            return Ok(Vec::new());
+        }
+
+        Ok(data[start..end].to_vec())
     }
-    
-    fn list_edges(&self, parent: NodeId) -> Result<Vec<Edge>, BackendError> {
-        // Return all edges where edge.parent == parent
-        // Empty vec if directory is empty (not an error)
-        
-        self.backend.fetch_children(parent)
+
+    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError> {
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let key = self.key(path);
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(&key)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        Ok(exists)
     }
-    
-    fn read_chunk(&self, id: ChunkId) -> Result<Option<Vec<u8>>, BackendError> {
-        // Retrieve chunk data
-        // Return None if chunk doesn't exist
-        
-        self.backend.fetch_chunk(id)
+
+    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError> {
+        // Your implementation - fetch stored metadata
+        // Return Metadata { file_type, size, created, modified }
+        todo!()
     }
-    
-    // Optional: batch read (default implementation loops)
-    fn get_nodes(&self, ids: &[NodeId]) -> Result<Vec<Option<NodeRecord>>, BackendError> {
-        // Override for backends that can batch efficiently
-        // Default implementation:
-        ids.iter().map(|id| self.get_node(*id)).collect()
+
+    fn list(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError> {
+        // Your implementation - list children of directory
+        // Return Vec<DirEntry> with name and file_type for each child
+        todo!()
     }
 }
 ```
 
 ---
 
-## Step 4: Implement Transaction (Write Operations)
-
-`Transaction` extends `Snapshot` with write operations:
+## Step 3: Implement Write Operations
 
 ```rust
-pub struct MyTransaction<'a> {
-    backend: &'a mut MyBackend,
-    // Track changes for rollback if needed
-    // changes: Vec<Change>,
-}
+impl VfsBackend for RedisBackend {
+    // ... read operations from above ...
 
-impl<'a> Snapshot for MyTransaction<'a> {
-    // Delegate read operations to snapshot implementation
-    fn get_node(&self, id: NodeId) -> Result<Option<NodeRecord>, BackendError> {
-        self.backend.fetch_node(id)
-    }
-    
-    fn get_edge(&self, parent: NodeId, name: &Name) -> Result<Option<NodeId>, BackendError> {
-        self.backend.fetch_edge(parent, name.as_str())
-    }
-    
-    fn list_edges(&self, parent: NodeId) -> Result<Vec<Edge>, BackendError> {
-        self.backend.fetch_children(parent)
-    }
-    
-    fn read_chunk(&self, id: ChunkId) -> Result<Option<Vec<u8>>, BackendError> {
-        self.backend.fetch_chunk(id)
-    }
-}
-
-impl<'a> Transaction for MyTransaction<'a> {
-    fn insert_node(&mut self, node: &NodeRecord) -> Result<(), BackendError> {
-        // Insert new node
-        // Error if node with this ID already exists
-        
-        if self.backend.node_exists(node.id)? {
-            return Err(BackendError::NodeAlreadyExists(node.id));
-        }
-        self.backend.store_node(node)
-    }
-    
-    fn update_node(&mut self, id: NodeId, node: &NodeRecord) -> Result<(), BackendError> {
-        // Update existing node
-        // Error if node doesn't exist
-        
-        if !self.backend.node_exists(id)? {
-            return Err(BackendError::NodeNotFound(id));
-        }
-        self.backend.store_node(node)
-    }
-    
-    fn delete_node(&mut self, id: NodeId) -> Result<(), BackendError> {
-        // Delete node
-        // Error if node doesn't exist
-        
-        if !self.backend.node_exists(id)? {
-            return Err(BackendError::NodeNotFound(id));
-        }
-        self.backend.remove_node(id)
-    }
-    
-    fn insert_edge(&mut self, edge: &Edge) -> Result<(), BackendError> {
-        // Insert new edge
-        // Error if edge already exists (same parent + name)
-        
-        if self.backend.edge_exists(edge.parent, &edge.name)? {
-            return Err(BackendError::EdgeAlreadyExists {
-                parent: edge.parent,
-                name: edge.name.as_str().to_string(),
-            });
-        }
-        self.backend.store_edge(edge)
-    }
-    
-    fn delete_edge(&mut self, parent: NodeId, name: &Name) -> Result<(), BackendError> {
-        // Delete edge
-        // Error if edge doesn't exist
-        
-        if !self.backend.edge_exists(parent, name)? {
-            return Err(BackendError::EdgeNotFound {
-                parent,
-                name: name.as_str().to_string(),
-            });
-        }
-        self.backend.remove_edge(parent, name)
-    }
-    
-    fn write_chunk(&mut self, id: ChunkId, data: &[u8]) -> Result<(), BackendError> {
-        // Write chunk data (insert or replace)
-        
-        self.backend.store_chunk(id, data)
-    }
-    
-    fn delete_content(&mut self, id: ContentId) -> Result<(), BackendError> {
-        // Delete all chunks for this content ID
-        
-        self.backend.remove_all_chunks(id)
-    }
-    
-    fn next_node_id(&mut self) -> Result<NodeId, BackendError> {
-        // Generate a new unique node ID
-        // Must never return the same ID twice
-        
-        self.backend.allocate_node_id()
-    }
-    
-    fn next_content_id(&mut self) -> Result<ContentId, BackendError> {
-        // Generate a new unique content ID
-        
-        self.backend.allocate_content_id()
-    }
-    
-    // Optional: batch operations (default implementations loop)
-    fn insert_nodes(&mut self, nodes: &[NodeRecord]) -> Result<(), BackendError> {
-        for node in nodes {
-            self.insert_node(node)?;
-        }
-        Ok(())
-    }
-    
-    fn insert_edges(&mut self, edges: &[Edge]) -> Result<(), BackendError> {
-        for edge in edges {
-            self.insert_edge(edge)?;
-        }
-        Ok(())
-    }
-}
-```
-
----
-
-## Step 5: Implement StorageBackend
-
-The main trait ties it all together:
-
-```rust
-impl StorageBackend for MyBackend {
-    fn transact<F, T>(&mut self, f: F) -> Result<T, BackendError>
-    where
-        F: FnOnce(&mut dyn Transaction) -> Result<T, BackendError>,
-    {
-        // Begin transaction
-        self.begin_transaction()?;
-        
-        let mut txn = MyTransaction { backend: self };
-        
-        match f(&mut txn) {
-            Ok(result) => {
-                // Commit on success
-                self.commit_transaction()?;
-                Ok(result)
-            }
-            Err(e) => {
-                // Rollback on error
-                self.rollback_transaction()?;
-                Err(e)
+    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
+        // Ensure parent directory exists
+        if let Some(parent) = path.parent() {
+            if !self.exists(&parent)? {
+                return Err(VfsError::NotFound(parent));
             }
         }
-    }
-    
-    fn snapshot(&self) -> Box<dyn Snapshot + '_> {
-        Box::new(MySnapshot { backend: self })
-    }
-}
-```
 
----
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-## Step 6: Initialize Root Node
+        let key = self.key(path);
+        redis::cmd("SET")
+            .arg(&key)
+            .arg(data)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-Every container needs a root directory (NodeId = 1):
-
-```rust
-impl MyBackend {
-    fn create_root_node(&mut self) -> Result<(), BackendError> {
-        use anyfs::{NodeKind, NodeMetadata, Timestamp};
-        
-        let root = NodeRecord {
-            id: NodeId(1),
-            kind: NodeKind::Directory,
-            metadata: NodeMetadata {
-                created_at: Some(Timestamp::now()),
-                modified_at: Some(Timestamp::now()),
-                accessed_at: None,
-                permissions: None,
-                link_count: 1,
-                extended_attrs: Default::default(),
-            },
-        };
-        
-        self.store_node(&root)?;
-        
-        // Set next_node_id to 2
-        self.set_next_node_id(2)?;
-        self.set_next_content_id(1)?;
-        
         Ok(())
     }
+
+    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
+        let mut existing = self.read(path).unwrap_or_default();
+        existing.extend_from_slice(data);
+        self.write(path, &existing)
+    }
+
+    fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
+        if self.exists(path)? {
+            return Err(VfsError::AlreadyExists(path.clone()));
+        }
+
+        // Ensure parent exists
+        if let Some(parent) = path.parent() {
+            if !self.exists(&parent)? {
+                return Err(VfsError::NotFound(parent));
+            }
+        }
+
+        // Store directory marker
+        // Your implementation here
+        todo!()
+    }
+
+    fn mkdir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
+        // Create all ancestors, then the target
+        let mut current = VirtualPath::root();
+        for component in path.components() {
+            current = current.join(component)?;
+            if !self.exists(&current)? {
+                self.mkdir(&current)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn remove(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
+        if !self.exists(path)? {
+            return Err(VfsError::NotFound(path.clone()));
+        }
+
+        // Check if directory is empty
+        let meta = self.metadata(path)?;
+        if meta.file_type == FileType::Directory {
+            let children = self.list(path)?;
+            if !children.is_empty() {
+                return Err(VfsError::DirectoryNotEmpty(path.clone()));
+            }
+        }
+
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let key = self.key(path);
+        redis::cmd("DEL")
+            .arg(&key)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn remove_all(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
+        if !self.exists(path)? {
+            return Err(VfsError::NotFound(path.clone()));
+        }
+
+        // Recursively delete children first
+        let meta = self.metadata(path)?;
+        if meta.file_type == FileType::Directory {
+            for entry in self.list(path)? {
+                let child = path.join(&entry.name)?;
+                self.remove_all(&child)?;
+            }
+        }
+
+        self.remove(path)
+    }
+
+    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError> {
+        if !self.exists(from)? {
+            return Err(VfsError::NotFound(from.clone()));
+        }
+
+        // Copy data, then delete original
+        let data = self.read(from)?;
+        self.write(to, &data)?;
+        self.remove(from)?;
+
+        Ok(())
+    }
+
+    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError> {
+        let data = self.read(from)?;
+        self.write(to, &data)
+    }
 }
 ```
 
 ---
 
-## Step 7: Run Conformance Tests
+## Step 4: Handle Types Correctly
 
-Use the provided test macro to verify your implementation:
+### Metadata
 
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    fn create_test_backend() -> MyBackend {
-        MyBackend::create(MyBackendConfig::default()).unwrap()
-    }
-    
-    // This generates ~50 tests
-    anyfs::backend_conformance_tests!(create_test_backend);
-    
-    // Add your own backend-specific tests
-    #[test]
-    fn test_my_backend_specific_feature() {
-        let backend = create_test_backend();
-        // ...
-    }
+use std::time::SystemTime;
+
+pub struct Metadata {
+    pub file_type: FileType,
+    pub size: u64,
+    pub created: Option<SystemTime>,
+    pub modified: Option<SystemTime>,
 }
+```
+
+### DirEntry
+
+```rust
+pub struct DirEntry {
+    pub name: String,
+    pub file_type: FileType,
+}
+```
+
+### FileType
+
+```rust
+pub enum FileType {
+    File,
+    Directory,
+    Symlink,
+}
+```
+
+---
+
+## Step 5: Error Handling
+
+Use the appropriate `VfsError` variants:
+
+```rust
+pub enum VfsError {
+    NotFound(VirtualPath),
+    AlreadyExists(VirtualPath),
+    NotAFile(VirtualPath),
+    NotADirectory(VirtualPath),
+    DirectoryNotEmpty(VirtualPath),
+    InvalidPath(String),
+    Io(std::io::Error),
+    Backend(String),  // For backend-specific errors
+}
+```
+
+**Best practices:**
+- Use `NotFound` when a path doesn't exist
+- Use `AlreadyExists` when creating over existing path
+- Use `NotADirectory` when listing a file
+- Use `NotAFile` when reading a directory
+- Use `Backend(msg)` for storage-specific errors
+
+---
+
+## Step 6: Using Your Backend
+
+```rust
+use anyfs_container::{FilesContainer, ContainerBuilder};
+
+// Direct usage
+let backend = RedisBackend::new("redis://localhost", "myapp")?;
+let mut container = FilesContainer::new(backend);
+
+container.write("/data/file.txt", b"hello")?;
+
+// With capacity limits
+let backend = RedisBackend::new("redis://localhost", "tenant_123")?;
+let mut container = ContainerBuilder::new(backend)
+    .max_total_size(100 * 1024 * 1024)  // 100 MB
+    .max_file_size(10 * 1024 * 1024)    // 10 MB
+    .build()?;
 ```
 
 ---
 
 ## Checklist
 
-Before considering your backend complete:
+Before shipping your backend:
 
-- [ ] `BackendLifecycle::create` initializes with root node
-- [ ] `BackendLifecycle::open` fails gracefully if storage doesn't exist
-- [ ] `BackendLifecycle::destroy` cleans up all resources
-- [ ] `Snapshot::get_node` returns `None` for missing nodes (not error)
-- [ ] `Snapshot::get_edge` returns `None` for missing edges (not error)
-- [ ] `Snapshot::list_edges` returns empty vec for empty directories
-- [ ] `Snapshot::read_chunk` returns `None` for missing chunks
-- [ ] `Transaction::insert_node` errors on duplicate ID
-- [ ] `Transaction::update_node` errors on missing node
-- [ ] `Transaction::delete_node` errors on missing node
-- [ ] `Transaction::insert_edge` errors on duplicate parent+name
-- [ ] `Transaction::delete_edge` errors on missing edge
-- [ ] `Transaction::next_node_id` never returns duplicates
-- [ ] `Transaction::next_content_id` never returns duplicates
-- [ ] `StorageBackend::transact` rolls back on error
-- [ ] All conformance tests pass
+- [ ] All 13 `VfsBackend` methods implemented
+- [ ] `read` returns `NotFound` for missing files
+- [ ] `write` checks parent directory exists
+- [ ] `mkdir` returns `AlreadyExists` if path exists
+- [ ] `remove` returns `DirectoryNotEmpty` for non-empty dirs
+- [ ] `remove_all` handles recursive deletion
+- [ ] Metadata returns correct `FileType`
+- [ ] `list` returns only direct children (not recursive)
 
 ---
 
-## Common Pitfalls
+## Example Backends
 
-### 1. Forgetting the root node
+For reference implementations, see the built-in backends in `anyfs`:
 
-The container expects NodeId(1) to exist and be a directory. Always create it in `BackendLifecycle::create`.
-
-### 2. Returning errors instead of None
-
-`get_node`, `get_edge`, and `read_chunk` should return `Ok(None)` for missing items, not `Err(NotFound)`.
-
-### 3. Not handling transactions properly
-
-If your storage doesn't support transactions natively, you need to implement them. Options:
-- Copy-on-write (clone state, apply changes, swap on commit)
-- Write-ahead log
-- Mutex + rollback journal
-
-### 4. ID collisions
-
-`next_node_id` and `next_content_id` must be monotonically increasing or otherwise guaranteed unique. Store the counter persistently.
-
-### 5. Chunk size assumptions
-
-The core uses a fixed chunk size (`anyfs::CHUNK_SIZE = 64KB`). Your backend doesn't need to enforce this, but it should handle any chunk size ≤ CHUNK_SIZE.
+- **MemoryBackend** — HashMap-based, simplest implementation
+- **SqliteBackend** — SQLite database, production-ready
+- **VRootFsBackend** — Host filesystem via `strict-path`
 
 ---
 
-## Example: Minimal In-Memory Backend
-
-Here's a complete minimal implementation for reference:
-
-```rust
-use std::collections::HashMap;
-use anyfs::*;
-
-pub struct MemoryBackend {
-    nodes: HashMap<NodeId, NodeRecord>,
-    edges: HashMap<(NodeId, String), NodeId>,
-    chunks: HashMap<(ContentId, u32), Vec<u8>>,
-    next_node_id: u64,
-    next_content_id: u64,
-}
-
-impl MemoryBackend {
-    pub fn new() -> Self {
-        let mut backend = Self {
-            nodes: HashMap::new(),
-            edges: HashMap::new(),
-            chunks: HashMap::new(),
-            next_node_id: 2,
-            next_content_id: 1,
-        };
-        
-        // Create root node
-        backend.nodes.insert(
-            NodeId(1),
-            NodeRecord {
-                id: NodeId(1),
-                kind: NodeKind::Directory,
-                metadata: NodeMetadata::default(),
-            },
-        );
-        
-        backend
-    }
-}
-
-impl StorageBackend for MemoryBackend {
-    fn transact<F, T>(&mut self, f: F) -> Result<T, BackendError>
-    where
-        F: FnOnce(&mut dyn Transaction) -> Result<T, BackendError>,
-    {
-        // Simple approach: clone state, rollback on error
-        let snapshot = (
-            self.nodes.clone(),
-            self.edges.clone(),
-            self.chunks.clone(),
-            self.next_node_id,
-            self.next_content_id,
-        );
-        
-        let mut txn = MemoryTransaction { backend: self };
-        
-        match f(&mut txn) {
-            Ok(result) => Ok(result),
-            Err(e) => {
-                // Rollback
-                self.nodes = snapshot.0;
-                self.edges = snapshot.1;
-                self.chunks = snapshot.2;
-                self.next_node_id = snapshot.3;
-                self.next_content_id = snapshot.4;
-                Err(e)
-            }
-        }
-    }
-    
-    fn snapshot(&self) -> Box<dyn Snapshot + '_> {
-        Box::new(MemorySnapshot { backend: self })
-    }
-}
-
-struct MemorySnapshot<'a> {
-    backend: &'a MemoryBackend,
-}
-
-impl Snapshot for MemorySnapshot<'_> {
-    fn get_node(&self, id: NodeId) -> Result<Option<NodeRecord>, BackendError> {
-        Ok(self.backend.nodes.get(&id).cloned())
-    }
-    
-    fn get_edge(&self, parent: NodeId, name: &Name) -> Result<Option<NodeId>, BackendError> {
-        Ok(self.backend.edges.get(&(parent, name.as_str().to_string())).copied())
-    }
-    
-    fn list_edges(&self, parent: NodeId) -> Result<Vec<Edge>, BackendError> {
-        Ok(self.backend.edges
-            .iter()
-            .filter(|((p, _), _)| *p == parent)
-            .map(|((p, n), c)| Edge {
-                parent: *p,
-                name: Name::new(n).unwrap(),
-                child: *c,
-            })
-            .collect())
-    }
-    
-    fn read_chunk(&self, id: ChunkId) -> Result<Option<Vec<u8>>, BackendError> {
-        Ok(self.backend.chunks.get(&(id.content, id.index)).cloned())
-    }
-}
-
-struct MemoryTransaction<'a> {
-    backend: &'a mut MemoryBackend,
-}
-
-impl Snapshot for MemoryTransaction<'_> {
-    // ... delegate to backend (same as MemorySnapshot)
-}
-
-impl Transaction for MemoryTransaction<'_> {
-    fn insert_node(&mut self, node: &NodeRecord) -> Result<(), BackendError> {
-        if self.backend.nodes.contains_key(&node.id) {
-            return Err(BackendError::NodeAlreadyExists(node.id));
-        }
-        self.backend.nodes.insert(node.id, node.clone());
-        Ok(())
-    }
-    
-    fn update_node(&mut self, id: NodeId, node: &NodeRecord) -> Result<(), BackendError> {
-        if !self.backend.nodes.contains_key(&id) {
-            return Err(BackendError::NodeNotFound(id));
-        }
-        self.backend.nodes.insert(id, node.clone());
-        Ok(())
-    }
-    
-    fn delete_node(&mut self, id: NodeId) -> Result<(), BackendError> {
-        self.backend.nodes.remove(&id)
-            .ok_or(BackendError::NodeNotFound(id))?;
-        Ok(())
-    }
-    
-    fn insert_edge(&mut self, edge: &Edge) -> Result<(), BackendError> {
-        let key = (edge.parent, edge.name.as_str().to_string());
-        if self.backend.edges.contains_key(&key) {
-            return Err(BackendError::EdgeAlreadyExists {
-                parent: edge.parent,
-                name: edge.name.as_str().to_string(),
-            });
-        }
-        self.backend.edges.insert(key, edge.child);
-        Ok(())
-    }
-    
-    fn delete_edge(&mut self, parent: NodeId, name: &Name) -> Result<(), BackendError> {
-        let key = (parent, name.as_str().to_string());
-        self.backend.edges.remove(&key)
-            .ok_or(BackendError::EdgeNotFound {
-                parent,
-                name: name.as_str().to_string(),
-            })?;
-        Ok(())
-    }
-    
-    fn write_chunk(&mut self, id: ChunkId, data: &[u8]) -> Result<(), BackendError> {
-        self.backend.chunks.insert((id.content, id.index), data.to_vec());
-        Ok(())
-    }
-    
-    fn delete_content(&mut self, id: ContentId) -> Result<(), BackendError> {
-        self.backend.chunks.retain(|(c, _), _| *c != id);
-        Ok(())
-    }
-    
-    fn next_node_id(&mut self) -> Result<NodeId, BackendError> {
-        let id = NodeId(self.backend.next_node_id);
-        self.backend.next_node_id += 1;
-        Ok(id)
-    }
-    
-    fn next_content_id(&mut self) -> Result<ContentId, BackendError> {
-        let id = ContentId(self.backend.next_content_id);
-        self.backend.next_content_id += 1;
-        Ok(id)
-    }
-}
-```
-
----
-
-## Need Help?
-
-If you run into issues implementing a backend:
-
-1. Check the conformance test output for specific failures
-2. Compare against the `MemoryBackend` reference implementation
-3. Review the full design document for edge cases
-
----
-
-*For architecture details, see the [Design Document](../architecture/anyfs-container-design.md).*
+*For the full trait definition, see [Project Structure](../overview/project-structure.md).*
