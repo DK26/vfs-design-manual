@@ -61,6 +61,8 @@ anyfs-traits/
 
 ## Core Trait
 
+Method names align with `std::fs`. Total: 20 methods.
+
 ```rust
 // anyfs-traits/src/lib.rs
 pub use strict_path::VirtualPath;
@@ -69,44 +71,68 @@ pub use strict_path::VirtualPath;
 use crate::VirtualPath;
 
 /// A virtual filesystem backend.
-///
-/// Implementations provide storage; callers get uniform I/O.
+/// All backends implement full filesystem semantics including symlinks and hard links.
 pub trait VfsBackend: Send {
-    // Read operations
+    // READ OPERATIONS
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
     fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
     fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    fn list(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
 
-    // Write operations
+    // WRITE OPERATIONS
     fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
     fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn mkdir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
     fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
     fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+
+    // LINKS
+    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+
+    // PERMISSIONS
+    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
 }
 ```
 
 ## Types
 
 ```rust
-#[derive(Clone, Debug)]
-pub struct Metadata {
-    pub file_type: FileType,
-    pub size: u64,
-    pub created: Option<SystemTime>,
-    pub modified: Option<SystemTime>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FileType {
     File,
     Directory,
     Symlink,
+}
+
+#[derive(Clone, Debug)]
+pub struct Metadata {
+    pub file_type: FileType,
+    pub size: u64,
+    pub permissions: Permissions,
+    pub nlink: u64,  // Number of hard links
+    pub created: Option<SystemTime>,
+    pub modified: Option<SystemTime>,
+    pub accessed: Option<SystemTime>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct Permissions {
+    readonly: bool,
+}
+
+impl Permissions {
+    pub fn new() -> Self { Self { readonly: false } }
+    pub fn readonly(&self) -> bool { self.readonly }
+    pub fn set_readonly(&mut self, readonly: bool) { self.readonly = readonly; }
 }
 
 #[derive(Clone, Debug)]
@@ -133,11 +159,26 @@ pub enum VfsError {
     #[error("not a directory: {0}")]
     NotADirectory(VirtualPath),
 
+    #[error("not a symlink: {0}")]
+    NotASymlink(VirtualPath),
+
     #[error("directory not empty: {0}")]
     DirectoryNotEmpty(VirtualPath),
 
+    #[error("is a directory: {0}")]
+    IsADirectory(VirtualPath),
+
     #[error("invalid path: {0}")]
     InvalidPath(String),
+
+    #[error("invalid UTF-8: {0}")]
+    InvalidUtf8(#[from] std::str::Utf8Error),
+
+    #[error("permission denied: {0}")]
+    PermissionDenied(VirtualPath),
+
+    #[error("too many symlinks (loop detected): {0}")]
+    SymlinkLoop(VirtualPath),
 
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
@@ -247,28 +288,37 @@ impl VfsBackend for VRootFsBackend {
 ### MemoryBackend (feature: memory)
 
 ```rust
-use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError, Permissions};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct MemoryBackend {
     entries: HashMap<VirtualPath, Entry>,
+    contents: HashMap<ContentId, Arc<Vec<u8>>>,
 }
 
+#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+struct ContentId(u64);
+
 enum Entry {
-    File(Vec<u8>),
-    Directory,
+    File { content_id: ContentId, permissions: Permissions },
+    Directory { permissions: Permissions },
+    Symlink { target: VirtualPath },
 }
 
 impl MemoryBackend {
     pub fn new() -> Self {
         let mut entries = HashMap::new();
-        entries.insert(VirtualPath::root(), Entry::Directory);
-        Self { entries }
+        entries.insert(VirtualPath::root(), Entry::Directory {
+            permissions: Permissions::new(),
+        });
+        Self { entries, contents: HashMap::new() }
     }
 }
 
 impl VfsBackend for MemoryBackend {
-    // ... HashMap operations
+    // Hard links: multiple Entry::File share same content_id
+    // Symlinks: Entry::Symlink stores target path
 }
 ```
 
@@ -276,19 +326,24 @@ impl VfsBackend for MemoryBackend {
 
 ```rust
 use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+use std::path::Path;
 
 pub struct SqliteBackend {
     conn: rusqlite::Connection,
 }
 
 impl SqliteBackend {
-    pub fn open(path: &Path) -> Result<Self, VfsError>;
+    pub fn create(path: impl AsRef<Path>) -> Result<Self, VfsError>;
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, VfsError>;
+    pub fn open_or_create(path: impl AsRef<Path>) -> Result<Self, VfsError>;
     pub fn open_in_memory() -> Result<Self, VfsError>;
-    pub fn create(path: &Path) -> Result<Self, VfsError>;
 }
 
 impl VfsBackend for SqliteBackend {
-    // Internal schema is implementation detail
+    // Internal schema:
+    // - entries table with entry_type ('file', 'directory', 'symlink')
+    // - contents table (shared by hard links via content_id)
+    // - symlink_target column for symlinks
 }
 ```
 

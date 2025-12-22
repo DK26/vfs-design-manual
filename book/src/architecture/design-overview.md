@@ -1,7 +1,7 @@
 # VFS Ecosystem — Design Document
 
-**Version:** 0.2.0  
-**Status:** Draft  
+**Version:** 0.3.0
+**Status:** Draft
 **Last Updated:** 2025-12-22
 
 ---
@@ -99,73 +99,87 @@ Provide a trait for virtual filesystem operations that any storage backend can i
 
 ### 3.2 The VfsBackend Trait
 
-```rust
-use std::path::Path;
+The trait is defined in `anyfs-traits` and uses `&VirtualPath` for type safety. Method names align with `std::fs`.
 
+```rust
+use anyfs_traits::VirtualPath;
+
+/// A virtual filesystem backend.
+/// All backends implement full filesystem semantics including symlinks and hard links.
 pub trait VfsBackend: Send {
-    /// Read entire file contents
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
-    
-    /// Read a byte range from a file
-    fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    
-    /// Write file contents (create or overwrite)
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
-    
-    /// Append to file
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
-    
-    /// Check if path exists
-    fn exists(&self, path: impl AsRef<Path>) -> Result<bool, VfsError>;
-    
-    /// Get metadata
-    fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
-    
-    /// List directory contents
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
-    
-    /// Create directory (parent must exist)
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    
-    /// Create directory and all parents
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    
-    /// Remove file or empty directory
-    fn remove(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    
-    /// Remove directory and all contents
-    fn remove_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    
-    /// Rename/move
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
-    
-    /// Copy file
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
+    // READ OPERATIONS
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
+    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
+    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+
+    // WRITE OPERATIONS
+    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+
+    // LINKS
+    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+
+    // PERMISSIONS
+    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
 }
 ```
 
-**Path type rationale:** `impl AsRef<Path>` is idiomatic Rust for filesystem APIs. It accepts `&str`, `String`, `&Path`, `PathBuf`, etc. Each backend handles paths according to its storage:
-- `VRootFsBackend`: passes to `strict-path` directly
-- `MemoryBackend`: uses `PathBuf` as HashMap key
-- `SqliteBackend`: converts to string internally (its concern, not the API's)
+**Two-layer path handling:**
+- **VfsBackend** uses `&VirtualPath` — type-safe, pre-validated paths from `strict-path`
+- **FilesContainer** uses `impl AsRef<Path>` — ergonomic user-facing API that converts to `VirtualPath` internally
 
 ### 3.3 Types
 
 ```rust
+/// Type of filesystem entry
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FileType {
+    File,
+    Directory,
+    Symlink,
+}
+
+impl FileType {
+    pub fn is_file(&self) -> bool { matches!(self, FileType::File) }
+    pub fn is_dir(&self) -> bool { matches!(self, FileType::Directory) }
+    pub fn is_symlink(&self) -> bool { matches!(self, FileType::Symlink) }
+}
+
 /// File metadata
 #[derive(Clone, Debug)]
 pub struct Metadata {
     pub file_type: FileType,
     pub size: u64,
+    pub permissions: Permissions,
+    pub nlink: u64,  // Number of hard links
     pub created: Option<SystemTime>,
     pub modified: Option<SystemTime>,
+    pub accessed: Option<SystemTime>,
 }
 
-/// Type of filesystem entry
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FileType {
-    File,
-    Directory,
+/// File permissions (simplified model)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct Permissions {
+    readonly: bool,
+}
+
+impl Permissions {
+    pub fn new() -> Self { Self { readonly: false } }
+    pub fn readonly(&self) -> bool { self.readonly }
+    pub fn set_readonly(&mut self, readonly: bool) { self.readonly = readonly; }
 }
 
 /// Directory entry
@@ -182,60 +196,94 @@ pub struct DirEntry {
 #[derive(Debug, thiserror::Error)]
 pub enum VfsError {
     #[error("not found: {0}")]
-    NotFound(String),
-    
+    NotFound(VirtualPath),
+
     #[error("already exists: {0}")]
-    AlreadyExists(String),
-    
+    AlreadyExists(VirtualPath),
+
     #[error("not a file: {0}")]
-    NotAFile(String),
-    
+    NotAFile(VirtualPath),
+
     #[error("not a directory: {0}")]
-    NotADirectory(String),
-    
+    NotADirectory(VirtualPath),
+
+    #[error("not a symlink: {0}")]
+    NotASymlink(VirtualPath),
+
     #[error("directory not empty: {0}")]
-    DirectoryNotEmpty(String),
-    
+    DirectoryNotEmpty(VirtualPath),
+
+    #[error("is a directory: {0}")]
+    IsADirectory(VirtualPath),
+
     #[error("invalid path: {0}")]
     InvalidPath(String),
-    
+
+    #[error("invalid UTF-8: {0}")]
+    InvalidUtf8(#[from] std::str::Utf8Error),
+
+    #[error("permission denied: {0}")]
+    PermissionDenied(VirtualPath),
+
+    #[error("read-only filesystem")]
+    ReadOnlyFilesystem,
+
+    #[error("too many symlinks (loop detected): {0}")]
+    SymlinkLoop(VirtualPath),
+
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("backend error: {0}")]
     Backend(String),
 }
 ```
 
-### 3.5 Crate Structure
+### 3.5 Crate Structure (Three Crates)
 
 ```
-anyfs/
-├── Cargo.toml
+anyfs-traits/              # Crate 1: Minimal trait + types
+├── Cargo.toml             # Depends on: strict-path, thiserror
 ├── src/
-│   ├── lib.rs          # Re-exports
-│   ├── backend.rs      # VfsBackend trait
-│   ├── types.rs        # Metadata, DirEntry, FileType
-│   ├── error.rs        # VfsError
-│   │
-│   ├── vrootfs/        # Filesystem backend via strict-path
-│   │   └── mod.rs
-│   │
-│   ├── memory/         # In-memory backend
-│   │   └── mod.rs
-│   │
-│   └── sqlite/         # SQLite backend
-│       ├── mod.rs
-│       └── schema.rs
+│   ├── lib.rs             # Re-exports VirtualPath, defines trait
+│   ├── backend.rs         # VfsBackend trait
+│   ├── types.rs           # Metadata, DirEntry, FileType, Permissions
+│   └── error.rs           # VfsError
+
+anyfs/                     # Crate 2: Built-in backends
+├── Cargo.toml             # Depends on: anyfs-traits + optional deps
+├── src/
+│   ├── lib.rs             # Re-exports anyfs-traits::*
+│   ├── vrootfs/           # [feature: vrootfs] VRootFsBackend
+│   ├── memory/            # [feature: memory] MemoryBackend (default)
+│   └── sqlite/            # [feature: sqlite] SqliteBackend
 │
 └── tests/
-    └── conformance.rs  # Tests all backends identically
+    └── conformance.rs     # Tests all backends identically
+
+anyfs-container/           # Crate 3: Isolation layer
+├── Cargo.toml             # Depends on: anyfs-traits
+├── src/
+│   ├── lib.rs
+│   ├── container.rs       # FilesContainer<B: VfsBackend>
+│   ├── builder.rs         # ContainerBuilder
+│   ├── limits.rs          # CapacityLimits
+│   └── error.rs           # ContainerError
 ```
 
 ### 3.6 Dependencies
 
+**anyfs-traits/Cargo.toml:**
 ```toml
 [dependencies]
+strict-path = "..."
+thiserror = "1"
+```
+
+**anyfs/Cargo.toml:**
+```toml
+[dependencies]
+anyfs-traits = { version = "0.1", path = "../anyfs-traits" }
 thiserror = "1"
 
 [dependencies.strict-path]
@@ -248,11 +296,11 @@ features = ["bundled"]
 optional = true
 
 [features]
-default = ["vrootfs", "memory"]
-fs = ["strict-path"]
+default = ["memory"]
 memory = []
+vrootfs = ["strict-path"]
 sqlite = ["rusqlite"]
-full = ["vrootfs", "memory", "sqlite"]
+full = ["memory", "vrootfs", "sqlite"]
 ```
 
 ---
@@ -415,6 +463,7 @@ Uses `strict-path::VirtualRoot` for containment.
 ```rust
 use std::path::Path;
 use strict_path::VirtualRoot;
+use anyfs_traits::VirtualPath;
 
 pub struct VRootFsBackend {
     vroot: VirtualRoot,
@@ -422,13 +471,12 @@ pub struct VRootFsBackend {
 
 impl VRootFsBackend {
     /// Create backend with given directory as virtual root.
-    /// The directory is created if it doesn't exist.
     pub fn new(root_dir: impl AsRef<Path>) -> Result<Self, VfsError> {
         let vroot = VirtualRoot::try_new_create(root_dir.as_ref())
             .map_err(|e| VfsError::Backend(e.to_string()))?;
         Ok(Self { vroot })
     }
-    
+
     /// Open existing directory as virtual root.
     pub fn open(root_dir: impl AsRef<Path>) -> Result<Self, VfsError> {
         let vroot = VirtualRoot::try_new(root_dir.as_ref())
@@ -438,19 +486,35 @@ impl VRootFsBackend {
 }
 
 impl VfsBackend for VRootFsBackend {
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> {
-        let vpath = self.vroot.virtual_join(path.as_ref())
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
+        let real_path = self.vroot.virtual_join(path.as_str())
             .map_err(|e| VfsError::InvalidPath(e.to_string()))?;
-        vpath.read().map_err(VfsError::Io)
+        std::fs::read(real_path.as_std_path()).map_err(VfsError::Io)
     }
-    
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError> {
-        let vpath = self.vroot.virtual_join(path.as_ref())
+
+    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
+        let real_path = self.vroot.virtual_join(path.as_str())
             .map_err(|e| VfsError::InvalidPath(e.to_string()))?;
-        vpath.write(data).map_err(VfsError::Io)
+        std::fs::write(real_path.as_std_path(), data).map_err(VfsError::Io)
     }
-    
-    // ... delegate other methods via VirtualRoot
+
+    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError> {
+        let link_path = self.vroot.virtual_join(link.as_str())?;
+        // Store symlink target as virtual path (relative to root)
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(original.as_str(), link_path.as_std_path())
+            .map_err(VfsError::Io)?;
+        Ok(())
+    }
+
+    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError> {
+        let original_path = self.vroot.virtual_join(original.as_str())?;
+        let link_path = self.vroot.virtual_join(link.as_str())?;
+        std::fs::hard_link(original_path.as_std_path(), link_path.as_std_path())
+            .map_err(VfsError::Io)
+    }
+
+    // ... other methods follow same pattern
 }
 ```
 
@@ -458,66 +522,99 @@ impl VfsBackend for VRootFsBackend {
 - Paths like `/etc/passwd` are **clamped** to `root_dir/etc/passwd`
 - Symlink escapes are prevented by `strict-path`
 - Uses real filesystem for storage
+- Real OS symlinks and hard links via `std::fs`
 
 ### 5.2 MemoryBackend
 
-In-memory storage using HashMap.
+In-memory storage using HashMap with support for symlinks and hard links.
 
 ```rust
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::SystemTime;
+use anyfs_traits::VirtualPath;
 
 pub struct MemoryBackend {
-    entries: HashMap<PathBuf, Entry>,
+    entries: HashMap<VirtualPath, Entry>,
+    contents: HashMap<ContentId, Arc<ContentData>>,
+    next_content_id: ContentId,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct ContentId(u64);
+
+struct ContentData {
+    data: Vec<u8>,
+    ref_count: std::sync::atomic::AtomicU64,
 }
 
 enum Entry {
-    File { data: Vec<u8>, modified: SystemTime },
-    Directory { modified: SystemTime },
+    File {
+        content_id: ContentId,
+        permissions: Permissions,
+        created: SystemTime,
+        modified: SystemTime,
+    },
+    Directory {
+        permissions: Permissions,
+        created: SystemTime,
+        modified: SystemTime,
+    },
+    Symlink {
+        target: VirtualPath,
+        created: SystemTime,
+    },
 }
 
 impl MemoryBackend {
     pub fn new() -> Self {
         let mut entries = HashMap::new();
-        // Root directory always exists
-        entries.insert(PathBuf::from("/"), Entry::Directory {
+        entries.insert(VirtualPath::root(), Entry::Directory {
+            permissions: Permissions::new(),
+            created: SystemTime::now(),
             modified: SystemTime::now(),
         });
-        Self { entries }
+        Self {
+            entries,
+            contents: HashMap::new(),
+            next_content_id: ContentId(1),
+        }
     }
 }
 
 impl VfsBackend for MemoryBackend {
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> {
-        let key = normalize_path(path.as_ref());
-        match self.entries.get(&key) {
-            Some(Entry::File { data, .. }) => Ok(data.clone()),
-            Some(Entry::Directory { .. }) => Err(VfsError::NotAFile(key.display().to_string())),
-            None => Err(VfsError::NotFound(key.display().to_string())),
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
+        let resolved = self.resolve_symlinks(path)?;
+        match self.entries.get(&resolved) {
+            Some(Entry::File { content_id, .. }) => {
+                Ok(self.contents[content_id].data.clone())
+            }
+            Some(Entry::Directory { .. }) => Err(VfsError::NotAFile(resolved)),
+            Some(Entry::Symlink { .. }) => unreachable!(), // resolved above
+            None => Err(VfsError::NotFound(resolved)),
         }
     }
-    
-    // ... implement other methods
-}
 
-fn normalize_path(path: &Path) -> PathBuf {
-    // Normalize the path (handle . and .., ensure absolute)
-    // Implementation detail
-    todo!()
+    // Hard links: multiple Entry::File can share the same content_id
+    // nlink = count of entries with same content_id
+    // ... other methods
 }
 ```
 
 **Key behavior:**
-- Paths are normalized and used as HashMap keys
+- Uses `VirtualPath` as HashMap keys
+- Hard links share content via `ContentId`
+- Symlinks stored as target path
 - No persistence — data lost when dropped
 - Useful for testing
 
 ### 5.3 SqliteBackend
 
-Single-file storage using SQLite.
+Single-file storage using SQLite with symlink and hard link support.
 
 ```rust
 use rusqlite::Connection;
+use std::path::Path;
 
 pub struct SqliteBackend {
     conn: Connection,
@@ -526,6 +623,7 @@ pub struct SqliteBackend {
 impl SqliteBackend {
     pub fn create(path: impl AsRef<Path>) -> Result<Self, VfsError>;
     pub fn open(path: impl AsRef<Path>) -> Result<Self, VfsError>;
+    pub fn open_or_create(path: impl AsRef<Path>) -> Result<Self, VfsError>;
     pub fn open_in_memory() -> Result<Self, VfsError>;
 }
 ```
@@ -533,94 +631,108 @@ impl SqliteBackend {
 **Schema:**
 
 ```sql
+-- Entries table: files, directories, symlinks
 CREATE TABLE entries (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT NOT NULL UNIQUE,
-    is_dir INTEGER NOT NULL,
-    size INTEGER NOT NULL DEFAULT 0,
+    entry_type TEXT NOT NULL CHECK (entry_type IN ('file', 'directory', 'symlink')),
+    content_id INTEGER REFERENCES contents(id) ON DELETE SET NULL,
+    symlink_target TEXT,
+    permissions INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER,
-    modified_at INTEGER
+    modified_at INTEGER,
+    accessed_at INTEGER
 );
 
-CREATE TABLE content (
-    entry_id INTEGER PRIMARY KEY,
+-- Content table: actual file data (shared by hard links)
+CREATE TABLE contents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     data BLOB NOT NULL,
-    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+    ref_count INTEGER NOT NULL DEFAULT 1
 );
 
--- For large files, could use chunking:
--- CREATE TABLE chunks (
---     entry_id INTEGER NOT NULL,
---     chunk_index INTEGER NOT NULL,
---     data BLOB NOT NULL,
---     PRIMARY KEY (entry_id, chunk_index)
--- );
+-- Indexes
+CREATE UNIQUE INDEX idx_entries_path ON entries(path);
+CREATE INDEX idx_entries_content ON entries(content_id) WHERE content_id IS NOT NULL;
 
-CREATE INDEX idx_entries_path ON entries(path);
+-- Constraints (enforced in application):
+-- - entry_type = 'file' => content_id NOT NULL, symlink_target IS NULL
+-- - entry_type = 'directory' => content_id IS NULL, symlink_target IS NULL
+-- - entry_type = 'symlink' => content_id IS NULL, symlink_target NOT NULL
+```
+
+**Hard link implementation:**
+- Multiple rows with different `path` share same `content_id`
+- `ref_count` tracks hard link count
+- When last hard link removed, content row is deleted
+
+**nlink query:**
+```sql
+SELECT COUNT(*) FROM entries WHERE content_id = ?
 ```
 
 **Key behavior:**
 - Entire container is a single `.db` file
 - Portable — copy file to move container
-- Supports large files via chunking (optional)
+- Hard links share content via `content_id`
+- Symlinks stored as `symlink_target` path
 
 ---
 
-## 6. Open Design Questions
+## 6. Resolved Design Questions
 
 ### 6.1 Path Type in Trait — ✅ RESOLVED
 
-**Decision:** `impl AsRef<Path>`
+**Decision:** Two-layer approach:
+- `VfsBackend` trait uses `&VirtualPath` (type-safe, pre-validated)
+- `FilesContainer` uses `impl AsRef<Path>` (ergonomic user API)
 
 **Rationale:**
-- Idiomatic Rust for filesystem APIs
-- Accepts `&str`, `String`, `&Path`, `PathBuf`, `&OsStr`, etc.
-- `Path` wraps `OsStr` — handles OS-specific semantics naturally
-- `VRootFsBackend` uses real filesystem — OS paths are natural
-- SQLite is secondary use case — shouldn't dictate API design
+- Type safety: backends receive pre-validated paths
+- User ergonomics: applications can pass `&str`, `String`, `&Path`, `PathBuf`
+- Single validation point: `FilesContainer` validates once, backend trusts the path
 
-**How backends handle it:**
-- `VRootFsBackend`: Pass directly to `strict-path::VirtualRoot`
-- `MemoryBackend`: Convert to `PathBuf` as HashMap key  
-- `SqliteBackend`: Convert to string internally (its internal concern)
+### 6.2 Error Path Representation — ✅ RESOLVED
 
-### 6.2 Error Path Representation
-
-**Question:** Should `VfsError` variants store `String` or `PathBuf`?
+**Decision:** `VfsError` variants use `VirtualPath`
 
 ```rust
-// Option A: String
-NotFound(String),
-
-// Option B: PathBuf
-NotFound(PathBuf),
-
-// Option C: Box<Path> (owned, unsized)
-NotFound(Box<Path>),
+NotFound(VirtualPath),
+AlreadyExists(VirtualPath),
+// etc.
 ```
 
-**Current leaning:** `String` — simpler, works for both real paths and SQLite keys.
+**Rationale:** Errors originate from operations on validated paths. Using `VirtualPath` maintains type consistency.
 
-### 6.3 Symlink Support
+### 6.3 Symlink & Hard Link Support — ✅ RESOLVED
 
-**Question:** Should the trait support symlinks?
+**Decision:** Full symlink and hard link support in all backends.
 
-- `VRootFsBackend`: The underlying filesystem has symlinks; `strict-path` handles them
-- `MemoryBackend`: Could support symlinks as a stored target path
-- `SqliteBackend`: Could store symlink targets
+New trait methods:
+- `symlink()` — create symbolic link
+- `hard_link()` — create hard link
+- `read_link()` — read symlink target
+- `symlink_metadata()` — get metadata without following symlinks
 
-**Current leaning:** Defer symlinks to v2. Keep v1 simple.
+Symlink loop detection: 40 levels max (matches Linux default).
 
-### 6.4 Backend Discovery of Usage
+### 6.4 Method Naming — ✅ RESOLVED
+
+**Decision:** Align with `std::fs` naming conventions.
+
+| Old Name | New Name (std::fs aligned) |
+|----------|---------------------------|
+| `list()` | `read_dir()` |
+| `mkdir()` | `create_dir()` |
+| `mkdir_all()` | `create_dir_all()` |
+| `remove()` | `remove_file()` + `remove_dir()` (split) |
+| `remove_all()` | `remove_dir_all()` |
+
+### 6.5 Backend Discovery of Usage
 
 **Question:** How does `FilesContainer` know current usage when wrapping an existing backend?
 
-Options:
-1. Scan on construction (slow for large containers)
-2. Backend provides `usage()` method
-3. Store usage metadata separately
-
-**Current leaning:** Backend provides optional `fn usage(&self) -> Option<CapacityUsage>`. If `None`, container scans.
+**Current approach:** Backend provides optional `fn usage(&self) -> Option<CapacityUsage>`. If `None`, container scans on construction.
 
 ---
 
@@ -759,3 +871,4 @@ fn create_tenant_container(tenant_id: &str) -> Result<FilesContainer<VRootFsBack
 |---------|------|---------|
 | 0.1.0 | 2025-12-22 | Initial design (graph-store trait) |
 | 0.2.0 | 2025-12-22 | Restructured: two projects, path-based trait, three backends |
+| 0.3.0 | 2025-12-22 | Three-crate structure, std::fs aligned API (20 methods), symlinks, hard links, permissions |

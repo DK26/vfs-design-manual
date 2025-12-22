@@ -8,16 +8,17 @@
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [ADR-001](#adr-001-path-based-vfsbackend-trait) | Path-Based VfsBackend Trait | **Accepted** |
+| [ADR-001](#adr-001-path-based-vfsbackend-trait) | Path-Based VfsBackend Trait (20 methods) | **Accepted** |
 | [ADR-002](#adr-002-three-crate-structure) | Three-Crate Structure | **Accepted** |
 | [ADR-003](#adr-003-two-layer-path-handling) | Two-Layer Path Handling | **Accepted** |
 | [ADR-004](#adr-004-virtualpath-from-strict-path) | VirtualPath from strict-path | **Accepted** |
 | [ADR-005](#adr-005-lexical-path-resolution) | Lexical Path Resolution | **Accepted** |
-| [ADR-006](#adr-006-opt-in-filesystem-features) | Opt-in Filesystem Features | **Accepted** |
+| [ADR-006](#adr-006-full-symlink-and-hardlink-support) | Full Symlink and Hard Link Support | **Accepted** |
 | [ADR-007](#adr-007-capacity-enforcement-in-container) | Capacity Enforcement in Container | **Accepted** |
 | [ADR-008](#adr-008-synchronous-first-api) | Synchronous-First API | **Accepted** |
 | [ADR-009](#adr-009-no-posix-compliance) | No POSIX Compliance | **Accepted** |
 | [ADR-010](#adr-010-feature-gated-backends) | Feature-Gated Backends | **Accepted** |
+| [ADR-011](#adr-011-stdfssfs-aligned-method-names) | std::fs Aligned Method Names | **Accepted** |
 
 ### Superseded ADRs (Historical)
 
@@ -35,7 +36,7 @@ These decisions were from an earlier graph-store design that was rejected:
 ## ADR-001: Path-Based VfsBackend Trait
 
 ### Status
-**Accepted**
+**Accepted** (Updated: now 20 methods with symlinks/hardlinks)
 
 ### Context
 We need to support multiple storage backends (SQLite, memory, filesystem). The question is: what abstraction should backends implement?
@@ -43,40 +44,56 @@ We need to support multiple storage backends (SQLite, memory, filesystem). The q
 An earlier design used a graph-store model with `NodeId`, `ContentId`, edges, and mandatory transactions. This was over-engineered for filesystem operations.
 
 ### Decision
-Create a simple **path-based** `VfsBackend` trait with 13 methods:
+Create a **path-based** `VfsBackend` trait with 20 methods aligned with `std::fs`:
 
 ```rust
 pub trait VfsBackend: Send {
+    // Read operations (8)
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
+    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
     fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
     fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn list(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn mkdir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+
+    // Write operations (9)
+    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
     fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
     fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+
+    // Links (2)
+    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+
+    // Permissions (1)
+    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
 }
 ```
 
 ### Consequences
 **Positive:**
-- Familiar API (matches `std::fs` mental model)
+- Familiar API (method names match `std::fs`)
+- Full filesystem semantics (symlinks, hard links, permissions)
 - Simple to implement backends
 - No graph-store complexity
 - Paths are natural identifiers for filesystem operations
 
 **Negative:**
-- Backends may duplicate some logic (e.g., path traversal)
-- Less flexibility for content-addressable storage
+- More methods to implement (20 vs original 13)
+- Backends must handle symlink resolution
 
 ### Alternatives Considered
 1. **Graph-store model** (`NodeId`, edges, transactions): Rejected — over-engineered for our needs
 2. **FUSE-style trait**: Rejected — too complex, POSIX-focused
+3. **13-method trait without symlinks**: Superseded — needed full filesystem semantics
 
 ---
 
@@ -240,35 +257,48 @@ Key properties:
 
 ---
 
-## ADR-006: Opt-in Filesystem Features
+## ADR-006: Full Symlink and Hard Link Support
 
 ### Status
-**Accepted**
+**Accepted** (Updated: symlinks and hard links are now built-in, not opt-in)
 
 ### Context
-Full filesystem semantics (symlinks, hard links, permissions) add complexity. Not all use cases need them.
+Earlier design made symlinks and hard links opt-in features. This was reconsidered because:
+- All three backends can support symlinks and hard links
+- The API should be consistent across backends
+- Simulated symlinks/hardlinks are just data structures (no security implications)
 
 ### Decision
-Advanced features are **disabled by default**:
+Symlinks and hard links are **built-in to all backends**:
 
 ```rust
-let container = ContainerBuilder::new(backend)
-    .symlinks(true)        // default: false
-    .hard_links(true)      // default: false
-    .build()?;
+// All backends support these methods
+backend.symlink("/target", "/link")?;
+backend.hard_link("/original", "/link")?;
+backend.read_link("/link")?;
+backend.symlink_metadata("/link")?;
 ```
 
-Operations on disabled features return `ContainerError::FeatureNotEnabled`.
+**Important clarification:** For `MemoryBackend` and `SqliteBackend`, these are *simulated* operations:
+- Symlinks are stored as entries pointing to a target path
+- Hard links share content via a common `ContentId`
+- No real OS symlinks are created
+
+Only `VRootFsBackend` creates real OS symlinks and hard links.
 
 ### Consequences
 **Positive:**
-- Simple use cases stay simple
-- Reduced attack surface
-- Clear documentation of what's supported
+- Consistent API across all backends
+- Full filesystem semantics in the trait
+- Simpler mental model (no feature flags)
 
 **Negative:**
-- Users must know to enable features
-- Testing matrix is larger
+- Backend implementers must implement all 20 methods
+- Slightly more complex backends
+
+### Alternatives Considered
+1. **Opt-in via ContainerBuilder**: Superseded — unnecessary complexity
+2. **Separate traits for link support**: Rejected — fragmenting the API
 
 ---
 
@@ -397,6 +427,50 @@ vrootfs = ["strict-path"]
 **Negative:**
 - Users must enable features explicitly
 - Documentation must explain features
+
+---
+
+## ADR-011: std::fs Aligned Method Names
+
+### Status
+**Accepted**
+
+### Context
+The original 13-method trait used common but non-standard names:
+- `list()` instead of `read_dir()`
+- `mkdir()` instead of `create_dir()`
+- `remove()` for both files and directories
+
+Users familiar with Rust's `std::fs` found this confusing.
+
+### Decision
+Rename methods to align with `std::fs`:
+
+| Old Name | New Name | std::fs Equivalent |
+|----------|----------|-------------------|
+| `list()` | `read_dir()` | `std::fs::read_dir` |
+| `mkdir()` | `create_dir()` | `std::fs::create_dir` |
+| `mkdir_all()` | `create_dir_all()` | `std::fs::create_dir_all` |
+| `remove()` | `remove_file()` + `remove_dir()` | Split per std::fs |
+| `remove_all()` | `remove_dir_all()` | `std::fs::remove_dir_all` |
+
+Additional methods added:
+- `read_to_string()` — matches `std::fs::read_to_string`
+- `symlink_metadata()` — matches `std::fs::symlink_metadata`
+
+### Consequences
+**Positive:**
+- Familiar naming for Rust developers
+- Clear distinction between `remove_file` and `remove_dir`
+- Less cognitive load when switching between `std::fs` and `anyfs`
+
+**Negative:**
+- Breaking change from earlier versions
+- Documentation must be updated
+
+### Alternatives Considered
+1. **Keep original names**: Rejected — inconsistency with `std::fs` caused confusion
+2. **Provide both aliases**: Rejected — API bloat, maintenance burden
 
 ---
 

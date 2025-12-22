@@ -36,16 +36,16 @@ let container = FilesContainer::new(
     SqliteBackend::open_or_create("data.db")?
 );
 
-// Full configuration
+// Full configuration with capacity limits
 let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
-    .symlinks(true)
-    .hard_links(false)
     .max_total_size(100 * 1024 * 1024)  // 100 MB
     .max_file_size(10 * 1024 * 1024)    // 10 MB
     .max_node_count(10_000)
     .max_dir_entries(1_000)
     .max_path_depth(64)
     .build()?;
+
+// Note: Symlinks and hard links are supported by all backends
 ```
 
 ---
@@ -86,19 +86,26 @@ path.as_str()           // "/documents/report.pdf"
 // Check existence
 container.exists("/path")?                    // → bool
 
-// Get metadata
+// Get metadata (follows symlinks)
 let meta = container.metadata("/path")?;
 meta.size                                     // file size
 meta.file_type                                // File | Directory | Symlink
+meta.permissions                              // Permissions
+meta.nlink                                    // hard link count
 meta.created                                  // Option<SystemTime>
 meta.modified                                 // Option<SystemTime>
+meta.accessed                                 // Option<SystemTime>
+
+// Get metadata without following symlinks
+let meta = container.symlink_metadata("/path")?;
 
 // Read file
 let bytes = container.read("/path")?;         // → Vec<u8>
+let text = container.read_to_string("/path")?; // → String (UTF-8)
 let chunk = container.read_range("/path", 0, 1024)?;  // partial read
 
-// List directory
-let entries = container.list("/path")?;       // → Vec<DirEntry>
+// List directory (std::fs aligned name)
+let entries = container.read_dir("/path")?;   // → Vec<DirEntry>
 for entry in entries {
     println!("{}: {:?}", entry.name, entry.file_type);
 }
@@ -110,9 +117,9 @@ let target = container.read_link("/path")?;   // → VirtualPath
 ### Writing
 
 ```rust
-// Create directory
-container.mkdir("/path")?;                    // single level
-container.mkdir_all("/path")?;                // recursive
+// Create directory (std::fs aligned names)
+container.create_dir("/path")?;               // single level
+container.create_dir_all("/path")?;           // recursive
 
 // Write file (create or overwrite)
 container.write("/path", b"content")?;
@@ -120,15 +127,19 @@ container.write("/path", b"content")?;
 // Append to file
 container.append("/path", b"more")?;
 
-// Create symlink (requires .symlinks(true))
-container.symlink("/link", "/target")?;
+// Create symlink
+container.symlink("/target", "/link")?;       // link points to target
 
-// Create hard link (requires .hard_links(true))
-container.hard_link("/link", "/target")?;
+// Create hard link
+container.hard_link("/original", "/link")?;   // link shares content with original
 
-// Delete
-container.remove("/path")?;                   // file or empty dir
-container.remove_all("/path")?;               // recursive
+// Delete (std::fs aligned: separate file/dir methods)
+container.remove_file("/path")?;              // file only
+container.remove_dir("/path")?;               // empty directory only
+container.remove_dir_all("/path")?;           // recursive
+
+// Set permissions
+container.set_permissions("/path", Permissions::new())?;
 
 // Rename/move
 container.rename("/from", "/to")?;
@@ -246,7 +257,7 @@ fn write_with_parents<B: VfsBackend>(
     data: &[u8],
 ) -> Result<(), ContainerError> {
     if let Some(parent) = std::path::Path::new(path).parent() {
-        container.mkdir_all(parent)?;
+        container.create_dir_all(parent)?;
     }
     container.write(path, data)
 }
@@ -263,7 +274,7 @@ fn walk<B: VfsBackend>(
     path: &str,
     f: &mut impl FnMut(&str, &DirEntry),
 ) -> Result<(), ContainerError> {
-    for entry in container.list(path)? {
+    for entry in container.read_dir(path)? {
         let child_path = format!("{}/{}", path, entry.name);
         f(&child_path, &entry);
         if entry.file_type == FileType::Directory {
@@ -282,10 +293,11 @@ fn walk<B: VfsBackend>(
 
 | Type | Description |
 |------|-------------|
-| `VfsBackend` | Core trait for backends |
+| `VfsBackend` | Core trait for backends (20 methods) |
 | `VirtualPath` | Validated, normalized path |
 | `FileType` | `File`, `Directory`, `Symlink` |
-| `Metadata` | File/directory metadata |
+| `Metadata` | File/directory metadata (includes `nlink`, `permissions`, `accessed`) |
+| `Permissions` | File permissions (readonly flag) |
 | `DirEntry` | Directory listing entry |
 | `VfsError` | Backend-level errors |
 
