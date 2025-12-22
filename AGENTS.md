@@ -6,12 +6,13 @@
 
 ## Project Overview
 
-This is the **VFS Ecosystem** — two Rust crates for virtual filesystem abstraction:
+This is the **VFS Ecosystem** — three Rust crates for virtual filesystem abstraction:
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs` | Generic VFS trait with swappable backends |
-| `anyfs-container` | Wraps anyfs, adds capacity limits |
+| `anyfs-traits` | Minimal crate — trait definition, types, re-exports `VirtualPath` |
+| `anyfs` | Core VFS — re-exports traits, provides built-in backends (optional features) |
+| `anyfs-container` | Higher-level wrapper — capacity limits, tenant isolation |
 
 ---
 
@@ -21,13 +22,14 @@ This repository contains documentation from multiple design iterations. **IGNORE
 
 ### ✅ CURRENT DESIGN (use this)
 
-- **Crate names:** `anyfs` (NOT `vfs-switchable` or `vfs`)
+- **Crate names:** `anyfs-traits`, `anyfs`, `anyfs-container`
+- **Trait crate:** `anyfs-traits` — minimal, contains `VfsBackend` trait + types
 - **Path type in VfsBackend trait:** `&VirtualPath` (from `strict-path` crate)
 - **Path type in FilesContainer API:** `impl AsRef<Path>` (for user ergonomics)
-- **Trait name:** `VfsBackend`
+- **Trait name:** `VfsBackend` (defined in `anyfs-traits`)
 - **Trait style:** Path-based methods (`read`, `write`, `mkdir`, etc.)
-- **Backends:** `VRootFsBackend`, `MemoryBackend`, `SqliteBackend`
-- **Two crates:** `anyfs` (trait) and `anyfs-container` (wrapper with limits)
+- **Backends:** `VRootFsBackend`, `MemoryBackend`, `SqliteBackend` (in `anyfs`, feature-gated)
+- **Three crates:** `anyfs-traits` (trait), `anyfs` (backends), `anyfs-container` (wrapper with limits)
 
 ### ❌ OLD DESIGN (ignore this)
 
@@ -41,7 +43,8 @@ If you see any of these, **it's from the old design — do not use:**
 - `StorageBackend` trait with `insert_node`, `insert_edge` — **WRONG** (old graph-store model)
 - `Transaction`, `Snapshot` traits — **WRONG** (old transactional model)
 - `FsBackend` — **WRONG** name (it's `VRootFsBackend` to convey virtual root containment)
-- `FilesContainer` as the only project — **WRONG** (there are TWO projects now)
+- `FilesContainer` as the only project — **WRONG** (there are THREE crates now)
+- Two-crate structure (`anyfs` + `anyfs-container`) — **OUTDATED** (now three crates)
 - Any mention of "graph store" or "node/edge" model — **WRONG**
 
 ---
@@ -52,15 +55,31 @@ If you see any of these, **it's from the old design — do not use:**
 ┌─────────────────────────────────────────┐
 │  User Application                       │
 ├─────────────────────────────────────────┤
-│  anyfs-container                          │  ← Capacity limits, isolation
+│  anyfs-container                        │  ← Capacity limits, tenant isolation
 │  FilesContainer<B: VfsBackend>          │     Uses impl AsRef<Path> (ergonomic)
 ├─────────────────────────────────────────┤
-│  anyfs                               │  ← Core trait
-│  VfsBackend trait                       │     Uses &VirtualPath (type-safe)
+│  anyfs                                  │  ← Built-in backends (feature-gated)
 ├──────────┬──────────┬───────────────────┤
-│ VRootFs  │  Memory  │  SQLite           │  ← Backends
+│ VRootFs  │  Memory  │  SQLite           │  ← Optional backend implementations
 │ Backend  │  Backend │  Backend          │
-└──────────┴──────────┴───────────────────┘
+├──────────┴──────────┴───────────────────┤
+│  anyfs-traits                           │  ← Minimal: trait + types
+│  VfsBackend trait, VfsError, Metadata   │     Re-exports VirtualPath
+├─────────────────────────────────────────┤
+│  strict-path (external)                 │  ← VirtualPath, VirtualRoot
+└─────────────────────────────────────────┘
+```
+
+### Dependency Graph
+
+```
+strict-path (external)
+     ↑
+anyfs-traits (trait + types)
+     ↑
+     ├── anyfs (re-exports traits, provides backends)
+     │
+     └── anyfs-container (wraps any VfsBackend)
 ```
 
 **Key insight:** Two-layer path handling:
@@ -69,10 +88,11 @@ If you see any of these, **it's from the old design — do not use:**
 
 ---
 
-## The Correct Trait
+## The Correct Trait (in anyfs-traits)
 
 ```rust
-use strict_path::VirtualPath;
+// anyfs-traits/src/lib.rs
+pub use strict_path::VirtualPath;
 
 /// A virtual filesystem backend.
 /// Implementations provide storage; callers get uniform I/O.
@@ -95,10 +115,13 @@ pub trait VfsBackend: Send {
 
 **This is 13 simple path-based methods. NOT a graph store. NOT transactional.**
 
-**VirtualPath** comes from `strict-path` crate — re-exported by `anyfs`:
+**VirtualPath** comes from `strict-path` crate — re-exported by `anyfs-traits` (and `anyfs`):
 ```rust
-// In anyfs/src/lib.rs
+// anyfs-traits/src/lib.rs
 pub use strict_path::VirtualPath;
+
+// anyfs/src/lib.rs (re-exports everything from traits)
+pub use anyfs_traits::*;
 ```
 
 ---
@@ -155,9 +178,10 @@ impl<B: VfsBackend> FilesContainer<B> {
 
 | Crate | Used By | Purpose |
 |-------|---------|---------|
-| `strict-path` | `anyfs` (required) | VirtualPath type + VirtualRoot for containment |
-| `rusqlite` | `SqliteBackend` (optional) | SQLite database access |
-| `thiserror` | Both | Error types |
+| `strict-path` | `anyfs-traits` | VirtualPath type (re-exported) |
+| `thiserror` | `anyfs-traits` | Error types |
+| `strict-path` | `anyfs` [vrootfs] | VirtualRoot for containment |
+| `rusqlite` | `anyfs` [sqlite] | SQLite database access |
 
 ---
 
@@ -238,23 +262,30 @@ trait VfsBackend {
 ## File Structure
 
 ```
-anyfs/                 # Project 1: Core trait + backends
+anyfs-traits/              # Crate 1: Minimal trait + types
+├── Cargo.toml             # Depends on: strict-path, thiserror
 ├── src/
-│   ├── lib.rs            # Re-exports (including VirtualPath from strict-path)
-│   ├── backend.rs        # VfsBackend trait
-│   ├── types.rs          # Metadata, DirEntry, FileType
-│   ├── error.rs          # VfsError
-│   ├── vrootfs/          # VRootFsBackend (uses strict-path)
-│   ├── memory/           # MemoryBackend
-│   └── sqlite/           # SqliteBackend
+│   ├── lib.rs             # Re-exports VirtualPath, defines trait
+│   ├── backend.rs         # VfsBackend trait
+│   ├── types.rs           # Metadata, DirEntry, FileType
+│   └── error.rs           # VfsError
 
-anyfs-container/            # Project 2: Isolation layer
+anyfs/                     # Crate 2: Built-in backends
+├── Cargo.toml             # Depends on: anyfs-traits + optional deps
+├── src/
+│   ├── lib.rs             # Re-exports anyfs-traits::*
+│   ├── vrootfs/           # [feature: vrootfs] VRootFsBackend
+│   ├── memory/            # [feature: memory] MemoryBackend (default)
+│   └── sqlite/            # [feature: sqlite] SqliteBackend
+
+anyfs-container/           # Crate 3: Isolation layer
+├── Cargo.toml             # Depends on: anyfs-traits
 ├── src/
 │   ├── lib.rs
-│   ├── container.rs      # FilesContainer<B>
-│   ├── builder.rs        # ContainerBuilder
-│   ├── limits.rs         # CapacityLimits
-│   └── error.rs          # ContainerError
+│   ├── container.rs       # FilesContainer<B: VfsBackend>
+│   ├── builder.rs         # ContainerBuilder
+│   ├── limits.rs          # CapacityLimits
+│   └── error.rs           # ContainerError
 ```
 
 ---
@@ -263,12 +294,14 @@ anyfs-container/            # Project 2: Isolation layer
 
 | Question | Answer |
 |----------|--------|
-| Crate names? | `anyfs` and `anyfs-container` |
+| Crate names? | `anyfs-traits`, `anyfs`, `anyfs-container` |
+| Where is the trait defined? | `anyfs-traits` (re-exported by `anyfs`) |
 | Path type in VfsBackend? | `&VirtualPath` (from strict-path) |
 | Path type in FilesContainer? | `impl AsRef<Path>` (for ergonomics) |
-| Where does VirtualPath come from? | `strict-path` crate (re-exported by anyfs) |
+| Where does VirtualPath come from? | `strict-path` crate (re-exported by anyfs-traits) |
 | Backend trait name? | `VfsBackend` |
 | Filesystem backend name? | `VRootFsBackend` (NOT `FsBackend`) |
+| How to implement custom backend? | Depend on `anyfs-traits` only |
 | Does it use transactions? | No (old design) |
 | Does it use NodeId/edges? | No (old design) |
 | What provides containment? | `strict-path::VirtualRoot` |
@@ -277,12 +310,14 @@ anyfs-container/            # Project 2: Isolation layer
 
 ## When in Doubt
 
-1. **Crate name:** `anyfs` (NOT `vfs-switchable` or `vfs`)
-2. **VfsBackend path type:** `&VirtualPath` — type-safe, from strict-path
-3. **FilesContainer path type:** `impl AsRef<Path>` — ergonomic user-facing API
-4. **Backend model:** Simple path-based methods, NOT graph store
-5. **Crate structure:** TWO crates, not one
-6. **Backend names:** `VRootFsBackend` (NOT `FsBackend`), `MemoryBackend`, `SqliteBackend`
+1. **Crate names:** `anyfs-traits`, `anyfs`, `anyfs-container`
+2. **Trait location:** `anyfs-traits` crate (re-exported by `anyfs`)
+3. **VfsBackend path type:** `&VirtualPath` — type-safe, from strict-path
+4. **FilesContainer path type:** `impl AsRef<Path>` — ergonomic user-facing API
+5. **Backend model:** Simple path-based methods, NOT graph store
+6. **Crate structure:** THREE crates
+7. **Backend names:** `VRootFsBackend` (NOT `FsBackend`), `MemoryBackend`, `SqliteBackend`
+8. **Custom backend:** Depend only on `anyfs-traits`
 
 If documentation conflicts with this file, **this file is correct**.
 
@@ -365,17 +400,24 @@ pub use strict_path::VirtualPath;
 - Users immediately understand this is sandboxed, not raw filesystem access
 - Matches the underlying `strict_path::VirtualRoot` it uses
 
-### Decision 5: Two Crates (not one)
+### Decision 5: Three Crates
 
-**Choice:** `anyfs` (core) + `anyfs-container` (isolation layer)
+**Choice:** `anyfs-traits` + `anyfs` + `anyfs-container`
 
 **Rationale:**
 - **Separation of concerns:**
-  - `anyfs` = pure I/O abstraction (trait + backends)
+  - `anyfs-traits` = minimal trait + types (for custom backend implementers)
+  - `anyfs` = built-in backends (feature-gated)
   - `anyfs-container` = policy layer (quotas, limits, isolation)
-- **Flexibility:** Users who don't need quotas can use `anyfs` directly
-- **Testability:** Core trait can be tested without container overhead
-- **Dependency management:** Container depends on core, not vice versa
+- **Minimal dependencies for custom backends:** Implementers depend only on `anyfs-traits`
+- **No forced transitive deps:** Custom backend doesn't pull in `rusqlite`, etc.
+- **Follows Rust ecosystem patterns:** Like `tower-service` vs `tower`, `futures-core` vs `futures`
+
+**Dependency flow:**
+```
+strict-path → anyfs-traits → anyfs (backends)
+                          → anyfs-container
+```
 
 ### Decision 6: Simple Path-Based Trait (not graph store)
 

@@ -479,10 +479,10 @@ root.join("file.txt")?.create_file()?.write_all(b"hello")?;
 
 **VFS Container:**
 ```rust
-use vfs::{FilesContainer, FsBackend, MemoryBackend, VirtualPath};
+use vfs::{FilesContainer, VRootFsBackend, MemoryBackend, VirtualPath};
 
 // Physical (via strict-path)
-let container = FilesContainer::new(FsBackend::new("/some/path")?);
+let container = FilesContainer::new(VRootFsBackend::new("/some/path")?);
 
 // Memory
 let container = FilesContainer::new(MemoryBackend::new());

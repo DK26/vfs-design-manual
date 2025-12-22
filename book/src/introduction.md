@@ -6,23 +6,26 @@
 
 ## Overview
 
-Two crates:
+Three crates:
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs` | VFS trait with swappable backends (Fs, Memory, SQLite) |
-| `anyfs-container` | Wraps anyfs, adds capacity limits and isolation |
+| `anyfs-traits` | Minimal — trait definition + types (for custom backend implementers) |
+| `anyfs` | Built-in backends (feature-gated), re-exports traits |
+| `anyfs-container` | Higher-level wrapper — capacity limits, tenant isolation |
 
 ```
 ┌─────────────────────────────────────────┐
 │  Your Application                       │
 ├─────────────────────────────────────────┤
-│  anyfs-container (quotas, isolation)      │
+│  anyfs-container (quotas, isolation)    │
 ├─────────────────────────────────────────┤
-│  anyfs (VfsBackend trait)      │
+│  anyfs (built-in backends)              │
 ├──────────┬──────────┬───────────────────┤
-│ VRootFs│  Memory  │  SQLite           │
-└──────────┴──────────┴───────────────────┘
+│ VRootFs  │  Memory  │  SQLite           │
+├──────────┴──────────┴───────────────────┤
+│  anyfs-traits (VfsBackend trait)        │
+└─────────────────────────────────────────┘
 ```
 
 ## Quick Example

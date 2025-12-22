@@ -1,133 +1,93 @@
-# VFS Ecosystem — Restructured Design
+# VFS Ecosystem — Project Structure
 
-**Date:** 2025-12-22  
-**Status:** Revised based on corrected understanding
-
----
-
-## Project Structure
-
-```
-┌─────────────────────────────────────────┐
-│  Your App                               │  ← Project 3: Consumer
-│  (just calls FilesContainer API)        │
-├─────────────────────────────────────────┤
-│  anyfs-container                          │  ← Project 2: Isolation layer
-│  (quotas, tenant isolation, safety)     │
-├─────────────────────────────────────────┤
-│  anyfs                         │  ← Project 1: Foundation
-│  (generic VFS with swappable backends)  │
-├──────────┬──────────┬───────────────────┤
-│ FsBackend│MemBackend│  SqliteBackend    │
-└──────────┴──────────┴───────────────────┘
-```
+**Date:** 2025-12-22
+**Status:** Current
 
 ---
-
-# Project 1: anyfs
-
-**Purpose:** Generic virtual filesystem abstraction with swappable backends.
-
-**Value proposition:** Call `read()`, `write()`, `mkdir()` — backend is interchangeable.
 
 ## Crate Structure
 
 ```
-anyfs/
-├── Cargo.toml
+┌─────────────────────────────────────────┐
+│  Your App                               │  ← Consumer
+│  (uses FilesContainer API)              │
+├─────────────────────────────────────────┤
+│  anyfs-container                        │  ← Crate 3: Isolation layer
+│  (quotas, tenant isolation)             │
+├─────────────────────────────────────────┤
+│  anyfs                                  │  ← Crate 2: Built-in backends
+├──────────┬──────────┬───────────────────┤
+│ VRootFs  │  Memory  │  SQLite           │  ← Feature-gated
+│ Backend  │  Backend │  Backend          │
+├──────────┴──────────┴───────────────────┤
+│  anyfs-traits                           │  ← Crate 1: Minimal trait + types
+│  VfsBackend trait, VfsError, Metadata   │
+├─────────────────────────────────────────┤
+│  strict-path (external)                 │  ← VirtualPath, VirtualRoot
+└─────────────────────────────────────────┘
+```
+
+### Dependency Graph
+
+```
+strict-path (external)
+     ↑
+anyfs-traits (trait + types)
+     ↑
+     ├── anyfs (re-exports traits, provides backends)
+     │
+     └── anyfs-container (wraps any VfsBackend)
+```
+
+---
+
+# Crate 1: anyfs-traits
+
+**Purpose:** Minimal crate containing only the trait and types. For custom backend implementers.
+
+**Depends on:** `strict-path`, `thiserror`
+
+## Crate Structure
+
+```
+anyfs-traits/
+├── Cargo.toml          # minimal dependencies
 └── src/
-    ├── lib.rs
+    ├── lib.rs          # re-exports VirtualPath from strict-path
     ├── backend.rs      # VfsBackend trait
-    ├── path.rs         # VirtualPath (validated paths)
     ├── types.rs        # Metadata, DirEntry, FileType
-    ├── error.rs        # VfsError
-    │
-    ├── fs/             # Filesystem backend
-    │   └── mod.rs      # FsBackend (via strict-path)
-    │
-    ├── memory/         # In-memory backend
-    │   └── mod.rs      # MemoryBackend
-    │
-    └── sqlite/         # SQLite backend
-        ├── mod.rs      # SqliteBackend
-        └── schema.rs   # Internal schema
+    └── error.rs        # VfsError
 ```
 
 ## Core Trait
 
 ```rust
+// anyfs-traits/src/lib.rs
+pub use strict_path::VirtualPath;
+
+// anyfs-traits/src/backend.rs
+use crate::VirtualPath;
+
 /// A virtual filesystem backend.
-/// 
+///
 /// Implementations provide storage; callers get uniform I/O.
 pub trait VfsBackend: Send {
-    // ─────────────────────────────────────────────────────────
     // Read operations
-    // ─────────────────────────────────────────────────────────
-    
-    /// Read entire file contents
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    
-    /// Read a range of bytes from a file
     fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    
-    /// Get metadata for a path
     fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    
-    /// Check if path exists
     fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    
-    /// List directory contents
     fn list(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    
-    // ─────────────────────────────────────────────────────────
+
     // Write operations
-    // ─────────────────────────────────────────────────────────
-    
-    /// Write entire file contents (create or overwrite)
     fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    
-    /// Append to file
     fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    
-    /// Create directory
     fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    
-    /// Create directory and all parents
     fn mkdir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    
-    /// Remove file or empty directory
     fn remove(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    
-    /// Remove directory and all contents
     fn remove_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    
-    /// Rename/move
     fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    
-    /// Copy file
     fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-}
-```
-
-## VirtualPath
-
-```rust
-/// A validated virtual path that cannot escape its root.
-/// 
-/// - Always absolute (starts with `/`)
-/// - No `..` that escapes root
-/// - No empty components
-/// - Valid UTF-8
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VirtualPath(String);
-
-impl VirtualPath {
-    pub fn new(path: &str) -> Result<Self, PathError>;
-    pub fn root() -> Self;
-    pub fn join(&self, component: &str) -> Result<Self, PathError>;
-    pub fn parent(&self) -> Option<Self>;
-    pub fn file_name(&self) -> Option<&str>;
-    pub fn as_str(&self) -> &str;
 }
 ```
 
@@ -163,42 +123,112 @@ pub struct DirEntry {
 pub enum VfsError {
     #[error("not found: {0}")]
     NotFound(VirtualPath),
-    
+
     #[error("already exists: {0}")]
     AlreadyExists(VirtualPath),
-    
+
     #[error("not a file: {0}")]
     NotAFile(VirtualPath),
-    
+
     #[error("not a directory: {0}")]
     NotADirectory(VirtualPath),
-    
+
     #[error("directory not empty: {0}")]
     DirectoryNotEmpty(VirtualPath),
-    
+
     #[error("invalid path: {0}")]
-    InvalidPath(#[from] PathError),
-    
+    InvalidPath(String),
+
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("backend error: {0}")]
     Backend(String),
 }
 ```
 
-## Backend Implementations
+---
 
-### FsBackend (via strict-path)
+# Crate 2: anyfs
+
+**Purpose:** Built-in backends (feature-gated). Re-exports `anyfs-traits`.
+
+**Depends on:** `anyfs-traits` + optional backend dependencies
+
+## Cargo.toml
+
+```toml
+[package]
+name = "anyfs"
+version = "0.1.0"
+
+[features]
+default = ["memory"]
+memory = []
+vrootfs = ["strict-path"]
+sqlite = ["rusqlite"]
+all = ["memory", "vrootfs", "sqlite"]
+
+[dependencies]
+anyfs-traits = { version = "0.1", path = "../anyfs-traits" }
+
+# Optional backend dependencies
+strict-path = { version = "0.1", optional = true }
+rusqlite = { version = "0.31", optional = true }
+```
+
+## Crate Structure
+
+```
+anyfs/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          # re-exports anyfs_traits::*
+    ├── vrootfs/        # [feature: vrootfs] VRootFsBackend
+    │   └── mod.rs
+    ├── memory/         # [feature: memory] MemoryBackend
+    │   └── mod.rs
+    └── sqlite/         # [feature: sqlite] SqliteBackend
+        ├── mod.rs
+        └── schema.rs
+```
+
+## lib.rs
 
 ```rust
-use strict_path::{VirtualRoot, VirtualPath as StrictPath};
+// Re-export everything from anyfs-traits
+pub use anyfs_traits::*;
 
-pub struct FsBackend {
+// Feature-gated backends
+#[cfg(feature = "memory")]
+mod memory;
+#[cfg(feature = "memory")]
+pub use memory::MemoryBackend;
+
+#[cfg(feature = "vrootfs")]
+mod vrootfs;
+#[cfg(feature = "vrootfs")]
+pub use vrootfs::VRootFsBackend;
+
+#[cfg(feature = "sqlite")]
+mod sqlite;
+#[cfg(feature = "sqlite")]
+pub use sqlite::SqliteBackend;
+```
+
+## Backend Implementations
+
+### VRootFsBackend (feature: vrootfs)
+
+```rust
+use strict_path::VirtualRoot;
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+
+pub struct VRootFsBackend {
     root: VirtualRoot,
 }
 
-impl FsBackend {
+impl VRootFsBackend {
     pub fn new(root_dir: &Path) -> Result<Self, VfsError> {
         Ok(Self {
             root: VirtualRoot::new(root_dir)?,
@@ -206,24 +236,20 @@ impl FsBackend {
     }
 }
 
-impl VfsBackend for FsBackend {
+impl VfsBackend for VRootFsBackend {
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
-        let strict_path = to_strict_path(path)?;
-        Ok(self.root.read(&strict_path)?)
+        Ok(self.root.read(path)?)
     }
-    
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
-        let strict_path = to_strict_path(path)?;
-        Ok(self.root.write(&strict_path, data)?)
-    }
-    
-    // ... straightforward delegation
+    // ... straightforward delegation to VirtualRoot
 }
 ```
 
-### MemoryBackend
+### MemoryBackend (feature: memory)
 
 ```rust
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+use std::collections::HashMap;
+
 pub struct MemoryBackend {
     entries: HashMap<VirtualPath, Entry>,
 }
@@ -242,21 +268,15 @@ impl MemoryBackend {
 }
 
 impl VfsBackend for MemoryBackend {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
-        match self.entries.get(path) {
-            Some(Entry::File(data)) => Ok(data.clone()),
-            Some(Entry::Directory) => Err(VfsError::NotAFile(path.clone())),
-            None => Err(VfsError::NotFound(path.clone())),
-        }
-    }
-    
     // ... HashMap operations
 }
 ```
 
-### SqliteBackend
+### SqliteBackend (feature: sqlite)
 
 ```rust
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+
 pub struct SqliteBackend {
     conn: rusqlite::Connection,
 }
@@ -268,59 +288,23 @@ impl SqliteBackend {
 }
 
 impl VfsBackend for SqliteBackend {
-    // Internal implementation can use node/edge model
-    // but that's hidden from consumers
-}
-```
-
-## Usage Example
-
-```rust
-use anyfs::{VfsBackend, FsBackend, MemoryBackend, SqliteBackend, VirtualPath};
-
-// Pick any backend — same API
-fn process_files(vfs: &mut impl VfsBackend) -> Result<(), VfsError> {
-    let path = VirtualPath::new("/data/file.txt")?;
-    
-    vfs.mkdir_all(&VirtualPath::new("/data")?)?;
-    vfs.write(&path, b"hello world")?;
-    
-    let content = vfs.read(&path)?;
-    println!("Read {} bytes", content.len());
-    
-    Ok(())
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Filesystem backend
-    let mut fs = FsBackend::new(Path::new("/tmp/myapp"))?;
-    process_files(&mut fs)?;
-    
-    // Memory backend (for tests)
-    let mut mem = MemoryBackend::new();
-    process_files(&mut mem)?;
-    
-    // SQLite backend (portable)
-    let mut db = SqliteBackend::create(Path::new("data.db"))?;
-    process_files(&mut db)?;
-    
-    Ok(())
+    // Internal schema is implementation detail
 }
 ```
 
 ---
 
-# Project 2: anyfs-container
+# Crate 3: anyfs-container
 
-**Purpose:** Tenant isolation and containment layer built on anyfs.
+**Purpose:** Tenant isolation and containment layer.
 
-**Depends on:** `anyfs`
+**Depends on:** `anyfs-traits` (NOT `anyfs` — doesn't need built-in backends)
 
 ## Crate Structure
 
 ```
 anyfs-container/
-├── Cargo.toml          # depends on anyfs
+├── Cargo.toml          # depends on anyfs-traits
 └── src/
     ├── lib.rs
     ├── container.rs    # FilesContainer<B>
@@ -333,7 +317,8 @@ anyfs-container/
 ## FilesContainer
 
 ```rust
-use anyfs::{VfsBackend, VirtualPath, VfsError};
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError};
+use std::path::Path;
 
 /// A contained filesystem with quotas and isolation.
 pub struct FilesContainer<B: VfsBackend> {
@@ -343,115 +328,25 @@ pub struct FilesContainer<B: VfsBackend> {
 }
 
 impl<B: VfsBackend> FilesContainer<B> {
-    pub fn new(backend: B) -> Self {
-        Self::with_limits(backend, CapacityLimits::default())
+    /// User-facing API accepts any path-like type
+    pub fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, ContainerError> {
+        let vpath = VirtualPath::new(path.as_ref())?;
+        Ok(self.backend.read(&vpath)?)
     }
-    
-    pub fn with_limits(backend: B, limits: CapacityLimits) -> Self {
-        Self {
-            backend,
-            limits,
-            usage: CapacityUsage::default(),
-        }
-    }
-    
-    // ─────────────────────────────────────────────────────────
-    // Delegated operations (with limit enforcement)
-    // ─────────────────────────────────────────────────────────
-    
-    pub fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, ContainerError> {
-        Ok(self.backend.read(path)?)
-    }
-    
-    pub fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), ContainerError> {
+
+    pub fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), ContainerError> {
+        let vpath = VirtualPath::new(path.as_ref())?;
+
         // Check limits BEFORE writing
         self.check_file_size(data.len())?;
         self.check_total_size(data.len())?;
-        
-        self.backend.write(path, data)?;
+
+        self.backend.write(&vpath, data)?;
         self.usage.add_bytes(data.len() as u64);
         Ok(())
     }
-    
-    pub fn mkdir(&mut self, path: &VirtualPath) -> Result<(), ContainerError> {
-        self.check_node_count()?;
-        self.check_path_depth(path)?;
-        
-        self.backend.mkdir(path)?;
-        self.usage.add_node();
-        Ok(())
-    }
-    
+
     // ... other operations with limit checks
-    
-    // ─────────────────────────────────────────────────────────
-    // Capacity management
-    // ─────────────────────────────────────────────────────────
-    
-    pub fn usage(&self) -> &CapacityUsage {
-        &self.usage
-    }
-    
-    pub fn limits(&self) -> &CapacityLimits {
-        &self.limits
-    }
-    
-    pub fn remaining(&self) -> CapacityRemaining {
-        self.limits.remaining(&self.usage)
-    }
-}
-```
-
-## Capacity Limits
-
-```rust
-#[derive(Clone, Debug)]
-pub struct CapacityLimits {
-    /// Maximum total bytes (None = unlimited)
-    pub max_total_size: Option<u64>,
-    
-    /// Maximum single file size (None = unlimited)
-    pub max_file_size: Option<u64>,
-    
-    /// Maximum number of nodes (None = unlimited)
-    pub max_node_count: Option<u64>,
-    
-    /// Maximum entries per directory (None = unlimited)
-    pub max_dir_entries: Option<u32>,
-    
-    /// Maximum path depth (None = unlimited)
-    pub max_path_depth: Option<u16>,
-}
-
-impl Default for CapacityLimits {
-    fn default() -> Self {
-        Self {
-            max_total_size: None,
-            max_file_size: Some(1 << 30),    // 1 GB
-            max_node_count: None,
-            max_dir_entries: Some(10_000),
-            max_path_depth: Some(64),
-        }
-    }
-}
-
-impl CapacityLimits {
-    pub fn unlimited() -> Self {
-        Self {
-            max_total_size: None,
-            max_file_size: None,
-            max_node_count: None,
-            max_dir_entries: None,
-            max_path_depth: None,
-        }
-    }
-    
-    pub fn tenant(max_bytes: u64) -> Self {
-        Self {
-            max_total_size: Some(max_bytes),
-            ..Default::default()
-        }
-    }
 }
 ```
 
@@ -464,100 +359,48 @@ pub struct ContainerBuilder<B> {
 }
 
 impl<B: VfsBackend> ContainerBuilder<B> {
-    pub fn new(backend: B) -> Self {
-        Self {
-            backend,
-            limits: CapacityLimits::default(),
-        }
-    }
-    
-    pub fn max_total_size(mut self, bytes: u64) -> Self {
-        self.limits.max_total_size = Some(bytes);
-        self
-    }
-    
-    pub fn max_file_size(mut self, bytes: u64) -> Self {
-        self.limits.max_file_size = Some(bytes);
-        self
-    }
-    
-    pub fn unlimited(mut self) -> Self {
-        self.limits = CapacityLimits::unlimited();
-        self
-    }
-    
-    pub fn build(self) -> FilesContainer<B> {
-        FilesContainer::with_limits(self.backend, self.limits)
-    }
-}
-```
-
-## Usage Example
-
-```rust
-use anyfs::{FsBackend, SqliteBackend, VirtualPath};
-use anyfs_container::{FilesContainer, ContainerBuilder, CapacityLimits};
-
-// Create a tenant container with 100MB quota
-fn create_tenant(tenant_id: &str) -> Result<FilesContainer<SqliteBackend>, Error> {
-    let db_path = format!("tenants/{}.db", tenant_id);
-    let backend = SqliteBackend::create(&db_path)?;
-    
-    let container = ContainerBuilder::new(backend)
-        .max_total_size(100 * 1024 * 1024)  // 100 MB
-        .max_file_size(10 * 1024 * 1024)    // 10 MB per file
-        .build();
-    
-    Ok(container)
-}
-
-// Use the container
-fn tenant_operation(container: &mut FilesContainer<impl VfsBackend>) -> Result<(), Error> {
-    let path = VirtualPath::new("/uploads/document.pdf")?;
-    
-    // Check remaining space
-    let remaining = container.remaining();
-    println!("Space remaining: {:?} bytes", remaining.bytes);
-    
-    // Write (will fail if over quota)
-    container.mkdir_all(&VirtualPath::new("/uploads")?)?;
-    container.write(&path, &pdf_bytes)?;
-    
-    Ok(())
+    pub fn new(backend: B) -> Self;
+    pub fn max_total_size(mut self, bytes: u64) -> Self;
+    pub fn max_file_size(mut self, bytes: u64) -> Self;
+    pub fn build(self) -> FilesContainer<B>;
 }
 ```
 
 ---
 
-# Project 3: Your App
+# Usage Examples
 
-**Purpose:** Your application that uses FilesContainer.
-
-**Depends on:** `anyfs-container` (which depends on `anyfs`)
+## App using built-in backend with container
 
 ```rust
+use anyfs::{SqliteBackend, VRootFsBackend};
 use anyfs_container::{FilesContainer, ContainerBuilder};
-use anyfs::SqliteBackend;
 
-struct TenantManager {
-    // Your app just works with FilesContainer
-    // No knowledge of backends needed
+// Create tenant storage with quota
+let backend = SqliteBackend::create("tenant_123.db")?;
+let container = ContainerBuilder::new(backend)
+    .max_total_size(100 * 1024 * 1024)  // 100 MB
+    .build();
+
+container.write("/uploads/file.txt", b"hello")?;
+```
+
+## Custom backend implementer
+
+```rust
+// Only depend on anyfs-traits — no rusqlite, no strict-path
+use anyfs_traits::{VfsBackend, VirtualPath, VfsError, Metadata, DirEntry};
+
+pub struct S3Backend {
+    bucket: String,
+    client: aws_sdk_s3::Client,
 }
 
-impl TenantManager {
-    fn get_tenant_storage(&self, tenant_id: &str) -> FilesContainer<SqliteBackend> {
-        // Configuration happens here, once
-        let backend = SqliteBackend::open(&format!("data/{}.db", tenant_id)).unwrap();
-        ContainerBuilder::new(backend)
-            .max_total_size(self.quota_for_tenant(tenant_id))
-            .build()
+impl VfsBackend for S3Backend {
+    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
+        // Implement using S3 API
     }
-}
-
-// Your app code — clean and simple
-fn handle_upload(container: &mut FilesContainer<impl VfsBackend>, file: UploadedFile) {
-    let path = VirtualPath::new(&format!("/uploads/{}", file.name)).unwrap();
-    container.write(&path, &file.data).unwrap(); // Quota enforced automatically
+    // ... implement other methods
 }
 ```
 
@@ -565,43 +408,13 @@ fn handle_upload(container: &mut FilesContainer<impl VfsBackend>, file: Uploaded
 
 # Summary
 
-| Project | Crate | Purpose | Depends On |
-|---------|-------|---------|------------|
-| 1 | `anyfs` | Generic VFS with swappable backends | — |
-| 2 | `anyfs-container` | Tenant isolation + quotas | `anyfs` |
-| 3 | Your App | Business logic | `anyfs-container` |
+| Crate | Purpose | Depends On |
+|-------|---------|------------|
+| `anyfs-traits` | Minimal trait + types | `strict-path`, `thiserror` |
+| `anyfs` | Built-in backends (feature-gated) | `anyfs-traits` |
+| `anyfs-container` | Tenant isolation + quotas | `anyfs-traits` |
+| Your App | Business logic | `anyfs-container` + `anyfs` |
 
-**Project 1** is the foundation — pure I/O abstraction.
-**Project 2** adds containment — quotas, limits, safety.
-**Project 3** is your code — just uses the clean API.
-
----
-
-# Implementation Plan
-
-## Phase 1: anyfs (Week 1-2)
-
-1. Core types: `VirtualPath`, `Metadata`, `DirEntry`, `VfsError`
-2. `VfsBackend` trait
-3. `FsBackend` via `strict-path`
-4. `MemoryBackend` 
-5. Tests
-
-## Phase 2: anyfs + SQLite (Week 3)
-
-1. `SqliteBackend` implementation
-2. Schema design (internal)
-3. All backends pass same test suite
-
-## Phase 3: anyfs-container (Week 4)
-
-1. `FilesContainer<B>`
-2. `CapacityLimits` + enforcement
-3. `ContainerBuilder`
-4. Tests
-
-## Phase 4: Polish (Week 5)
-
-1. Documentation
-2. Examples
-3. Publish to crates.io
+**anyfs-traits** is the minimal foundation — trait and types only.
+**anyfs** provides built-in backends for common use cases.
+**anyfs-container** adds containment — quotas, limits, isolation.
