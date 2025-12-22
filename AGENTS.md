@@ -417,16 +417,11 @@ The `review_findings.md` file documents inconsistencies found between v0.2 docum
 
 ### ✅ Trust These (Current Design)
 - `AGENTS.md` (this file) — **AUTHORITATIVE**
-- `vfs-design.md` — Updated to current design
-- `11-restructured-design.md` — Updated to current design
-- `02-api-quick-reference.md` — Updated
-- `05-getting-started-guide.md` — Updated
-- `07-security-considerations.md` — New file
+- `book/src/` — All documentation lives here in the mdbook
 
-### ⚠️ May Have Stale Content
-- `review_findings.md` — Documents OLD inconsistencies (keep for history)
-- `pre-vfs-container-design.md` — Historical, pre-container design
-- Book files in `book/src/` — Mostly updated, but verify against this file
+### ⚠️ Historical Content (Appendix)
+- `book/src/appendix/review-findings.md` — Documents OLD inconsistencies (resolved)
+- `book/src/appendix/pre-container-design.md` — Historical, pre-container design
 
 ### 🔴 Ignore If Conflicts
 - Any document using `vfs-switchable`, `vfs-core`, or single `vfs` crate name
