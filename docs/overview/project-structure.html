@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "../searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9ccf518c.js"></script>
+        <script src="../toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,10 +181,11 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="anyfs---project-structure"><a class="header" href="#anyfs---project-structure">AnyFS - Project Structure</a></h1>
-<p><strong>Status:</strong> Current<br><strong>Last updated:</strong> 2025-12-23</p>
+<p><strong>Status:</strong> Current
+<strong>Last updated:</strong> 2025-12-23</p>
 <hr>
 <h2 id="repository-layout"><a class="header" href="#repository-layout">Repository Layout</a></h2>
-<pre><code>anyfs-traits/              # Crate 1: core trait + types
+<pre><code>anyfs-backend/             # Crate 1: core trait + types
   Cargo.toml
   src/
     lib.rs
@@ -195,7 +196,7 @@
 anyfs/                     # Crate 2: built-in backends (feature-gated)
   Cargo.toml
   src/
-    lib.rs                 # re-exports anyfs-traits::*
+    lib.rs                 # backend implementations
     memory/                # [feature: memory] (default)
     vrootfs/               # [feature: vrootfs]
     sqlite/                # [feature: sqlite]
@@ -205,39 +206,36 @@ anyfs-container/           # Crate 3: policy layer (quotas + isolation)
   src/
     lib.rs
     container.rs           # FilesContainer&lt;B: VfsBackend&gt;
-    builder.rs             # ContainerBuilder
     limits.rs              # CapacityLimits
     usage.rs               # CapacityUsage, CapacityRemaining
     error.rs               # ContainerError
 </code></pre>
 <hr>
 <h2 id="dependency-model"><a class="header" href="#dependency-model">Dependency Model</a></h2>
-<pre><code>strict-path (VirtualPath, VirtualRoot)
-    -&gt; anyfs-traits
-         -&gt; anyfs (optional backends)
-         -&gt; anyfs-container (policy/quotas)
+<pre><code>anyfs-backend (trait + types)
+    &lt;- anyfs (execution layer, calls any VfsBackend)
+    &lt;- anyfs-container (wraps backends with policy)
+
+strict-path (VirtualPath, VirtualRoot)
+    &lt;- anyfs [vrootfs feature only]
 </code></pre>
-<p><strong>Key point:</strong> custom backends depend only on <code>anyfs-traits</code>.</p>
+<p><strong>Key point:</strong> Custom backends depend only on <code>anyfs-backend</code>. The <code>anyfs</code> crate is the execution layer that can call any backend—built-in or custom. <code>strict-path</code> is only used by the <code>vrootfs</code> feature.</p>
 <hr>
 <h2 id="path-flow"><a class="header" href="#path-flow">Path Flow</a></h2>
 <pre><code>User code:  container.read("/a/b.txt")
-   -&gt; FilesContainer validates into VirtualPath
-   -&gt; backend.read(&amp;VirtualPath)
+   -&gt; FilesContainer (policy checks, normalization)
+   -&gt; backend.read(path)  # receives impl AsRef&lt;Path&gt;
 </code></pre>
-<p>This keeps validation centralized and keeps backends simple.</p>
+<p>Both layers use <code>impl AsRef&lt;Path&gt;</code> for std::fs alignment.</p>
 <hr>
-<h2 id="feature-controls"><a class="header" href="#feature-controls">Feature Controls</a></h2>
-<p>There are two kinds of feature selection:</p>
-<ol>
-<li><strong>Cargo features (compile-time)</strong> select built-in backends in <code>anyfs</code> (<code>memory</code>, <code>sqlite</code>, <code>vrootfs</code>).</li>
-<li><strong>Container feature whitelist (runtime policy)</strong> enables advanced filesystem behavior per container instance:
+<h2 id="cargo-features"><a class="header" href="#cargo-features">Cargo Features</a></h2>
+<p>Cargo features in <code>anyfs</code> select which built-in backends to include:</p>
 <ul>
-<li><code>symlinks()</code></li>
-<li><code>hard_links()</code></li>
-<li><code>permissions()</code></li>
+<li><code>memory</code> — In-memory storage (default)</li>
+<li><code>sqlite</code> — SQLite-backed persistent storage</li>
+<li><code>vrootfs</code> — Host filesystem backend (uses <code>strict-path</code> internally)</li>
 </ul>
-</li>
-</ol>
+<p>The runtime feature whitelist (symlinks, hard_links, permissions) is configured per <code>FilesContainer</code> instance, not at compile time.</p>
 <hr>
 <h2 id="where-to-start"><a class="header" href="#where-to-start">Where To Start</a></h2>
 <ul>

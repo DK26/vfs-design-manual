@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-9ccf518c.js"></script>
+        <script src="toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -179,18 +179,19 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="anyfs-ecosystem"><a class="header" href="#anyfs-ecosystem">AnyFS Ecosystem</a></h1>
-<p>Pluggable virtual filesystem backends for Rust.</p>
+<p><strong>An open standard for pluggable virtual filesystem backends in Rust.</strong></p>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>AnyFS is a three-crate ecosystem:</p>
+<p>AnyFS is an <strong>open standard</strong> that allows anyone to create custom storage backends. Whether you need to store files in a database, object store, network filesystem, or any other medium—AnyFS provides the contract and tools to make it happen.</p>
+<p>The ecosystem is a three-crate design:</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Crate</th><th>Purpose</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-traits</code></td><td>Minimal contract: <code>VfsBackend</code> + core types; re-exports <code>VirtualPath</code></td></tr>
-<tr><td><code>anyfs</code></td><td>Re-exports <code>anyfs-traits</code> + built-in backends (feature-gated)</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait + core types. Backend implementers depend on this.</td></tr>
+<tr><td><code>anyfs</code></td><td>Low-level execution layer for calling any <code>VfsBackend</code>. Also provides built-in backends (MemoryBackend, SqliteBackend, VRootFsBackend).</td></tr>
 <tr><td><code>anyfs-container</code></td><td><code>FilesContainer&lt;B: VfsBackend&gt;</code> policy layer (limits + least-privilege feature whitelist)</td></tr>
 </tbody>
 </table>
@@ -198,10 +199,12 @@
 <p>High-level data flow:</p>
 <pre><code class="language-text">Your application
   -&gt; anyfs-container (FilesContainer: ergonomic paths + policy)
-      -&gt; anyfs (built-in backends)
-          -&gt; anyfs-traits (VfsBackend + types)
-              -&gt; strict-path (VirtualPath, VirtualRoot)
+      -&gt; anyfs (executes operations on any VfsBackend)
+          -&gt; any backend (built-in or custom)
 </code></pre>
+<blockquote>
+<p><strong>Note:</strong> The <code>strict-path</code> crate is <strong>only</strong> used by <code>VRootFsBackend</code>—a backend that wraps a real host filesystem directory. It is not part of the core AnyFS API.</p>
+</blockquote>
 <hr>
 <h2 id="quick-example"><a class="header" href="#quick-example">Quick example</a></h2>
 <pre class="playground"><code class="language-rust">use anyfs::MemoryBackend;
@@ -257,12 +260,13 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <p>One-page overview for stakeholders and decision-makers.</p>
 <hr>
 <h2 id="what-is-it"><a class="header" href="#what-is-it">What is it?</a></h2>
-<p>AnyFS is a virtual filesystem library for Rust with swappable storage backends.</p>
+<p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust.</p>
 <p>You get a familiar, <code>std::fs</code>-aligned API (read/write/create_dir/read_dir/etc.) while choosing where the data lives:</p>
 <ul>
-<li>in-memory (tests)</li>
+<li>in-memory (fast caching, testing, speed-critical applications)</li>
 <li>a single SQLite database file (portable storage)</li>
-<li>a contained host filesystem directory (sandboxed by a virtual root)</li>
+<li>a contained host filesystem directory (sandboxed by VRootFsBackend)</li>
+<li>or any custom backend you implement</li>
 </ul>
 <hr>
 <h2 id="why-does-it-matter"><a class="header" href="#why-does-it-matter">Why does it matter?</a></h2>
@@ -274,9 +278,10 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <tbody>
 <tr><td>Multi-tenant isolation</td><td>One container per tenant, separate namespaces</td></tr>
 <tr><td>Portability</td><td>SQLite backend: a tenant filesystem is a single <code>.db</code> file</td></tr>
-<tr><td>Security</td><td>Paths are validated via <code>VirtualPath</code> (<code>strict-path</code>)</td></tr>
+<tr><td>Security</td><td>Path normalization prevents traversal attacks</td></tr>
 <tr><td>Resource control</td><td>Built-in limits: max bytes, max file size, max nodes, etc.</td></tr>
-<tr><td>Testing</td><td>In-memory backend is fast and deterministic</td></tr>
+<tr><td>Speed-critical storage</td><td>In-memory backend for caching or temporary storage</td></tr>
+<tr><td>Custom storage</td><td>Implement your own backend for any storage medium</td></tr>
 </tbody>
 </table>
 </div>
@@ -286,16 +291,17 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li>
 <p><strong>Three-crate structure</strong></p>
 <ul>
-<li><code>anyfs-traits</code>: minimal backend contract (<code>VfsBackend</code>) and types</li>
-<li><code>anyfs</code>: built-in backends (feature-gated), re-exports traits</li>
+<li><code>anyfs-backend</code>: minimal backend contract (<code>VfsBackend</code> trait) and types</li>
+<li><code>anyfs</code>: low-level execution layer for calling any <code>VfsBackend</code> (also provides built-in backends)</li>
 <li><code>anyfs-container</code>: <code>FilesContainer&lt;B&gt;</code> policy layer (limits + least privilege)</li>
 </ul>
 </li>
 <li>
-<p><strong>Two-layer path handling</strong></p>
+<p><strong>Simple path handling</strong></p>
 <ul>
 <li>User APIs accept <code>impl AsRef&lt;Path&gt;</code> for ergonomics.</li>
-<li>Backends receive <code>&amp;VirtualPath</code> (validated and normalized).</li>
+<li>Backends receive normalized <code>&amp;str</code> paths.</li>
+<li><code>strict-path</code> is only used internally by VRootFsBackend.</li>
 </ul>
 </li>
 <li>
@@ -316,11 +322,10 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut fs = ContainerBuilder::new(SqliteBackend::open_or_create("tenant_123.db")?)
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut fs = FilesContainer::new(SqliteBackend::open_or_create("tenant_123.db")?)
+    .with_max_total_size(100 * 1024 * 1024);
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;
@@ -343,10 +348,11 @@ let content = fs.read("/documents/hello.txt")?;
 <p>For details, see <code>book/src/architecture/design-overview.md</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="anyfs---project-structure"><a class="header" href="#anyfs---project-structure">AnyFS - Project Structure</a></h1>
-<p><strong>Status:</strong> Current<br><strong>Last updated:</strong> 2025-12-23</p>
+<p><strong>Status:</strong> Current
+<strong>Last updated:</strong> 2025-12-23</p>
 <hr>
 <h2 id="repository-layout"><a class="header" href="#repository-layout">Repository Layout</a></h2>
-<pre><code>anyfs-traits/              # Crate 1: core trait + types
+<pre><code>anyfs-backend/             # Crate 1: core trait + types
   Cargo.toml
   src/
     lib.rs
@@ -357,7 +363,7 @@ let content = fs.read("/documents/hello.txt")?;
 anyfs/                     # Crate 2: built-in backends (feature-gated)
   Cargo.toml
   src/
-    lib.rs                 # re-exports anyfs-traits::*
+    lib.rs                 # backend implementations
     memory/                # [feature: memory] (default)
     vrootfs/               # [feature: vrootfs]
     sqlite/                # [feature: sqlite]
@@ -367,39 +373,36 @@ anyfs-container/           # Crate 3: policy layer (quotas + isolation)
   src/
     lib.rs
     container.rs           # FilesContainer&lt;B: VfsBackend&gt;
-    builder.rs             # ContainerBuilder
     limits.rs              # CapacityLimits
     usage.rs               # CapacityUsage, CapacityRemaining
     error.rs               # ContainerError
 </code></pre>
 <hr>
 <h2 id="dependency-model"><a class="header" href="#dependency-model">Dependency Model</a></h2>
-<pre><code>strict-path (VirtualPath, VirtualRoot)
-    -&gt; anyfs-traits
-         -&gt; anyfs (optional backends)
-         -&gt; anyfs-container (policy/quotas)
+<pre><code>anyfs-backend (trait + types)
+    &lt;- anyfs (execution layer, calls any VfsBackend)
+    &lt;- anyfs-container (wraps backends with policy)
+
+strict-path (VirtualPath, VirtualRoot)
+    &lt;- anyfs [vrootfs feature only]
 </code></pre>
-<p><strong>Key point:</strong> custom backends depend only on <code>anyfs-traits</code>.</p>
+<p><strong>Key point:</strong> Custom backends depend only on <code>anyfs-backend</code>. The <code>anyfs</code> crate is the execution layer that can call any backend—built-in or custom. <code>strict-path</code> is only used by the <code>vrootfs</code> feature.</p>
 <hr>
 <h2 id="path-flow"><a class="header" href="#path-flow">Path Flow</a></h2>
 <pre><code>User code:  container.read("/a/b.txt")
-   -&gt; FilesContainer validates into VirtualPath
-   -&gt; backend.read(&amp;VirtualPath)
+   -&gt; FilesContainer (policy checks, normalization)
+   -&gt; backend.read(path)  # receives impl AsRef&lt;Path&gt;
 </code></pre>
-<p>This keeps validation centralized and keeps backends simple.</p>
+<p>Both layers use <code>impl AsRef&lt;Path&gt;</code> for std::fs alignment.</p>
 <hr>
-<h2 id="feature-controls"><a class="header" href="#feature-controls">Feature Controls</a></h2>
-<p>There are two kinds of feature selection:</p>
-<ol>
-<li><strong>Cargo features (compile-time)</strong> select built-in backends in <code>anyfs</code> (<code>memory</code>, <code>sqlite</code>, <code>vrootfs</code>).</li>
-<li><strong>Container feature whitelist (runtime policy)</strong> enables advanced filesystem behavior per container instance:
+<h2 id="cargo-features"><a class="header" href="#cargo-features">Cargo Features</a></h2>
+<p>Cargo features in <code>anyfs</code> select which built-in backends to include:</p>
 <ul>
-<li><code>symlinks()</code></li>
-<li><code>hard_links()</code></li>
-<li><code>permissions()</code></li>
+<li><code>memory</code> — In-memory storage (default)</li>
+<li><code>sqlite</code> — SQLite-backed persistent storage</li>
+<li><code>vrootfs</code> — Host filesystem backend (uses <code>strict-path</code> internally)</li>
 </ul>
-</li>
-</ol>
+<p>The runtime feature whitelist (symlinks, hard_links, permissions) is configured per <code>FilesContainer</code> instance, not at compile time.</p>
 <hr>
 <h2 id="where-to-start"><a class="header" href="#where-to-start">Where To Start</a></h2>
 <ul>
@@ -424,9 +427,9 @@ anyfs-container = "0.1"
 </code></pre>
 <p>Available features for <code>anyfs</code>:</p>
 <ul>
-<li><code>memory</code> — In-memory storage (default, for testing)</li>
-<li><code>sqlite</code> — SQLite-backed persistent storage</li>
-<li><code>vrootfs</code> — Host filesystem backend (via strict-path)</li>
+<li><code>memory</code> — In-memory storage (default). Fast and isolated—useful for testing, caching, or any speed-critical application.</li>
+<li><code>sqlite</code> — SQLite-backed persistent storage. Portable single-file storage.</li>
+<li><code>vrootfs</code> — Host filesystem backend (uses <code>strict-path</code> internally for path containment).</li>
 </ul>
 <hr>
 <h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
@@ -547,19 +550,16 @@ container.remove_dir_all("/old-folder")?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
+let container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
     // Set capacity limits
-    .max_total_size(500 * 1024 * 1024)  // 500 MB total
-    .max_file_size(50 * 1024 * 1024)    // 50 MB per file
-    .max_node_count(100_000)             // 100K files/dirs
-    .max_dir_entries(5_000)              // 5K entries per directory
-
+    .with_max_total_size(500 * 1024 * 1024)  // 500 MB total
+    .with_max_file_size(50 * 1024 * 1024)    // 50 MB per file
+    .with_max_node_count(100_000)             // 100K files/dirs
+    .with_max_dir_entries(5_000)              // 5K entries per directory
     // Set depth limits
-    .max_path_depth(32)
-
-    .build()?;
+    .with_max_path_depth(32);
 <span class="boring">}</span></code></pre>
 <h3 id="checking-capacity"><a class="header" href="#checking-capacity">Checking Capacity</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -578,17 +578,16 @@ if !remaining.can_write {
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="links"><a class="header" href="#links">Links</a></h2>
-<p>Symlinks, hard links, and permission mutation are <strong>disabled by default</strong>. Enable only what you need via <code>ContainerBuilder</code> (feature whitelist).</p>
+<p>Symlinks, hard links, and permission mutation are <strong>disabled by default</strong>. Enable only what you need via the builder pattern (feature whitelist).</p>
 <h3 id="symbolic-links"><a class="header" href="#symbolic-links">Symbolic Links</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .symlinks()                     // disabled by default (least privilege)
-    .max_symlink_resolution(40)     // optional; default: 40
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()                     // disabled by default (least privilege)
+    .with_max_symlink_resolution(40);    // optional; default: 40
 
 // Create a symlink
 container.create_dir_all("/deep/nested/dir")?;
@@ -604,11 +603,10 @@ container.read_dir("/shortcut")?;  // lists /deep/nested/dir
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .hard_links()                   // disabled by default (least privilege)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_hard_links();              // disabled by default (least privilege)
 
 // Create a file
 container.write("/original.txt", b"content")?;
@@ -621,9 +619,6 @@ container.hard_link("/original.txt", "/link.txt")?;
 container.remove_file("/original.txt")?;
 let content = container.read("/link.txt")?;  // Still works
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="import-and-export-future"><a class="header" href="#import-and-export-future">Import and Export (Future)</a></h2>
-<p>Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.</p>
 <hr>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <h3 id="pattern-matching-on-errors"><a class="header" href="#pattern-matching-on-errors">Pattern Matching on Errors</a></h3>
@@ -672,7 +667,13 @@ match container.write("/file.txt", &amp;large_data) {
 </div>
 <hr>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
-<h3 id="use-in-memory-backend-for-tests"><a class="header" href="#use-in-memory-backend-for-tests">Use In-Memory Backend for Tests</a></h3>
+<h3 id="use-in-memory-backend"><a class="header" href="#use-in-memory-backend">Use In-Memory Backend</a></h3>
+<p>The in-memory backend is fast and isolated. It’s useful for:</p>
+<ul>
+<li>Unit and integration tests</li>
+<li>Caching or temporary storage</li>
+<li>Speed-critical applications where persistence isn’t needed</li>
+</ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[cfg(test)]
@@ -710,14 +711,12 @@ mod tests {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 #[test]
 fn test_storage_limit() {
-    let mut container = ContainerBuilder::new(MemoryBackend::new())
-        .max_total_size(1024)  // 1 KB limit
-        .build()
-        .unwrap();
+    let mut container = FilesContainer::new(MemoryBackend::new())
+        .with_max_total_size(1024);  // 1 KB limit
 
     let big_data = vec![0u8; 2048];  // 2 KB
 
@@ -731,8 +730,8 @@ fn test_storage_limit() {
 <h3 id="1-handle-errors-gracefully"><a class="header" href="#1-handle-errors-gracefully">1. Handle Errors Gracefully</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::VfsBackend;
-use anyfs_container::FilesContainer;
+</span>use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
 
 fn ensure_parent_exists&lt;B: VfsBackend&gt;(
     container: &amp;mut FilesContainer&lt;B&gt;,
@@ -765,16 +764,15 @@ fn ensure_parent_exists&lt;B: VfsBackend&gt;(
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 // Production defaults suggestion
-let container = ContainerBuilder::new(SqliteBackend::create("data.db")?)
-    .max_total_size(1024 * 1024 * 1024)  // 1 GB
-    .max_file_size(100 * 1024 * 1024)    // 100 MB
-    .max_node_count(1_000_000)            // 1M nodes
-    .max_dir_entries(10_000)              // 10K per dir
-    .max_path_depth(64)
-    .build()?;
+let container = FilesContainer::new(SqliteBackend::create("data.db")?)
+    .with_max_total_size(1024 * 1024 * 1024)  // 1 GB
+    .with_max_file_size(100 * 1024 * 1024)    // 100 MB
+    .with_max_node_count(1_000_000)            // 1M nodes
+    .with_max_dir_entries(10_000)              // 10K per dir
+    .with_max_path_depth(64);
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
@@ -804,9 +802,9 @@ anyfs-container = "0.1"
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, SqliteBackend};
-use anyfs_container::{FilesContainer, ContainerBuilder};
+use anyfs_container::FilesContainer;
 
-// In-memory (testing)
+// In-memory (testing, caching, speed-critical applications)
 let container = FilesContainer::new(MemoryBackend::new());
 
 // SQLite (production)
@@ -815,18 +813,17 @@ let container = FilesContainer::new(
 );
 
 // Full configuration with capacity limits
-let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
+let container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
     // Security posture: advanced features are opt-in (whitelist)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .max_total_size(100 * 1024 * 1024)  // 100 MB
-    .max_file_size(10 * 1024 * 1024)    // 10 MB
-    .max_node_count(10_000)
-    .max_dir_entries(1_000)
-    .max_path_depth(64)
-    .build()?;
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions()
+    .with_max_total_size(100 * 1024 * 1024)  // 100 MB
+    .with_max_file_size(10 * 1024 * 1024)    // 10 MB
+    .with_max_node_count(10_000)
+    .with_max_dir_entries(1_000)
+    .with_max_path_depth(64);
 
 // Note: advanced features (symlinks/hard links/permissions) are disabled by default and must be explicitly enabled
 // When symlinks are disabled, operations reject paths that traverse symlinks (nofollow).
@@ -845,16 +842,7 @@ container.write(Path::new("/data.bin"), data)?;
 // "//a/../b/./c"  → "/b/c"
 // "/../../../a"   → "/a" (can't escape root)
 <span class="boring">}</span></code></pre>
-<p>For custom backends, use <code>VirtualPath</code> directly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs::VirtualPath;
-
-let path = VirtualPath::new("/documents/report.pdf")?;
-path.parent()           // Some(VirtualPath("/documents"))
-path.file_name()        // Some("report.pdf")
-path.as_str()           // "/documents/report.pdf"
-<span class="boring">}</span></code></pre>
+<p>Backends receive normalized path strings (<code>&amp;str</code>). Path normalization is handled by FilesContainer before reaching the backend.</p>
 <hr>
 <h2 id="file-operations"><a class="header" href="#file-operations">File Operations</a></h2>
 <h3 id="reading"><a class="header" href="#reading">Reading</a></h3>
@@ -888,7 +876,7 @@ for entry in entries {
 }
 
 // Read symlink target (without following; requires symlinks enabled)
-let target = container.read_link("/path")?;   // → VirtualPath
+let target = container.read_link("/path")?;   // → PathBuf
 <span class="boring">}</span></code></pre>
 <h3 id="writing"><a class="header" href="#writing">Writing</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -923,9 +911,6 @@ container.rename("/from", "/to")?;
 // Copy
 container.copy("/from", "/to")?;              // single file
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="import--export-future"><a class="header" href="#import--export-future">Import / Export (Future)</a></h2>
-<p>Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.</p>
 <hr>
 <h2 id="capacity-management"><a class="header" href="#capacity-management">Capacity Management</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -997,8 +982,8 @@ let backend = SqliteBackend::open_or_create("data.db")?;
 <h3 id="ensure-parent-directories-exist"><a class="header" href="#ensure-parent-directories-exist">Ensure parent directories exist</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::VfsBackend;
-use anyfs_container::FilesContainer;
+</span>use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
 
 fn write_with_parents&lt;B: VfsBackend&gt;(
     container: &amp;mut FilesContainer&lt;B&gt;,
@@ -1014,8 +999,8 @@ fn write_with_parents&lt;B: VfsBackend&gt;(
 <h3 id="walk-directory-tree"><a class="header" href="#walk-directory-tree">Walk directory tree</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::VfsBackend;
-use anyfs_container::FilesContainer;
+</span>use anyfs_backend::{VfsBackend, DirEntry, FileType};
+use anyfs_container::{FilesContainer, ContainerError};
 
 fn walk&lt;B: VfsBackend&gt;(
     container: &amp;FilesContainer&lt;B&gt;,
@@ -1034,15 +1019,14 @@ fn walk&lt;B: VfsBackend&gt;(
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="type-reference"><a class="header" href="#type-reference">Type Reference</a></h2>
-<h3 id="from-anyfs-traits-re-exported-by-anyfs"><a class="header" href="#from-anyfs-traits-re-exported-by-anyfs">From <code>anyfs-traits</code> (re-exported by <code>anyfs</code>)</a></h3>
+<h3 id="from-anyfs-backend"><a class="header" href="#from-anyfs-backend">From <code>anyfs-backend</code></a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>VfsBackend</code></td><td>Core trait for backends (20 methods)</td></tr>
-<tr><td><code>VirtualPath</code></td><td>Validated, normalized path</td></tr>
+<tr><td><code>VfsBackend</code></td><td>Core trait for backends</td></tr>
 <tr><td><code>FileType</code></td><td><code>File</code>, <code>Directory</code>, <code>Symlink</code></td></tr>
 <tr><td><code>Metadata</code></td><td>File/directory metadata (includes <code>nlink</code>, <code>permissions</code>, <code>accessed</code>)</td></tr>
 <tr><td><code>Permissions</code></td><td>File permissions (readonly flag)</td></tr>
@@ -1058,9 +1042,9 @@ fn walk&lt;B: VfsBackend&gt;(
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>MemoryBackend</code></td><td>In-memory storage</td></tr>
-<tr><td><code>SqliteBackend</code></td><td>SQLite-backed storage</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td>Host filesystem (contained)</td></tr>
+<tr><td><code>MemoryBackend</code></td><td>In-memory storage (fast, isolated)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>SQLite-backed storage (portable)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Host filesystem (contained via strict-path)</td></tr>
 </tbody>
 </table>
 </div>
@@ -1071,8 +1055,7 @@ fn walk&lt;B: VfsBackend&gt;(
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>FilesContainer&lt;B&gt;</code></td><td>Main API, generic over backend</td></tr>
-<tr><td><code>ContainerBuilder&lt;B&gt;</code></td><td>Builder for FilesContainer</td></tr>
+<tr><td><code>FilesContainer&lt;B&gt;</code></td><td>Main API, generic over backend (includes builder methods)</td></tr>
 <tr><td><code>CapacityLimits</code></td><td>Quota configuration</td></tr>
 <tr><td><code>CapacityUsage</code></td><td>Current usage stats</td></tr>
 <tr><td><code>ContainerError</code></td><td>Container-level errors</td></tr>
@@ -1083,18 +1066,28 @@ fn walk&lt;B: VfsBackend&gt;(
 <p><em>For full details, see the <a href="#anyfs---design-overview">Design Overview</a>.</em></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="anyfs---design-overview"><a class="header" href="#anyfs---design-overview">AnyFS - Design Overview</a></h1>
-<p><strong>Status:</strong> Current<br><strong>Last updated:</strong> 2025-12-23</p>
+<p><strong>Status:</strong> Current
+<strong>Last updated:</strong> 2025-12-23</p>
 <hr>
 <h2 id="what-this-project-is"><a class="header" href="#what-this-project-is">What This Project Is</a></h2>
-<p>AnyFS is a small Rust ecosystem for <strong>virtual filesystem backends</strong> with an optional <strong>policy/container layer</strong>.</p>
+<p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust. Anyone can implement a custom backend for their own storage needs—whether that’s a database, object store, network filesystem, or any other medium.</p>
+<p>The ecosystem provides:</p>
+<ul>
+<li><strong>A minimal backend trait</strong> that any storage implementer can satisfy</li>
+<li><strong>Built-in backends</strong> for common cases (memory, SQLite, real filesystem)</li>
+<li><strong>An optional policy layer</strong> (<code>FilesContainer</code>) for quotas, limits, and feature whitelisting</li>
+</ul>
 <p>It is designed for:</p>
 <ul>
 <li>portable application storage (SQLite backend = single <code>.db</code> file)</li>
 <li>tenant isolation (one container per tenant)</li>
 <li>quotas/limits (enforced in the container layer)</li>
-<li>containment and safe path handling (<code>strict-path</code>)</li>
+<li>high-performance use cases (in-memory backend for speed-critical applications)</li>
 </ul>
 <p>It is not a POSIX emulator and does not try to expose OS-specific behavior.</p>
+<blockquote>
+<p><strong>Note on strict-path:</strong> The <code>strict-path</code> crate (providing <code>VirtualPath</code> and <code>VirtualRoot</code>) is <strong>only relevant for the <code>VRootFsBackend</code></strong>—a backend that wraps a real host filesystem directory. Other backends (SQLite, memory, custom) do not use or require strict-path.</p>
+</blockquote>
 <hr>
 <h2 id="crates"><a class="header" href="#crates">Crates</a></h2>
 <div class="table-wrapper">
@@ -1103,61 +1096,69 @@ fn walk&lt;B: VfsBackend&gt;(
 <tr><th>Crate</th><th>Purpose</th><th>Who uses it</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-traits</code></td><td>Minimal contract: <code>VfsBackend</code> + core types + <code>VirtualPath</code> re-export</td><td>Backend implementers</td></tr>
-<tr><td><code>anyfs</code></td><td>Re-exports <code>anyfs-traits</code> + built-in backends (feature-gated)</td><td>Most users</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait + core types</td><td>Backend implementers</td></tr>
+<tr><td><code>anyfs</code></td><td>Low-level execution layer for calling any <code>VfsBackend</code>. Also provides built-in backends (feature-gated).</td><td>Direct backend manipulation</td></tr>
 <tr><td><code>anyfs-container</code></td><td><code>FilesContainer&lt;B: VfsBackend&gt;</code> + limits + feature whitelist (least privilege)</td><td>Application code</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="dependency-graph"><a class="header" href="#dependency-graph">Dependency Graph</a></h3>
-<pre><code>strict-path
-   -&gt; anyfs-traits
-        -&gt; anyfs (built-in backends)
-        -&gt; anyfs-container (policy/quotas)
+<pre><code>anyfs-backend (trait + types)
+    &lt;- anyfs (calls any VfsBackend, provides built-in backends)
+    &lt;- anyfs-container (wraps backends with policy)
+
+strict-path (VirtualPath, VirtualRoot)
+    &lt;- anyfs [vrootfs feature only]
 </code></pre>
+<p><strong>Key point:</strong> <code>anyfs-backend</code> defines the contract. <code>anyfs</code> is the execution layer that can call any backend—built-in or custom. <code>strict-path</code> is only used by the <code>vrootfs</code> feature.</p>
 <hr>
-<h2 id="two-layer-path-handling"><a class="header" href="#two-layer-path-handling">Two-Layer Path Handling</a></h2>
-<p>AnyFS uses two path types on purpose:</p>
+<h2 id="path-handling-1"><a class="header" href="#path-handling-1">Path Handling</a></h2>
+<p>AnyFS uses <code>impl AsRef&lt;Path&gt;</code> throughout, aligned with <code>std::fs</code>:</p>
 <ol>
 <li><strong>User-facing API (<code>FilesContainer</code>)</strong> accepts <code>impl AsRef&lt;Path&gt;</code> for ergonomics.</li>
-<li><strong>Backend API (<code>VfsBackend</code>)</strong> uses <code>&amp;VirtualPath</code> (from <code>strict-path</code>) for type safety.</li>
+<li><strong>Backend API (<code>VfsBackend</code>)</strong> accepts <code>impl AsRef&lt;Path&gt;</code> (same as std::fs).</li>
 </ol>
-<p>The container validates and normalizes the user path once, then passes a <code>VirtualPath</code> to the backend.</p>
+<p>This keeps the API familiar and works correctly across all platforms (Windows UTF-16, Unix arbitrary bytes, etc.).</p>
+<p><strong>VRootFsBackend</strong> — This backend (which wraps a real host filesystem directory) internally uses <code>strict-path::VirtualPath</code> to ensure path containment. This is an implementation detail of that backend, not part of the core trait.</p>
 <hr>
-<h2 id="core-trait-vfsbackend-in-anyfs-traits"><a class="header" href="#core-trait-vfsbackend-in-anyfs-traits">Core Trait: <code>VfsBackend</code> (in <code>anyfs-traits</code>)</a></h2>
-<p><code>VfsBackend</code> is a path-based trait aligned with <code>std::fs</code> naming.</p>
+<h2 id="core-trait-vfsbackend-in-anyfs-backend"><a class="header" href="#core-trait-vfsbackend-in-anyfs-backend">Core Trait: <code>VfsBackend</code> (in <code>anyfs-backend</code>)</a></h2>
+<p><code>VfsBackend</code> is a path-based trait aligned with <code>std::fs</code> naming and signatures.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use strict_path::VirtualPath;
+</span>use std::path::Path;
 
 pub trait VfsBackend: Send {
     // Read
-    fn read(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn read_to_string(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;String, VfsError&gt;;
-    fn read_range(&amp;self, path: &amp;VirtualPath, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn exists(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;bool, VfsError&gt;;
-    fn metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn symlink_metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn read_dir(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
-    fn read_link(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;VirtualPath, VfsError&gt;;
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, VfsError&gt;;
+    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, VfsError&gt;;
+    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
+    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, VfsError&gt;;
 
     // Write
-    fn write(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn append(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_file(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn rename(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn copy(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn append(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_file(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn rename(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn copy(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Links
-    fn symlink(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn hard_link(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn symlink(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Permissions
-    fn set_permissions(&amp;mut self, path: &amp;VirtualPath, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+    fn set_permissions(&amp;mut self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+
+    // Streaming I/O (for large files)
+    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, VfsError&gt;;
+    fn open_write(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, VfsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <p><strong>Semantics (high-level):</strong></p>
@@ -1165,6 +1166,7 @@ pub trait VfsBackend: Send {
 <li><code>read</code>/<code>write</code>/<code>metadata</code>/<code>exists</code>/<code>copy</code> follow symlinks.</li>
 <li><code>symlink_metadata</code> and <code>read_link</code> do not follow.</li>
 <li><code>remove_file</code> removes the symlink itself, not the target.</li>
+<li>Streaming methods (<code>open_read</code>, <code>open_write</code>) enable efficient handling of large files.</li>
 </ul>
 <hr>
 <h2 id="built-in-backends-in-anyfs"><a class="header" href="#built-in-backends-in-anyfs">Built-in Backends (in <code>anyfs</code>)</a></h2>
@@ -1191,15 +1193,15 @@ pub trait VfsBackend: Send {
 </ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::ContainerBuilder;
+</span>use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(backend)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions()
+    .with_max_total_size(100 * 1024 * 1024);
 <span class="boring">}</span></code></pre>
 <p>When a feature is disabled, operations that require it return <code>ContainerError::FeatureNotEnabled("...")</code>.</p>
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
@@ -1213,10 +1215,24 @@ let mut container = ContainerBuilder::new(backend)
 </ul>
 <hr>
 <h2 id="security-model-summary"><a class="header" href="#security-model-summary">Security Model (Summary)</a></h2>
+<p>Security and isolation are achieved differently depending on the backend:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Isolation Mechanism</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Each instance is isolated by OS process memory</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Each container is a separate <code>.db</code> file</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Uses <code>strict-path::VirtualRoot</code> to clamp all paths to a root directory</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Common guarantees:</strong></p>
 <ul>
-<li><strong>Containment:</strong> <code>VirtualPath</code> ensures validated paths cannot escape the virtual root.</li>
 <li><strong>Least privilege:</strong> the container disables advanced features by default and requires explicit opt-in.</li>
-<li><strong>No host paths:</strong> application code interacts only with virtual paths; backends decide storage.</li>
+<li><strong>Path normalization:</strong> all user paths are normalized before reaching the backend.</li>
+<li><strong>No host paths in API:</strong> application code interacts only with virtual paths; backends decide actual storage.</li>
 </ul>
 <p>For more detail, see <code>book/src/comparisons/security.md</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -1328,51 +1344,56 @@ Backend:
 <h2 id="historical-notes"><a class="header" href="#historical-notes">Historical Notes</a></h2>
 <p>Older docs referencing a graph-store (<code>StorageBackend</code>, <code>NodeId</code>, transactions) or inode-based traits are kept only as history and should not be treated as current.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="vfsbackend-trait-anyfs-traits"><a class="header" href="#vfsbackend-trait-anyfs-traits">VfsBackend Trait (anyfs-traits)</a></h1>
+<h1 id="vfsbackend-trait-anyfs-backend"><a class="header" href="#vfsbackend-trait-anyfs-backend">VfsBackend Trait (anyfs-backend)</a></h1>
 <p><strong>The core backend contract for AnyFS</strong></p>
 <hr>
 <h2 id="overview-1"><a class="header" href="#overview-1">Overview</a></h2>
 <p><code>VfsBackend</code> is the minimal interface a storage backend implements.</p>
 <ul>
-<li>It is <strong>path-based</strong> and aligned with <code>std::fs</code> naming.</li>
-<li>It uses <code>&amp;VirtualPath</code> (from <code>strict-path</code>) so all paths are validated.</li>
+<li>It is <strong>path-based</strong> and aligned with <code>std::fs</code> naming and signatures.</li>
+<li>It uses <code>impl AsRef&lt;Path&gt;</code> for paths (same as <code>std::fs</code>).</li>
 <li>It does not include quotas or application policy; that lives in <code>anyfs-container</code>.</li>
 </ul>
-<p>If you are implementing a custom backend, depend only on <code>anyfs-traits</code>.</p>
+<p>If you are implementing a custom backend, depend only on <code>anyfs-backend</code>.</p>
 <hr>
 <h2 id="trait-surface"><a class="header" href="#trait-surface">Trait Surface</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use strict_path::VirtualPath;
+</span>use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
 pub trait VfsBackend: Send {
     // Read
-    fn read(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn read_to_string(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;String, VfsError&gt;;
-    fn read_range(&amp;self, path: &amp;VirtualPath, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn exists(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;bool, VfsError&gt;;
-    fn metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn symlink_metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn read_dir(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
-    fn read_link(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;VirtualPath, VfsError&gt;;
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, VfsError&gt;;
+    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, VfsError&gt;;
+    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
+    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, VfsError&gt;;
 
     // Write
-    fn write(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn append(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_file(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn rename(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn copy(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn append(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_file(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn rename(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn copy(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Links
-    fn symlink(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn hard_link(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn symlink(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Permissions
-    fn set_permissions(&amp;mut self, path: &amp;VirtualPath, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+    fn set_permissions(&amp;mut self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+
+    // Streaming I/O (for large files)
+    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, VfsError&gt;;
+    fn open_write(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, VfsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -1381,16 +1402,20 @@ pub trait VfsBackend: Send {
 <li><code>read</code>/<code>write</code>/<code>metadata</code>/<code>exists</code>/<code>copy</code> follow symlinks.</li>
 <li><code>symlink_metadata</code> and <code>read_link</code> do not follow.</li>
 <li><code>remove_file</code> removes the symlink itself, not the target.</li>
+<li>Streaming methods (<code>open_read</code>, <code>open_write</code>) enable efficient handling of large files.</li>
 </ul>
 <p>The container layer may still deny certain operations via feature whitelisting.</p>
 <hr>
 <h2 id="implementing-a-backend"><a class="header" href="#implementing-a-backend">Implementing a Backend</a></h2>
 <ul>
-<li>Depend on <code>anyfs-traits</code> only.</li>
-<li>Use <code>VirtualPath</code> as your canonical path type.</li>
+<li>Depend on <code>anyfs-backend</code> only.</li>
+<li>Accept <code>impl AsRef&lt;Path&gt;</code> for all path parameters (aligned with std::fs).</li>
 <li>Implement the semantics consistently across backends (a shared conformance suite is recommended).</li>
 </ul>
 <p>See <code>book/src/implementation/backend-guide.md</code> for a step-by-step guide.</p>
+<hr>
+<h2 id="note-on-vrootfsbackend"><a class="header" href="#note-on-vrootfsbackend">Note on VRootFsBackend</a></h2>
+<p>The <code>VRootFsBackend</code> (which wraps a real host filesystem directory) internally uses <code>strict-path::VirtualPath</code> for path containment. This is an <strong>implementation detail</strong> of that specific backend—not part of the core trait contract.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="filescontainer-anyfs-container"><a class="header" href="#filescontainer-anyfs-container">FilesContainer (anyfs-container)</a></h1>
 <p><strong>The user-facing API: ergonomic paths + policy (limits + feature whitelist)</strong></p>
@@ -1399,7 +1424,7 @@ pub trait VfsBackend: Send {
 <p><code>FilesContainer&lt;B: VfsBackend&gt;</code> wraps a backend and provides:</p>
 <ul>
 <li>ergonomic path inputs (<code>impl AsRef&lt;Path&gt;</code>)</li>
-<li>centralized validation into <code>VirtualPath</code></li>
+<li>centralized path normalization</li>
 <li>quota enforcement (limits)</li>
 <li>deny-by-default feature whitelisting for advanced behavior</li>
 </ul>
@@ -1408,17 +1433,16 @@ pub trait VfsBackend: Send {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
-    .max_total_size(100 * 1024 * 1024)
-    .max_file_size(10 * 1024 * 1024)
+let mut container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
+    .with_max_total_size(100 * 1024 * 1024)
+    .with_max_file_size(10 * 1024 * 1024)
     // advanced features are opt-in
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .build()?;
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions();
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="stdfs-aligned-methods"><a class="header" href="#stdfs-aligned-methods">std::fs-aligned Methods</a></h2>
@@ -1740,16 +1764,14 @@ container.write("/data/file.txt", content)?;
 </div>
 <hr>
 <h2 id="security-architecture"><a class="header" href="#security-architecture">Security Architecture</a></h2>
-<h3 id="1-path-containment-via-strict-path"><a class="header" href="#1-path-containment-via-strict-path">1. Path Containment (via strict-path)</a></h3>
-<p>All paths are validated through <code>VirtualPath</code> from the <code>strict-path</code> crate:</p>
+<h3 id="1-path-normalization"><a class="header" href="#1-path-normalization">1. Path Normalization</a></h3>
+<p>All user paths are normalized by <code>FilesContainer</code> before reaching the backend:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// User input is validated immediately
-let path = VirtualPath::new(user_input)?;
-
+</span>// User input is normalized immediately
 // These attacks are structurally prevented:
-VirtualPath::new("/../../../etc/passwd")  // → "/etc/passwd" (clamped to root)
-VirtualPath::new("/data/../../../../tmp") // → "/tmp" (clamped to root)
+"/../../../etc/passwd"  // → "/etc/passwd" (clamped to root)
+"/data/../../../../tmp" // → "/tmp" (clamped to root)
 <span class="boring">}</span></code></pre>
 <p><strong>Guarantee</strong>: No path can escape the virtual root, regardless of <code>..</code> sequences.</p>
 <h3 id="2-lexical-path-resolution"><a class="header" href="#2-lexical-path-resolution">2. Lexical Path Resolution</a></h3>
@@ -1763,22 +1785,36 @@ VirtualPath::new("/data/../../../../tmp") // → "/tmp" (clamped to root)
 // /foo/bar/.. always resolves to /foo (pure string manipulation)
 <span class="boring">}</span></code></pre>
 <p><strong>Guarantee</strong>: Lexical normalization is deterministic. If symlinks are disabled (default), resolution cannot be influenced by filesystem state; if enabled, symlink traversal is contained and bounded.</p>
+<h3 id="path-containment-by-backend-type"><a class="header" href="#path-containment-by-backend-type">Path Containment by Backend Type</a></h3>
+<p>Different backends achieve containment differently:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Containment Mechanism</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Isolated by OS process memory—no host filesystem access</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Each container is a separate <code>.db</code> file—no path traversal possible</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Uses <code>strict-path::VirtualRoot</code> to clamp all paths to a root directory</td></tr>
+</tbody>
+</table>
+</div>
 <h3 id="3-symlink-safety-opt-in"><a class="header" href="#3-symlink-safety-opt-in">3. Symlink Safety (Opt-In)</a></h3>
 <p>Symlink safety:</p>
 <ul>
 <li>Symlinks are <strong>disabled by default</strong> (least privilege / whitelist)</li>
-<li>If enabled, symlink targets are validated as <code>VirtualPath</code></li>
+<li>If enabled, symlink targets are validated</li>
 <li>Resolution is bounded by a configurable hop limit (default: 40)</li>
 <li>Symlinks cannot point outside the container</li>
 </ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::ContainerBuilder;
+</span>use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(backend)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()
+    .with_max_symlink_resolution(40);
 
 // Symlink creation validates the target (when enabled)
 container.symlink("/deeply/nested/path", "/shortcut")?;
@@ -1791,46 +1827,32 @@ container.read("/shortcut")?;  // Max 40 hops
 <p><code>FilesContainer</code> enforces configurable limits:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::ContainerBuilder;
+</span>use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let container = ContainerBuilder::new(backend)
-    .max_total_size(100 * 1024 * 1024)  // 100 MB total
-    .max_file_size(10 * 1024 * 1024)    // 10 MB per file
-    .max_node_count(10_000)              // 10K files/directories
-    .max_dir_entries(1_000)              // 1K entries per directory
-    .max_path_depth(64)                  // Max directory depth
-    .build()?;
+let container = FilesContainer::new(MemoryBackend::new())
+    .with_max_total_size(100 * 1024 * 1024)  // 100 MB total
+    .with_max_file_size(10 * 1024 * 1024)    // 10 MB per file
+    .with_max_node_count(10_000)              // 10K files/directories
+    .with_max_dir_entries(1_000)              // 1K entries per directory
+    .with_max_path_depth(64);                 // Max directory depth
 <span class="boring">}</span></code></pre>
 <p><strong>Guarantee</strong>: Resource exhaustion attacks are mitigated.</p>
-<h3 id="5-backend-isolation"><a class="header" href="#5-backend-isolation">5. Backend Isolation</a></h3>
-<p>Each backend provides isolation differently:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Backend</th><th>Isolation Mechanism</th></tr>
-</thead>
-<tbody>
-<tr><td><code>VRootFsBackend</code></td><td><code>strict-path::VirtualRoot</code> clamps all paths to root directory</td></tr>
-<tr><td><code>SqliteBackend</code></td><td>Each container is a separate <code>.db</code> file</td></tr>
-<tr><td><code>MemoryBackend</code></td><td>Each container is a separate process memory region</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Guarantee</strong>: Operations on one container cannot affect another.</p>
 <hr>
 <h2 id="secure-usage-patterns"><a class="header" href="#secure-usage-patterns">Secure Usage Patterns</a></h2>
 <h3 id="multi-tenant-isolation"><a class="header" href="#multi-tenant-isolation">Multi-Tenant Isolation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Each tenant gets a completely separate container
+</span>use anyfs::SqliteBackend;
+use anyfs_container::FilesContainer;
+
+// Each tenant gets a completely separate container
 fn create_tenant_storage(tenant_id: &amp;str) -&gt; FilesContainer&lt;SqliteBackend&gt; {
     let db_path = format!("tenants/{}.db", tenant_id);
     let backend = SqliteBackend::create(&amp;db_path).unwrap();
 
-    ContainerBuilder::new(backend)
-        .max_total_size(tenant_quota(tenant_id))
-        .build()
-        .unwrap()
+    FilesContainer::new(backend)
+        .with_max_total_size(tenant_quota(tenant_id))
 }
 
 // No path can cross tenant boundaries — they're different files entirely
@@ -1838,33 +1860,36 @@ fn create_tenant_storage(tenant_id: &amp;str) -&gt; FilesContainer&lt;SqliteBack
 <h3 id="untrusted-input-handling"><a class="header" href="#untrusted-input-handling">Untrusted Input Handling</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>fn handle_user_upload(
+</span>use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
+
+fn handle_user_upload(
     container: &amp;mut FilesContainer&lt;impl VfsBackend&gt;,
     user_filename: &amp;str,  // Untrusted input
     data: &amp;[u8],
 ) -&gt; Result&lt;(), ContainerError&gt; {
-    // VirtualPath::new validates the input
+    // FilesContainer normalizes the path internally:
     // - Rejects invalid UTF-8
     // - Normalizes path (removes .., .)
     // - Ensures absolute path
-    let path = VirtualPath::new(&amp;format!("/uploads/{}", user_filename))?;
+    let path = format!("/uploads/{}", user_filename);
 
-    // Safe to use - already validated
-    container.write(path.as_str(), data)?;
+    // Safe to use - container validates before reaching backend
+    container.write(&amp;path, data)?;
     Ok(())
 }
 <span class="boring">}</span></code></pre>
 <h3 id="sandboxed-execution"><a class="header" href="#sandboxed-execution">Sandboxed Execution</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::ContainerBuilder;
+</span>use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
 // Create an isolated sandbox for untrusted code
-let sandbox = ContainerBuilder::new(MemoryBackend::new())
-    .max_total_size(10 * 1024 * 1024)  // 10 MB limit
-    .max_file_size(1024 * 1024)         // 1 MB per file
-    .max_node_count(100)                // Max 100 files
-    .build()?;
+let sandbox = FilesContainer::new(MemoryBackend::new())
+    .with_max_total_size(10 * 1024 * 1024)  // 10 MB limit
+    .with_max_file_size(1024 * 1024)         // 1 MB per file
+    .with_max_node_count(100);               // Max 100 files
 
 // Untrusted code can only access this sandbox
 // Cannot escape, cannot exhaust resources
@@ -1875,16 +1900,16 @@ let sandbox = ContainerBuilder::new(MemoryBackend::new())
 <ul>
 <li><input disabled="" type="checkbox"> Set appropriate capacity limits for your use case</li>
 <li><input disabled="" type="checkbox"> Use separate containers for separate tenants/users</li>
-<li><input disabled="" type="checkbox"> Validate user input before creating <code>VirtualPath</code></li>
-<li><input disabled="" type="checkbox"> Consider restricting link operations if not needed</li>
-<li><input disabled="" type="checkbox"> Keep <code>strict-path</code> and <code>rusqlite</code> dependencies updated</li>
+<li><input disabled="" type="checkbox"> Let <code>FilesContainer</code> handle path normalization—don’t bypass it</li>
+<li><input disabled="" type="checkbox"> Consider restricting link operations if not needed (they’re off by default)</li>
+<li><input disabled="" type="checkbox"> Keep dependencies updated (especially <code>rusqlite</code> for SQLite backend)</li>
 </ul>
 <h3 id="for-backend-implementers"><a class="header" href="#for-backend-implementers">For Backend Implementers</a></h3>
 <ul>
-<li><input disabled="" type="checkbox"> Never bypass <code>VirtualPath</code> validation</li>
-<li><input disabled="" type="checkbox"> Ensure all paths are contained within the backend’s scope</li>
+<li><input disabled="" type="checkbox"> Ensure paths cannot escape the backend’s intended scope</li>
+<li><input disabled="" type="checkbox"> For filesystem backends: use <code>strict-path</code> for path containment</li>
 <li><input disabled="" type="checkbox"> Handle concurrent access safely (if supporting <code>Sync</code>)</li>
-<li><input disabled="" type="checkbox"> Report errors without leaking internal paths</li>
+<li><input disabled="" type="checkbox"> Report errors without leaking internal/host paths</li>
 </ul>
 <hr>
 <h2 id="known-limitations"><a class="header" href="#known-limitations">Known Limitations</a></h2>
@@ -2272,33 +2297,47 @@ std::fs::copy(tenant_db, "tenant_123.backup.db")?;
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="backend-implementers-guide"><a class="header" href="#backend-implementers-guide">Backend Implementer’s Guide</a></h1>
 <p>This guide walks you through implementing a custom AnyFS backend.</p>
-<p>If you are writing a backend for other people to consume, depend only on <code>anyfs-traits</code>.</p>
+<p>If you are writing a backend for other people to consume, depend only on <code>anyfs-backend</code>.</p>
 <hr>
 <h2 id="what-you-are-implementing"><a class="header" href="#what-you-are-implementing">What you are implementing</a></h2>
-<p>A backend implements <code>VfsBackend</code>: a path-based trait aligned with <code>std::fs</code> naming.</p>
+<p>A backend implements <code>VfsBackend</code>: a path-based trait aligned with <code>std::fs</code> naming and signatures.</p>
 <p>Key properties:</p>
 <ul>
-<li>Backends receive <code>&amp;VirtualPath</code> (from <code>strict-path</code>), not raw strings.</li>
+<li>Backends accept <code>impl AsRef&lt;Path&gt;</code> for all path parameters (same as std::fs).</li>
 <li>The policy layer (<code>anyfs-container</code>) handles quotas/limits and feature whitelisting.</li>
 </ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_traits::{DirEntry, Metadata, Permissions, VirtualPath, VfsBackend, VfsError};
+</span>use anyfs_backend::{DirEntry, Metadata, Permissions, VfsBackend, VfsError};
+use std::io::{Read, Write};
+use std::path::Path;
 
 pub struct MyBackend {
     // storage fields...
 }
 
 impl VfsBackend for MyBackend {
-    fn read(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
+        let path = path.as_ref();
         todo!()
     }
 
-    fn write(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt; {
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt; {
+        let path = path.as_ref();
         todo!()
     }
 
-    // ... implement all 20 methods
+    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, VfsError&gt; {
+        let path = path.as_ref();
+        todo!()
+    }
+
+    fn open_write(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, VfsError&gt; {
+        let path = path.as_ref();
+        todo!()
+    }
+
+    // ... implement all methods
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -2307,7 +2346,7 @@ impl VfsBackend for MyBackend {
 <ul>
 <li><strong>Directory</strong>: owns a mapping <code>name -&gt; child</code> (or can be derived from a global path index).</li>
 <li><strong>File</strong>: points to bytes (inline, blob table, object store key, etc.).</li>
-<li><strong>Symlink</strong>: stores a <em>target</em> <code>VirtualPath</code>.</li>
+<li><strong>Symlink</strong>: stores a <em>target</em> path (as a string).</li>
 <li><strong>Hard links</strong>: multiple paths refer to the same underlying file content.</li>
 </ul>
 <p>You do not need to expose any of this publicly; it is an implementation detail.</p>
@@ -2328,12 +2367,13 @@ impl VfsBackend for MyBackend {
 <li><code>create_dir</code> / <code>create_dir_all</code></li>
 <li><code>read_dir</code></li>
 <li><code>write</code> / <code>read</code> / <code>append</code> / <code>read_range</code></li>
+<li><code>open_read</code> / <code>open_write</code> (streaming I/O)</li>
 <li><code>remove_file</code> / <code>remove_dir</code> / <code>remove_dir_all</code></li>
 <li><code>rename</code> / <code>copy</code></li>
 </ul>
 <p>Guidelines:</p>
 <ul>
-<li>Use <code>VirtualPath</code> as your canonical key. It is already normalized.</li>
+<li>You receive <code>impl AsRef&lt;Path&gt;</code> - call <code>.as_ref()</code> to get <code>&amp;Path</code>.</li>
 <li>Match <code>std::fs</code>-like error expectations:
 <ul>
 <li>creating an existing directory should return <code>AlreadyExists</code></li>
@@ -2371,7 +2411,7 @@ impl VfsBackend for MyBackend {
 <p>Backends should return <code>VfsError</code> variants that are meaningful to callers.</p>
 <p>Recommended principles:</p>
 <ul>
-<li>Prefer structured variants like <code>NotFound(VirtualPath)</code> over stringly-typed errors.</li>
+<li>Prefer structured variants like <code>NotFound(String)</code> over generic errors.</li>
 <li>Keep backend-specific errors available (e.g., <code>VfsError::Backend(String)</code>) but do not leak host paths when possible.</li>
 </ul>
 <hr>
@@ -2389,15 +2429,19 @@ impl VfsBackend for MyBackend {
 <hr>
 <h2 id="checklist"><a class="header" href="#checklist">Checklist</a></h2>
 <ul>
-<li><input disabled="" type="checkbox"> Depends only on <code>anyfs-traits</code></li>
-<li><input disabled="" type="checkbox"> Implements all 20 <code>VfsBackend</code> methods</li>
+<li><input disabled="" type="checkbox"> Depends only on <code>anyfs-backend</code></li>
+<li><input disabled="" type="checkbox"> Implements all <code>VfsBackend</code> methods (including streaming I/O)</li>
 <li><input disabled="" type="checkbox"> Returns correct <code>std::fs</code>-like errors</li>
-<li><input disabled="" type="checkbox"> Symlinks store <code>VirtualPath</code> targets</li>
+<li><input disabled="" type="checkbox"> Symlinks store target paths as strings</li>
 <li><input disabled="" type="checkbox"> Hard links update <code>nlink</code> and share content</li>
 <li><input disabled="" type="checkbox"> Conformance suite passes</li>
 </ul>
 <hr>
 <p>For the trait definition, see <code>book/src/traits/vfs-trait.md</code>.</p>
+<hr>
+<h2 id="note-on-vrootfsbackend-1"><a class="header" href="#note-on-vrootfsbackend-1">Note on VRootFsBackend</a></h2>
+<p>If you are implementing a backend that wraps a <strong>real host filesystem directory</strong>, consider using <code>strict-path::VirtualPath</code> and <code>strict-path::VirtualRoot</code> internally for path containment. This is what <code>VRootFsBackend</code> does—it ensures paths cannot escape the designated root directory.</p>
+<p>This is an implementation choice for filesystem-based backends, not a requirement of the <code>VfsBackend</code> trait.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="anyfs--full-architecture--design-review-historical-graph-store-design"><a class="header" href="#anyfs--full-architecture--design-review-historical-graph-store-design">AnyFS — Full Architecture &amp; Design Review (Historical: Graph-Store Design)</a></h1>
 <blockquote>
@@ -2957,18 +3001,18 @@ Define an import/export policy section:</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="anyfs--review-response--decisions-historical-graph-store-design"><a class="header" href="#anyfs--review-response--decisions-historical-graph-store-design">AnyFS — Review Response &amp; Decisions (Historical: Graph-Store Design)</a></h1>
 <blockquote>
-<p>This document is <strong>historical</strong> and reflects an earlier (rejected) design iteration: a graph-store <code>StorageBackend</code> with <code>NodeId</code>/<code>Edge</code>/<code>ChunkId</code> and mandatory transactions.</p>
-<p>This file also contains notes from a later inode-based proposal. Both are superseded.</p>
+<p><strong>⚠️ HISTORICAL DOCUMENT</strong></p>
+<p>This document reflects an earlier (rejected) design iteration: a graph-store <code>StorageBackend</code> with <code>NodeId</code>/<code>Edge</code>/<code>ChunkId</code> and mandatory transactions.</p>
 <p>The <strong>current</strong> AnyFS design is path-based and uses three crates:</p>
 <ul>
-<li><code>anyfs-traits</code>: <code>VfsBackend</code> trait (20 <code>std::fs</code>-aligned methods) using <code>&amp;VirtualPath</code></li>
-<li><code>anyfs</code>: built-in backends (feature-gated) and re-exports</li>
+<li><code>anyfs-backend</code>: <code>VfsBackend</code> trait with <code>std::fs</code>-aligned methods, receiving <code>&amp;str</code> paths</li>
+<li><code>anyfs</code>: low-level execution layer for calling any <code>VfsBackend</code> (also provides built-in backends)</li>
 <li><code>anyfs-container</code>: <code>FilesContainer&lt;B&gt;</code> policy layer (limits + least-privilege feature whitelist)</li>
 </ul>
+<p><strong>Note:</strong> The <code>strict-path</code> crate is only used internally by <code>VRootFsBackend</code>, not by the core trait.</p>
 <p>See the authoritative design in:</p>
 <ul>
 <li><code>book/src/architecture/design-overview.md</code></li>
-<li><code>book/src/architecture/adrs.md</code></li>
 <li><code>book/src/traits/vfs-trait.md</code></li>
 </ul>
 </blockquote>
@@ -3398,6 +3442,198 @@ FROM nodes;
 <li><strong>Single-threaded</strong> with external sync for multi-thread</li>
 </ol>
 <p>The design is now internally consistent and ready for implementation.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="open-questions--future-considerations"><a class="header" href="#open-questions--future-considerations">Open Questions &amp; Future Considerations</a></h1>
+<p><strong>Status:</strong> Under Discussion
+<strong>Last Updated:</strong> 2025-12-23</p>
+<hr>
+<p>This document captures open questions and design considerations that may influence future development of AnyFS.</p>
+<hr>
+<h2 id="symlink-handling-with-vrootfsbackend"><a class="header" href="#symlink-handling-with-vrootfsbackend">Symlink Handling with VRootFsBackend</a></h2>
+<p><strong>Question:</strong> If VRootFsBackend wraps a real filesystem directory, and the user has symlinks disabled at the FilesContainer level, what happens to symlinks that exist in the underlying host filesystem?</p>
+<p><strong>Considerations:</strong></p>
+<ol>
+<li>
+<p><strong>VRootFsBackend inherits real FS behavior</strong>: The underlying filesystem still has symlinks. Even if we don’t expose symlink <em>creation</em> APIs, operations like <code>read</code> or <code>metadata</code> might still follow symlinks on the host.</p>
+</li>
+<li>
+<p><strong>Options:</strong></p>
+<ul>
+<li><strong>Transparent following</strong>: VRootFsBackend always follows symlinks on the host (simplest, matches host behavior)</li>
+<li><strong>Refuse symlinks</strong>: VRootFsBackend returns an error if it encounters a symlink</li>
+<li><strong>Configurable per-backend</strong>: Let VRootFsBackend accept a <code>follow_symlinks: bool</code> option</li>
+</ul>
+</li>
+<li>
+<p><strong>Recommendation:</strong> VRootFsBackend should transparently follow symlinks on the host filesystem. The “symlinks disabled” policy at the container level means <em>creating</em> symlinks is disabled, not that the backend must refuse to traverse existing ones.</p>
+</li>
+</ol>
+<hr>
+<h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
+<p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (VRootFsBackend)?</p>
+<p><strong>Analysis:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Type</th><th>Path Resolution</th><th>Symlink Handling</th></tr>
+</thead>
+<tbody>
+<tr><td>MemoryBackend</td><td>Pure lexical (in our code)</td><td>We control everything</td></tr>
+<tr><td>SqliteBackend</td><td>Pure lexical (in our code)</td><td>We control everything</td></tr>
+<tr><td>VRootFsBackend</td><td>OS handles it</td><td>OS follows symlinks on host</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommendation:</strong> For virtual backends, we perform lexical path resolution ourselves. For VRootFsBackend, we delegate to the OS via <code>std::fs</code>. The <code>strict-path::VirtualRoot</code> ensures we can’t escape the root directory, but symlink resolution within that root is handled by the OS.</p>
+<hr>
+<h2 id="compression-and-encryption"><a class="header" href="#compression-and-encryption">Compression and Encryption</a></h2>
+<p><strong>Question:</strong> Does the current design allow backends to compress/decompress or encrypt/decrypt files transparently?</p>
+<p><strong>Answer:</strong> Yes. The backend receives the data and stores it however it wants. A backend could:</p>
+<ul>
+<li>Compress data before writing to SQLite</li>
+<li>Encrypt blobs with a user-provided key</li>
+<li>Use a remote object store with encryption at rest</li>
+</ul>
+<p>This is an implementation detail of the backend, not visible to the <code>FilesContainer</code> API.</p>
+<hr>
+<h2 id="hooks-and-callbacks"><a class="header" href="#hooks-and-callbacks">Hooks and Callbacks</a></h2>
+<p><strong>Question:</strong> Should AnyFS support hooks or callbacks for file operations (e.g., audit logging, validation)?</p>
+<p><strong>Considerations:</strong></p>
+<ul>
+<li>AgentFS (see comparison below) provides audit logging as a core feature</li>
+<li>Hooks add complexity but enable powerful use cases</li>
+<li>Could be implemented as a middleware pattern around FilesContainer</li>
+</ul>
+<p><strong>Options:</strong></p>
+<ol>
+<li><strong>No hooks in v1</strong>: Keep it simple. Users can wrap FilesContainer in their own type.</li>
+<li><strong>Event emitter</strong>: FilesContainer emits events that users can subscribe to</li>
+<li><strong>Middleware trait</strong>: Allow wrapping backends with cross-cutting concerns</li>
+</ol>
+<p><strong>Recommendation:</strong> Defer to v2. Users can wrap <code>FilesContainer</code> or backends for now.</p>
+<hr>
+<h2 id="agentfs-comparison"><a class="header" href="#agentfs-comparison">AgentFS Comparison</a></h2>
+<p><a href="https://github.com/tursodatabase/agentfs">AgentFS</a> is a filesystem designed for AI agents with:</p>
+<ul>
+<li><strong>Auditability</strong>: Every operation recorded in SQLite</li>
+<li><strong>Reproducibility</strong>: Snapshot and restore agent state</li>
+<li><strong>Portability</strong>: Everything in a single SQLite file</li>
+</ul>
+<p><strong>Similarities with AnyFS:</strong></p>
+<ul>
+<li>SQLite as portable storage</li>
+<li>Single-file deployment</li>
+<li>Agent/tenant isolation</li>
+</ul>
+<p><strong>Differences:</strong></p>
+<ul>
+<li>AgentFS is specialized for AI agent workflows (includes key-value store, tool call logging)</li>
+<li>AnyFS is a general-purpose virtual filesystem abstraction</li>
+<li>AgentFS has more features; AnyFS has more flexibility</li>
+</ul>
+<p><strong>Could AnyFS use AgentFS?</strong> Possibly as a backend, but AgentFS’s API is different from <code>VfsBackend</code>. Integration would require an adapter.</p>
+<p><strong>Takeaway:</strong> AgentFS validates the SQLite-based portable filesystem approach. We could learn from their audit logging if we add hooks in the future.</p>
+<hr>
+<h2 id="vfs-crate-comparison"><a class="header" href="#vfs-crate-comparison">VFS Crate Comparison</a></h2>
+<p>The <a href="https://docs.rs/vfs/">vfs crate</a> provides virtual filesystem abstractions with:</p>
+<ul>
+<li><strong>PhysicalFS</strong>: Host filesystem access</li>
+<li><strong>MemoryFS</strong>: In-memory storage</li>
+<li><strong>AltrootFS</strong>: Rooted filesystem (similar to our VRootFsBackend)</li>
+<li><strong>OverlayFS</strong>: Layered filesystem</li>
+<li><strong>EmbeddedFS</strong>: Compile resources into binary</li>
+</ul>
+<p><strong>Similarities with AnyFS:</strong></p>
+<ul>
+<li>Trait-based abstraction over storage</li>
+<li>Memory and physical filesystem backends</li>
+</ul>
+<p><strong>Differences:</strong></p>
+<ul>
+<li>VFS doesn’t have SQLite backend</li>
+<li>VFS doesn’t have policy/quota layer</li>
+<li>AnyFS focuses on isolation and limits</li>
+</ul>
+<p><strong>Why not use VFS?</strong> VFS is a good library, but AnyFS’s design goals differ:</p>
+<ol>
+<li>We want SQLite as a first-class backend</li>
+<li>We need quota/limit enforcement</li>
+<li>We want feature whitelisting (least privilege)</li>
+</ol>
+<hr>
+<h2 id="fuse-mount-support"><a class="header" href="#fuse-mount-support">FUSE Mount Support</a></h2>
+<p><strong>Question:</strong> Should AnyFS support mounting as a FUSE filesystem?</p>
+<p><strong>What is FUSE?</strong>
+<a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE (Filesystem in Userspace)</a> allows implementing filesystems in userspace rather than kernel code. It enables:</p>
+<ul>
+<li>Mounting any backend as a real filesystem</li>
+<li>Using standard Unix tools (ls, cat, etc.) on AnyFS containers</li>
+<li>Integration with existing workflows</li>
+</ul>
+<p><strong>Considerations:</strong></p>
+<ul>
+<li>FUSE requires platform-specific code (Linux, macOS via macFUSE)</li>
+<li>Adds significant complexity</li>
+<li>Performance overhead vs direct API access</li>
+<li>Security implications of exposing to OS</li>
+</ul>
+<p><strong>Recommendation:</strong> Not in v1. If there’s demand, we could add a <code>anyfs-fuse</code> crate that mounts a FilesContainer as a FUSE filesystem. This would be a separate, optional layer.</p>
+<hr>
+<h2 id="type-system-protection-for-cross-container-operations"><a class="header" href="#type-system-protection-for-cross-container-operations">Type-System Protection for Cross-Container Operations</a></h2>
+<p><strong>Question:</strong> Should we use the type system to prevent accidentally mixing data between containers?</p>
+<p><strong>Example concern:</strong> Reading from Container A and writing to Container B without explicit acknowledgment.</p>
+<p><strong>Options:</strong></p>
+<ol>
+<li><strong>Marker generics</strong>: <code>FilesContainer&lt;B, Marker&gt;</code> where Marker distinguishes instances</li>
+<li><strong>Opaque handles</strong>: File content wrapped in typed handles tied to origin container</li>
+<li><strong>No protection</strong>: Trust the user to wire things correctly</li>
+</ol>
+<p><strong>Recommendation:</strong> Defer. The complexity may not be worth it for most use cases. Users who need this can implement their own type wrappers.</p>
+<hr>
+<h2 id="naming-considerations"><a class="header" href="#naming-considerations">Naming Considerations</a></h2>
+<p>Based on review feedback, the following naming concerns were raised:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Current Name</th><th>Concern</th><th>Alternatives Considered</th></tr>
+</thead>
+<tbody>
+<tr><td><code>anyfs-traits</code></td><td>“traits” is vague</td><td><code>anyfs-backend</code> (adopted)</td></tr>
+<tr><td><code>anyfs-container</code></td><td>Could imply Docker</td><td><code>anyfs-storage</code>, <code>anyfs-fs</code>, <code>fsContainer</code></td></tr>
+<tr><td><code>anyfs</code></td><td>Sounds like Hebrew “ani efes” (I am zero)</td><td><code>anyfs</code> retained for simplicity</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Decision:</strong> Renamed <code>anyfs-traits</code> to <code>anyfs-backend</code>. Other names retained.</p>
+<hr>
+<h2 id="posix-behavior"><a class="header" href="#posix-behavior">POSIX Behavior</a></h2>
+<p><strong>Question:</strong> How POSIX-compatible should AnyFS be?</p>
+<p><strong>Answer:</strong> AnyFS is <strong>not</strong> a POSIX emulator. We use <code>std::fs</code>-like naming and semantics for familiarity, but we don’t aim for full POSIX compliance. Specific differences:</p>
+<ul>
+<li>Lexical path resolution (not runtime symlink following during normalization)</li>
+<li>No file descriptors or open file handles in the basic API</li>
+<li>Simplified permissions model</li>
+<li>No device files, FIFOs, or sockets</li>
+</ul>
+<hr>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
+<p>These questions inform future development but don’t block v1:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Topic</th><th>v1 Decision</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlinks with VRootFsBackend</td><td>Transparent following on host</td></tr>
+<tr><td>Path resolution</td><td>Virtual = lexical; VRootFs = OS</td></tr>
+<tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
+<tr><td>Hooks/callbacks</td><td>Defer to v2</td></tr>
+<tr><td>FUSE mount</td><td>Not in v1, consider v2</td></tr>
+<tr><td>Type-system protection</td><td>Defer</td></tr>
+<tr><td>POSIX compatibility</td><td>Not a goal</td></tr>
+</tbody>
+</table>
+</div>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="historical-vfs-container--pre-container-design-document"><a class="header" href="#historical-vfs-container--pre-container-design-document">Historical: VFS Container — Pre-Container Design Document</a></h1>
 <blockquote>

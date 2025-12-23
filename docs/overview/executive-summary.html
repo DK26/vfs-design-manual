@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "../searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9ccf518c.js"></script>
+        <script src="../toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,12 +184,13 @@
 <p>One-page overview for stakeholders and decision-makers.</p>
 <hr>
 <h2 id="what-is-it"><a class="header" href="#what-is-it">What is it?</a></h2>
-<p>AnyFS is a virtual filesystem library for Rust with swappable storage backends.</p>
+<p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust.</p>
 <p>You get a familiar, <code>std::fs</code>-aligned API (read/write/create_dir/read_dir/etc.) while choosing where the data lives:</p>
 <ul>
-<li>in-memory (tests)</li>
+<li>in-memory (fast caching, testing, speed-critical applications)</li>
 <li>a single SQLite database file (portable storage)</li>
-<li>a contained host filesystem directory (sandboxed by a virtual root)</li>
+<li>a contained host filesystem directory (sandboxed by VRootFsBackend)</li>
+<li>or any custom backend you implement</li>
 </ul>
 <hr>
 <h2 id="why-does-it-matter"><a class="header" href="#why-does-it-matter">Why does it matter?</a></h2>
@@ -201,9 +202,10 @@
 <tbody>
 <tr><td>Multi-tenant isolation</td><td>One container per tenant, separate namespaces</td></tr>
 <tr><td>Portability</td><td>SQLite backend: a tenant filesystem is a single <code>.db</code> file</td></tr>
-<tr><td>Security</td><td>Paths are validated via <code>VirtualPath</code> (<code>strict-path</code>)</td></tr>
+<tr><td>Security</td><td>Path normalization prevents traversal attacks</td></tr>
 <tr><td>Resource control</td><td>Built-in limits: max bytes, max file size, max nodes, etc.</td></tr>
-<tr><td>Testing</td><td>In-memory backend is fast and deterministic</td></tr>
+<tr><td>Speed-critical storage</td><td>In-memory backend for caching or temporary storage</td></tr>
+<tr><td>Custom storage</td><td>Implement your own backend for any storage medium</td></tr>
 </tbody>
 </table>
 </div>
@@ -213,16 +215,17 @@
 <li>
 <p><strong>Three-crate structure</strong></p>
 <ul>
-<li><code>anyfs-traits</code>: minimal backend contract (<code>VfsBackend</code>) and types</li>
-<li><code>anyfs</code>: built-in backends (feature-gated), re-exports traits</li>
+<li><code>anyfs-backend</code>: minimal backend contract (<code>VfsBackend</code> trait) and types</li>
+<li><code>anyfs</code>: low-level execution layer for calling any <code>VfsBackend</code> (also provides built-in backends)</li>
 <li><code>anyfs-container</code>: <code>FilesContainer&lt;B&gt;</code> policy layer (limits + least privilege)</li>
 </ul>
 </li>
 <li>
-<p><strong>Two-layer path handling</strong></p>
+<p><strong>Simple path handling</strong></p>
 <ul>
 <li>User APIs accept <code>impl AsRef&lt;Path&gt;</code> for ergonomics.</li>
-<li>Backends receive <code>&amp;VirtualPath</code> (validated and normalized).</li>
+<li>Backends receive normalized <code>&amp;str</code> paths.</li>
+<li><code>strict-path</code> is only used internally by VRootFsBackend.</li>
 </ul>
 </li>
 <li>
@@ -243,11 +246,10 @@
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut fs = ContainerBuilder::new(SqliteBackend::open_or_create("tenant_123.db")?)
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut fs = FilesContainer::new(SqliteBackend::open_or_create("tenant_123.db")?)
+    .with_max_total_size(100 * 1024 * 1024);
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;

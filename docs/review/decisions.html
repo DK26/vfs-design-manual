@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "../searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9ccf518c.js"></script>
+        <script src="../toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,18 +182,18 @@
                     <main>
                         <h1 id="anyfs--review-response--decisions-historical-graph-store-design"><a class="header" href="#anyfs--review-response--decisions-historical-graph-store-design">AnyFS — Review Response &amp; Decisions (Historical: Graph-Store Design)</a></h1>
 <blockquote>
-<p>This document is <strong>historical</strong> and reflects an earlier (rejected) design iteration: a graph-store <code>StorageBackend</code> with <code>NodeId</code>/<code>Edge</code>/<code>ChunkId</code> and mandatory transactions.</p>
-<p>This file also contains notes from a later inode-based proposal. Both are superseded.</p>
+<p><strong>⚠️ HISTORICAL DOCUMENT</strong></p>
+<p>This document reflects an earlier (rejected) design iteration: a graph-store <code>StorageBackend</code> with <code>NodeId</code>/<code>Edge</code>/<code>ChunkId</code> and mandatory transactions.</p>
 <p>The <strong>current</strong> AnyFS design is path-based and uses three crates:</p>
 <ul>
-<li><code>anyfs-traits</code>: <code>VfsBackend</code> trait (20 <code>std::fs</code>-aligned methods) using <code>&amp;VirtualPath</code></li>
-<li><code>anyfs</code>: built-in backends (feature-gated) and re-exports</li>
+<li><code>anyfs-backend</code>: <code>VfsBackend</code> trait with <code>std::fs</code>-aligned methods, receiving <code>&amp;str</code> paths</li>
+<li><code>anyfs</code>: low-level execution layer for calling any <code>VfsBackend</code> (also provides built-in backends)</li>
 <li><code>anyfs-container</code>: <code>FilesContainer&lt;B&gt;</code> policy layer (limits + least-privilege feature whitelist)</li>
 </ul>
+<p><strong>Note:</strong> The <code>strict-path</code> crate is only used internally by <code>VRootFsBackend</code>, not by the core trait.</p>
 <p>See the authoritative design in:</p>
 <ul>
 <li><code>book/src/architecture/design-overview.md</code></li>
-<li><code>book/src/architecture/adrs.md</code></li>
 <li><code>book/src/traits/vfs-trait.md</code></li>
 </ul>
 </blockquote>
@@ -632,7 +632,7 @@ FROM nodes;
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../appendix/pre-container-design.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../review/open-questions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -646,7 +646,7 @@ FROM nodes;
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../appendix/pre-container-design.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../review/open-questions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

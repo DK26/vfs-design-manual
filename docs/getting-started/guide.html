@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "../searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9ccf518c.js"></script>
+        <script src="../toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -196,9 +196,9 @@ anyfs-container = "0.1"
 </code></pre>
 <p>Available features for <code>anyfs</code>:</p>
 <ul>
-<li><code>memory</code> — In-memory storage (default, for testing)</li>
-<li><code>sqlite</code> — SQLite-backed persistent storage</li>
-<li><code>vrootfs</code> — Host filesystem backend (via strict-path)</li>
+<li><code>memory</code> — In-memory storage (default). Fast and isolated—useful for testing, caching, or any speed-critical application.</li>
+<li><code>sqlite</code> — SQLite-backed persistent storage. Portable single-file storage.</li>
+<li><code>vrootfs</code> — Host filesystem backend (uses <code>strict-path</code> internally for path containment).</li>
 </ul>
 <hr>
 <h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
@@ -319,19 +319,16 @@ container.remove_dir_all("/old-folder")?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
+let container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
     // Set capacity limits
-    .max_total_size(500 * 1024 * 1024)  // 500 MB total
-    .max_file_size(50 * 1024 * 1024)    // 50 MB per file
-    .max_node_count(100_000)             // 100K files/dirs
-    .max_dir_entries(5_000)              // 5K entries per directory
-
+    .with_max_total_size(500 * 1024 * 1024)  // 500 MB total
+    .with_max_file_size(50 * 1024 * 1024)    // 50 MB per file
+    .with_max_node_count(100_000)             // 100K files/dirs
+    .with_max_dir_entries(5_000)              // 5K entries per directory
     // Set depth limits
-    .max_path_depth(32)
-
-    .build()?;
+    .with_max_path_depth(32);
 <span class="boring">}</span></code></pre>
 <h3 id="checking-capacity"><a class="header" href="#checking-capacity">Checking Capacity</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -350,17 +347,16 @@ if !remaining.can_write {
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="links"><a class="header" href="#links">Links</a></h2>
-<p>Symlinks, hard links, and permission mutation are <strong>disabled by default</strong>. Enable only what you need via <code>ContainerBuilder</code> (feature whitelist).</p>
+<p>Symlinks, hard links, and permission mutation are <strong>disabled by default</strong>. Enable only what you need via the builder pattern (feature whitelist).</p>
 <h3 id="symbolic-links"><a class="header" href="#symbolic-links">Symbolic Links</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .symlinks()                     // disabled by default (least privilege)
-    .max_symlink_resolution(40)     // optional; default: 40
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()                     // disabled by default (least privilege)
+    .with_max_symlink_resolution(40);    // optional; default: 40
 
 // Create a symlink
 container.create_dir_all("/deep/nested/dir")?;
@@ -376,11 +372,10 @@ container.read_dir("/shortcut")?;  // lists /deep/nested/dir
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .hard_links()                   // disabled by default (least privilege)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_hard_links();              // disabled by default (least privilege)
 
 // Create a file
 container.write("/original.txt", b"content")?;
@@ -393,9 +388,6 @@ container.hard_link("/original.txt", "/link.txt")?;
 container.remove_file("/original.txt")?;
 let content = container.read("/link.txt")?;  // Still works
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="import-and-export-future"><a class="header" href="#import-and-export-future">Import and Export (Future)</a></h2>
-<p>Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.</p>
 <hr>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <h3 id="pattern-matching-on-errors"><a class="header" href="#pattern-matching-on-errors">Pattern Matching on Errors</a></h3>
@@ -444,7 +436,13 @@ match container.write("/file.txt", &amp;large_data) {
 </div>
 <hr>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
-<h3 id="use-in-memory-backend-for-tests"><a class="header" href="#use-in-memory-backend-for-tests">Use In-Memory Backend for Tests</a></h3>
+<h3 id="use-in-memory-backend"><a class="header" href="#use-in-memory-backend">Use In-Memory Backend</a></h3>
+<p>The in-memory backend is fast and isolated. It’s useful for:</p>
+<ul>
+<li>Unit and integration tests</li>
+<li>Caching or temporary storage</li>
+<li>Speed-critical applications where persistence isn’t needed</li>
+</ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[cfg(test)]
@@ -482,14 +480,12 @@ mod tests {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 #[test]
 fn test_storage_limit() {
-    let mut container = ContainerBuilder::new(MemoryBackend::new())
-        .max_total_size(1024)  // 1 KB limit
-        .build()
-        .unwrap();
+    let mut container = FilesContainer::new(MemoryBackend::new())
+        .with_max_total_size(1024);  // 1 KB limit
 
     let big_data = vec![0u8; 2048];  // 2 KB
 
@@ -503,8 +499,8 @@ fn test_storage_limit() {
 <h3 id="1-handle-errors-gracefully"><a class="header" href="#1-handle-errors-gracefully">1. Handle Errors Gracefully</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::VfsBackend;
-use anyfs_container::FilesContainer;
+</span>use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
 
 fn ensure_parent_exists&lt;B: VfsBackend&gt;(
     container: &amp;mut FilesContainer&lt;B&gt;,
@@ -537,16 +533,15 @@ fn ensure_parent_exists&lt;B: VfsBackend&gt;(
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 // Production defaults suggestion
-let container = ContainerBuilder::new(SqliteBackend::create("data.db")?)
-    .max_total_size(1024 * 1024 * 1024)  // 1 GB
-    .max_file_size(100 * 1024 * 1024)    // 100 MB
-    .max_node_count(1_000_000)            // 1M nodes
-    .max_dir_entries(10_000)              // 10K per dir
-    .max_path_depth(64)
-    .build()?;
+let container = FilesContainer::new(SqliteBackend::create("data.db")?)
+    .with_max_total_size(1024 * 1024 * 1024)  // 1 GB
+    .with_max_file_size(100 * 1024 * 1024)    // 100 MB
+    .with_max_node_count(1_000_000)            // 1M nodes
+    .with_max_dir_entries(10_000)              // 10K per dir
+    .with_max_path_depth(64);
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>

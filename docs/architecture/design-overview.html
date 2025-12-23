@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+            window.path_to_searchindex_js = "../searchindex-788b0482.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-9ccf518c.js"></script>
+        <script src="../toc-076f33df.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,18 +181,28 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="anyfs---design-overview"><a class="header" href="#anyfs---design-overview">AnyFS - Design Overview</a></h1>
-<p><strong>Status:</strong> Current<br><strong>Last updated:</strong> 2025-12-23</p>
+<p><strong>Status:</strong> Current
+<strong>Last updated:</strong> 2025-12-23</p>
 <hr>
 <h2 id="what-this-project-is"><a class="header" href="#what-this-project-is">What This Project Is</a></h2>
-<p>AnyFS is a small Rust ecosystem for <strong>virtual filesystem backends</strong> with an optional <strong>policy/container layer</strong>.</p>
+<p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust. Anyone can implement a custom backend for their own storage needs—whether that’s a database, object store, network filesystem, or any other medium.</p>
+<p>The ecosystem provides:</p>
+<ul>
+<li><strong>A minimal backend trait</strong> that any storage implementer can satisfy</li>
+<li><strong>Built-in backends</strong> for common cases (memory, SQLite, real filesystem)</li>
+<li><strong>An optional policy layer</strong> (<code>FilesContainer</code>) for quotas, limits, and feature whitelisting</li>
+</ul>
 <p>It is designed for:</p>
 <ul>
 <li>portable application storage (SQLite backend = single <code>.db</code> file)</li>
 <li>tenant isolation (one container per tenant)</li>
 <li>quotas/limits (enforced in the container layer)</li>
-<li>containment and safe path handling (<code>strict-path</code>)</li>
+<li>high-performance use cases (in-memory backend for speed-critical applications)</li>
 </ul>
 <p>It is not a POSIX emulator and does not try to expose OS-specific behavior.</p>
+<blockquote>
+<p><strong>Note on strict-path:</strong> The <code>strict-path</code> crate (providing <code>VirtualPath</code> and <code>VirtualRoot</code>) is <strong>only relevant for the <code>VRootFsBackend</code></strong>—a backend that wraps a real host filesystem directory. Other backends (SQLite, memory, custom) do not use or require strict-path.</p>
+</blockquote>
 <hr>
 <h2 id="crates"><a class="header" href="#crates">Crates</a></h2>
 <div class="table-wrapper">
@@ -201,61 +211,69 @@
 <tr><th>Crate</th><th>Purpose</th><th>Who uses it</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-traits</code></td><td>Minimal contract: <code>VfsBackend</code> + core types + <code>VirtualPath</code> re-export</td><td>Backend implementers</td></tr>
-<tr><td><code>anyfs</code></td><td>Re-exports <code>anyfs-traits</code> + built-in backends (feature-gated)</td><td>Most users</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait + core types</td><td>Backend implementers</td></tr>
+<tr><td><code>anyfs</code></td><td>Low-level execution layer for calling any <code>VfsBackend</code>. Also provides built-in backends (feature-gated).</td><td>Direct backend manipulation</td></tr>
 <tr><td><code>anyfs-container</code></td><td><code>FilesContainer&lt;B: VfsBackend&gt;</code> + limits + feature whitelist (least privilege)</td><td>Application code</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="dependency-graph"><a class="header" href="#dependency-graph">Dependency Graph</a></h3>
-<pre><code>strict-path
-   -&gt; anyfs-traits
-        -&gt; anyfs (built-in backends)
-        -&gt; anyfs-container (policy/quotas)
+<pre><code>anyfs-backend (trait + types)
+    &lt;- anyfs (calls any VfsBackend, provides built-in backends)
+    &lt;- anyfs-container (wraps backends with policy)
+
+strict-path (VirtualPath, VirtualRoot)
+    &lt;- anyfs [vrootfs feature only]
 </code></pre>
+<p><strong>Key point:</strong> <code>anyfs-backend</code> defines the contract. <code>anyfs</code> is the execution layer that can call any backend—built-in or custom. <code>strict-path</code> is only used by the <code>vrootfs</code> feature.</p>
 <hr>
-<h2 id="two-layer-path-handling"><a class="header" href="#two-layer-path-handling">Two-Layer Path Handling</a></h2>
-<p>AnyFS uses two path types on purpose:</p>
+<h2 id="path-handling"><a class="header" href="#path-handling">Path Handling</a></h2>
+<p>AnyFS uses <code>impl AsRef&lt;Path&gt;</code> throughout, aligned with <code>std::fs</code>:</p>
 <ol>
 <li><strong>User-facing API (<code>FilesContainer</code>)</strong> accepts <code>impl AsRef&lt;Path&gt;</code> for ergonomics.</li>
-<li><strong>Backend API (<code>VfsBackend</code>)</strong> uses <code>&amp;VirtualPath</code> (from <code>strict-path</code>) for type safety.</li>
+<li><strong>Backend API (<code>VfsBackend</code>)</strong> accepts <code>impl AsRef&lt;Path&gt;</code> (same as std::fs).</li>
 </ol>
-<p>The container validates and normalizes the user path once, then passes a <code>VirtualPath</code> to the backend.</p>
+<p>This keeps the API familiar and works correctly across all platforms (Windows UTF-16, Unix arbitrary bytes, etc.).</p>
+<p><strong>VRootFsBackend</strong> — This backend (which wraps a real host filesystem directory) internally uses <code>strict-path::VirtualPath</code> to ensure path containment. This is an implementation detail of that backend, not part of the core trait.</p>
 <hr>
-<h2 id="core-trait-vfsbackend-in-anyfs-traits"><a class="header" href="#core-trait-vfsbackend-in-anyfs-traits">Core Trait: <code>VfsBackend</code> (in <code>anyfs-traits</code>)</a></h2>
-<p><code>VfsBackend</code> is a path-based trait aligned with <code>std::fs</code> naming.</p>
+<h2 id="core-trait-vfsbackend-in-anyfs-backend"><a class="header" href="#core-trait-vfsbackend-in-anyfs-backend">Core Trait: <code>VfsBackend</code> (in <code>anyfs-backend</code>)</a></h2>
+<p><code>VfsBackend</code> is a path-based trait aligned with <code>std::fs</code> naming and signatures.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use strict_path::VirtualPath;
+</span>use std::path::Path;
 
 pub trait VfsBackend: Send {
     // Read
-    fn read(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn read_to_string(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;String, VfsError&gt;;
-    fn read_range(&amp;self, path: &amp;VirtualPath, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
-    fn exists(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;bool, VfsError&gt;;
-    fn metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn symlink_metadata(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Metadata, VfsError&gt;;
-    fn read_dir(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
-    fn read_link(&amp;self, path: &amp;VirtualPath) -&gt; Result&lt;VirtualPath, VfsError&gt;;
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, VfsError&gt;;
+    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, VfsError&gt;;
+    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, VfsError&gt;;
+    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;DirEntry&gt;, VfsError&gt;;
+    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, VfsError&gt;;
 
     // Write
-    fn write(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn append(&amp;mut self, path: &amp;VirtualPath, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn create_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_file(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn remove_dir_all(&amp;mut self, path: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn rename(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn copy(&amp;mut self, from: &amp;VirtualPath, to: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn append(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn create_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_file(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn rename(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn copy(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Links
-    fn symlink(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
-    fn hard_link(&amp;mut self, original: &amp;VirtualPath, link: &amp;VirtualPath) -&gt; Result&lt;(), VfsError&gt;;
+    fn symlink(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt;;
 
     // Permissions
-    fn set_permissions(&amp;mut self, path: &amp;VirtualPath, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+    fn set_permissions(&amp;mut self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), VfsError&gt;;
+
+    // Streaming I/O (for large files)
+    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, VfsError&gt;;
+    fn open_write(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, VfsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <p><strong>Semantics (high-level):</strong></p>
@@ -263,6 +281,7 @@ pub trait VfsBackend: Send {
 <li><code>read</code>/<code>write</code>/<code>metadata</code>/<code>exists</code>/<code>copy</code> follow symlinks.</li>
 <li><code>symlink_metadata</code> and <code>read_link</code> do not follow.</li>
 <li><code>remove_file</code> removes the symlink itself, not the target.</li>
+<li>Streaming methods (<code>open_read</code>, <code>open_write</code>) enable efficient handling of large files.</li>
 </ul>
 <hr>
 <h2 id="built-in-backends-in-anyfs"><a class="header" href="#built-in-backends-in-anyfs">Built-in Backends (in <code>anyfs</code>)</a></h2>
@@ -289,15 +308,15 @@ pub trait VfsBackend: Send {
 </ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::ContainerBuilder;
+</span>use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(backend)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions()
+    .with_max_total_size(100 * 1024 * 1024);
 <span class="boring">}</span></code></pre>
 <p>When a feature is disabled, operations that require it return <code>ContainerError::FeatureNotEnabled("...")</code>.</p>
 <h3 id="limits"><a class="header" href="#limits">Limits</a></h3>
@@ -311,10 +330,24 @@ let mut container = ContainerBuilder::new(backend)
 </ul>
 <hr>
 <h2 id="security-model-summary"><a class="header" href="#security-model-summary">Security Model (Summary)</a></h2>
+<p>Security and isolation are achieved differently depending on the backend:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Isolation Mechanism</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Each instance is isolated by OS process memory</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Each container is a separate <code>.db</code> file</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Uses <code>strict-path::VirtualRoot</code> to clamp all paths to a root directory</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Common guarantees:</strong></p>
 <ul>
-<li><strong>Containment:</strong> <code>VirtualPath</code> ensures validated paths cannot escape the virtual root.</li>
 <li><strong>Least privilege:</strong> the container disables advanced features by default and requires explicit opt-in.</li>
-<li><strong>No host paths:</strong> application code interacts only with virtual paths; backends decide storage.</li>
+<li><strong>Path normalization:</strong> all user paths are normalized before reaching the backend.</li>
+<li><strong>No host paths in API:</strong> application code interacts only with virtual paths; backends decide actual storage.</li>
 </ul>
 <p>For more detail, see <code>book/src/comparisons/security.md</code>.</p>
 
