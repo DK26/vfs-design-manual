@@ -78,8 +78,3 @@ The container layer may still deny certain operations via feature whitelisting.
 
 See `book/src/implementation/backend-guide.md` for a step-by-step guide.
 
----
-
-## Note on VRootFsBackend
-
-The `VRootFsBackend` (which wraps a real host filesystem directory) internally uses `strict-path::VirtualPath` for path containment. This is an **implementation detail** of that specific backend—not part of the core trait contract.

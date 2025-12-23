@@ -1,19 +1,10 @@
-# AnyFS — Review Response & Decisions (Historical: Graph-Store Design)
+# AnyFS — Review Response & Decisions (Historical)
 
 > **⚠️ HISTORICAL DOCUMENT**
 >
-> This document reflects an earlier (rejected) design iteration: a graph-store `StorageBackend` with `NodeId`/`Edge`/`ChunkId` and mandatory transactions.
+> This document reflects an earlier (rejected) design iteration.
 >
-> The **current** AnyFS design is path-based and uses three crates:
-> - `anyfs-backend`: `VfsBackend` trait with `std::fs`-aligned methods, receiving `&str` paths
-> - `anyfs`: low-level execution layer for calling any `VfsBackend` (also provides built-in backends)
-> - `anyfs-container`: `FilesContainer<B>` policy layer (limits + least-privilege feature whitelist)
->
-> **Note:** The `strict-path` crate is only used internally by `VRootFsBackend`, not by the core trait.
->
-> See the authoritative design in:
-> - `book/src/architecture/design-overview.md`
-> - `book/src/traits/vfs-trait.md`
+> See the current design in `book/src/architecture/design-overview.md`.
 
 **Date:** 2025-12-22
 **In Response To:** Full Architecture Review + SQLite Addendum

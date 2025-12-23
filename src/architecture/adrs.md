@@ -8,18 +8,18 @@ This file captures the decisions for the current AnyFS design.
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| ADR-001 | Path-based `VfsBackend` trait (20 methods) | Accepted |
-| ADR-002 | Three-crate structure (`anyfs-traits`, `anyfs`, `anyfs-container`) | Accepted |
-| ADR-003 | Two-layer path handling (`AsRef<Path>` -> `VirtualPath`) | Accepted |
-| ADR-004 | Use `strict-path` for `VirtualPath` / containment | Accepted |
+| ADR-001 | Path-based `VfsBackend` trait | Accepted |
+| ADR-002 | Three-crate structure | Accepted |
+| ADR-003 | `impl AsRef<Path>` for all path parameters | Accepted |
+| ADR-004 | `strict-path` only for VRootFsBackend | Accepted |
 | ADR-005 | `std::fs`-aligned method names | Accepted |
-| ADR-006 | Least-privilege feature whitelist in `FilesContainer` | Accepted |
+| ADR-006 | Least-privilege feature whitelist | Accepted |
 | ADR-007 | Limits enforced in container (not backend) | Accepted |
 | ADR-008 | Built-in backends are feature-gated | Accepted |
 
 ---
 
-## ADR-001: Path-based `VfsBackend` trait (20 methods)
+## ADR-001: Path-based `VfsBackend` trait
 
 **Decision:** Backends implement a path-based trait aligned with `std::fs` method naming.
 
@@ -30,25 +30,39 @@ This file captures the decisions for the current AnyFS design.
 ## ADR-002: Three-crate structure
 
 **Decision:**
-- `anyfs-traits` is minimal and dependency-light
-- `anyfs` provides optional built-in backends and re-exports the trait
-- `anyfs-container` adds quotas/isolation/policy and should not force backend dependencies on custom backend authors
+
+| Crate | Purpose |
+|-------|---------|
+| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types. Backend implementers depend on this. |
+| `anyfs` | Execution layer that calls any `VfsBackend`. Provides built-in backends (feature-gated). |
+| `anyfs-container` | Policy layer: `FilesContainer<B>` with limits + feature whitelist. |
+
+**Why:**
+- Backend authors only need `anyfs-backend` (no heavy dependencies).
+- `anyfs` can execute operations on any backend (built-in or custom).
+- Policy concerns (quotas, feature whitelist) are separated from storage concerns.
 
 ---
 
-## ADR-003: Two-layer path handling
+## ADR-003: `impl AsRef<Path>` for all path parameters
 
-**Decision:**
-- `FilesContainer` accepts `impl AsRef<Path>` for ergonomics
-- `VfsBackend` uses `&VirtualPath` so backends receive validated paths
+**Decision:** Both `VfsBackend` and `FilesContainer` accept `impl AsRef<Path>` for all path parameters.
+
+**Why:**
+- Aligned with `std::fs` API conventions.
+- Works across all platforms (not limited to UTF-8).
+- Ergonomic: accepts `&str`, `String`, `&Path`, `PathBuf`.
 
 ---
 
-## ADR-004: `VirtualPath` from `strict-path`
+## ADR-004: `strict-path` only for VRootFsBackend
 
-**Decision:** Re-export `strict_path::VirtualPath` instead of defining a custom path type.
+**Decision:** The `strict-path` crate is only used internally by `VRootFsBackend` for path containment. It is not part of the core AnyFS API.
 
-**Why:** Centralizes containment and normalization in a tested dependency.
+**Why:**
+- Virtual backends (memory, SQLite) handle containment differently (they're inherently isolated).
+- Only the filesystem backend needs to clamp paths to a root directory.
+- Keeps the core API simple and dependency-light.
 
 ---
 
@@ -64,11 +78,13 @@ This file captures the decisions for the current AnyFS design.
 
 **Decision:** Advanced behavior is disabled by default and explicitly enabled per container instance.
 
-- `symlinks()` enables symlink creation and symlink-following behavior (bounded by `max_symlink_resolution`, default 40)
-- `hard_links()` enables hard link creation
-- `permissions()` enables permission mutation via `set_permissions`
+- `.with_symlinks()` enables symlink creation and following (bounded by `max_symlink_resolution`, default 40)
+- `.with_hard_links()` enables hard link creation
+- `.with_permissions()` enables permission mutation via `set_permissions`
 
 When disabled, the relevant operations return `ContainerError::FeatureNotEnabled("...")`.
+
+**Why:** Reduces attack surface by default. Applications opt into only what they need.
 
 ---
 
@@ -84,12 +100,8 @@ When disabled, the relevant operations return `ContainerError::FeatureNotEnabled
 
 **Decision:** `anyfs` uses Cargo features so users only pull the dependencies they need.
 
-- `memory` default
-- `sqlite` optional
-- `vrootfs` optional
+- `memory` (default)
+- `sqlite` (optional)
+- `vrootfs` (optional)
 
----
-
-## Historical Notes
-
-Older docs referencing a graph-store (`StorageBackend`, `NodeId`, transactions) or inode-based traits are kept only as history and should not be treated as current.
+**Why:** Minimizes binary size and compile time for users who don't need all backends.

@@ -25,7 +25,6 @@ Your application
           -> any backend (built-in or custom)
 ```
 
-> **Note:** The `strict-path` crate is **only** used by `VRootFsBackend`—a backend that wraps a real host filesystem directory. It is not part of the core AnyFS API.
 
 ---
 

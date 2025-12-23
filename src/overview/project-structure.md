@@ -47,7 +47,7 @@ strict-path (VirtualPath, VirtualRoot)
     <- anyfs [vrootfs feature only]
 ```
 
-**Key point:** Custom backends depend only on `anyfs-backend`. The `anyfs` crate is the execution layer that can call any backend—built-in or custom. `strict-path` is only used by the `vrootfs` feature.
+**Key point:** Custom backends depend only on `anyfs-backend`. The `anyfs` crate is the execution layer that can call any backend—built-in or custom.
 
 ---
 

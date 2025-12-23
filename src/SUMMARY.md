@@ -55,16 +55,7 @@
 
 ---
 
-# Review & Decisions
+# Open Questions
 
-- [Full Architecture Review](./review/full-review.md)
-- [SQLite vs Binary Addendum](./review/sqlite-addendum.md)
-- [Review Response & Decisions](./review/decisions.md)
 - [Open Questions & Future](./review/open-questions.md)
 
----
-
-# Appendix
-
-- [Historical: Pre-Container Design](./appendix/pre-container-design.md)
-- [Historical: Early Review Findings](./appendix/review-findings.md)

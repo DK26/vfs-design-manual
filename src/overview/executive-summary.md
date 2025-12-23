@@ -37,9 +37,7 @@ You get a familiar, `std::fs`-aligned API (read/write/create_dir/read_dir/etc.) 
   - `anyfs-container`: `FilesContainer<B>` policy layer (limits + least privilege)
 
 - **Simple path handling**
-  - User APIs accept `impl AsRef<Path>` for ergonomics.
-  - Backends receive normalized `&str` paths.
-  - `strict-path` is only used internally by VRootFsBackend.
+  - Both layers accept `impl AsRef<Path>`, aligned with `std::fs`.
 
 - **Least privilege by default**
   - Advanced behavior is denied unless explicitly enabled per container:

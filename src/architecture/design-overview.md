@@ -22,8 +22,6 @@ It is designed for:
 
 It is not a POSIX emulator and does not try to expose OS-specific behavior.
 
-> **Note on strict-path:** The `strict-path` crate (providing `VirtualPath` and `VirtualRoot`) is **only relevant for the `VRootFsBackend`**—a backend that wraps a real host filesystem directory. Other backends (SQLite, memory, custom) do not use or require strict-path.
-
 ---
 
 ## Crates
@@ -45,7 +43,7 @@ strict-path (VirtualPath, VirtualRoot)
     <- anyfs [vrootfs feature only]
 ```
 
-**Key point:** `anyfs-backend` defines the contract. `anyfs` is the execution layer that can call any backend—built-in or custom. `strict-path` is only used by the `vrootfs` feature.
+**Key point:** `anyfs-backend` defines the contract. `anyfs` is the execution layer that can call any backend—built-in or custom.
 
 ---
 
@@ -53,12 +51,10 @@ strict-path (VirtualPath, VirtualRoot)
 
 AnyFS uses `impl AsRef<Path>` throughout, aligned with `std::fs`:
 
-1. **User-facing API (`FilesContainer`)** accepts `impl AsRef<Path>` for ergonomics.
-2. **Backend API (`VfsBackend`)** accepts `impl AsRef<Path>` (same as std::fs).
+1. **User-facing API (`FilesContainer`)** accepts `impl AsRef<Path>`.
+2. **Backend API (`VfsBackend`)** accepts `impl AsRef<Path>`.
 
-This keeps the API familiar and works correctly across all platforms (Windows UTF-16, Unix arbitrary bytes, etc.).
-
-**VRootFsBackend** — This backend (which wraps a real host filesystem directory) internally uses `strict-path::VirtualPath` to ensure path containment. This is an implementation detail of that backend, not part of the core trait.
+This keeps the API familiar and works correctly across all platforms.
 
 ---
 
