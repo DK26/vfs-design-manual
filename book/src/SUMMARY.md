@@ -65,6 +65,5 @@
 
 # Appendix
 
-- [Historical: Graph-Store Container RFC](./architecture/vfs-container-design.md)
 - [Historical: Pre-Container Design](./appendix/pre-container-design.md)
 - [Historical: Early Review Findings](./appendix/review-findings.md)
