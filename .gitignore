@@ -1,6 +1,2 @@
-# mdBook output
-book/build/
-book/book-out/
-
-# Local build directories (mdbook -d ...)
-build*/
+.claude
+.vscode
