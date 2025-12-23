@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Create a directory structure
-    container.mkdir_all("/documents/work")?;
+    container.create_dir_all("/documents/work")?;
 
     // Write some files
     container.write("/documents/work/notes.txt", b"Meeting notes for Monday")?;
@@ -84,10 +84,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 // Single directory (parent must exist)
-container.mkdir("/documents")?;
+container.create_dir("/documents")?;
 
 // Recursive (creates parents as needed)
-container.mkdir_all("/documents/projects/2024/q1")?;
+container.create_dir_all("/documents/projects/2024/q1")?;
 ```
 
 ### Reading and Writing Files
@@ -109,7 +109,7 @@ let partial = container.read_range("/data.txt", 0, 6)?;
 ### Listing Directories
 
 ```rust
-for entry in container.list("/documents")? {
+for entry in container.read_dir("/documents")? {
     match entry.file_type {
         FileType::File => {
             println!("  {} (file)", entry.name);
@@ -148,11 +148,14 @@ container.rename("/original.txt", "/renamed.txt")?;
 ### Deleting
 
 ```rust
-// Delete a file or empty directory
-container.remove("/old-file.txt")?;
+// Delete a file
+container.remove_file("/old-file.txt")?;
+
+// Delete an empty directory
+container.remove_dir("/empty-folder")?;
 
 // Delete directory and all contents
-container.remove_all("/old-folder")?;
+container.remove_dir_all("/old-folder")?;
 ```
 
 ---
@@ -166,10 +169,6 @@ use anyfs::SqliteBackend;
 use anyfs_container::ContainerBuilder;
 
 let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
-    // Enable optional features
-    .symlinks(true)
-    .hard_links(true)
-
     // Set capacity limits
     .max_total_size(500 * 1024 * 1024)  // 500 MB total
     .max_file_size(50 * 1024 * 1024)    // 50 MB per file
@@ -178,7 +177,6 @@ let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
 
     // Set depth limits
     .max_path_depth(32)
-    .max_symlink_resolution(20)
 
     .build()?;
 ```
@@ -201,89 +199,59 @@ if !remaining.can_write {
 
 ---
 
-## Optional Features
+## Links
+
+Symlinks, hard links, and permission mutation are **disabled by default**. Enable only what you need via `ContainerBuilder` (feature whitelist).
 
 ### Symbolic Links
-
-Enable with `.symlinks(true)`:
 
 ```rust
 use anyfs::MemoryBackend;
 use anyfs_container::ContainerBuilder;
 
 let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .symlinks(true)
+    .symlinks()                     // disabled by default (least privilege)
+    .max_symlink_resolution(40)     // optional; default: 40
     .build()?;
 
 // Create a symlink
-container.symlink("/shortcut", "/deep/nested/dir")?;
+container.create_dir_all("/deep/nested/dir")?;
+container.symlink("/deep/nested/dir", "/shortcut")?;
 
 // Read the target (without following)
 let target = container.read_link("/shortcut")?;
 
-// Regular operations follow symlinks automatically
-container.list("/shortcut")?;  // lists /deep/nested/dir
+// Regular operations follow symlinks when enabled
+container.read_dir("/shortcut")?;  // lists /deep/nested/dir
 ```
 
 ### Hard Links
 
-Enable with `.hard_links(true)`:
-
 ```rust
+use anyfs::MemoryBackend;
+use anyfs_container::ContainerBuilder;
+
 let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .hard_links(true)
+    .hard_links()                   // disabled by default (least privilege)
     .build()?;
 
 // Create a file
 container.write("/original.txt", b"content")?;
 
 // Create a hard link (same file, different path)
-container.hard_link("/link.txt", "/original.txt")?;
+container.hard_link("/original.txt", "/link.txt")?;
 
 // Both paths refer to the same content
 // Deleting one doesn't affect the other
-container.remove("/original.txt")?;
+container.remove_file("/original.txt")?;
 let content = container.read("/link.txt")?;  // Still works
 ```
 
 ---
 
-## Import and Export
+## Import and Export (Future)
 
-### Import from Host Filesystem
-
-```rust
-use std::path::Path;
-
-// Import a single file
-container.import_from_host(
-    Path::new("/home/user/document.pdf"),
-    "/imported/document.pdf"
-)?;
-
-// Import an entire directory
-let stats = container.import_from_host(
-    Path::new("/home/user/photos"),
-    "/photos"
-)?;
-
-println!("Imported {} files ({} bytes)",
-    stats.files_imported,
-    stats.bytes_imported
-);
-```
-
-### Export to Host Filesystem
-
-```rust
-// Export a file
-container.export_to_host("/reports/annual.pdf", Path::new("/tmp/annual.pdf"))?;
-
-// Export a directory
-let stats = container.export_to_host("/backup", Path::new("/mnt/external/backup"))?;
-
-println!("Exported {} files", stats.files_exported);
-```
+Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.
 
 ---
 
@@ -309,6 +277,10 @@ match container.write("/file.txt", &large_data) {
         println!("Storage full: {} / {} bytes", used, limit);
     }
 
+    Err(ContainerError::FeatureNotEnabled(name)) => {
+        println!("Feature is disabled by default: {}", name);
+    }
+
     Err(e) => println!("Other error: {}", e),
 }
 ```
@@ -317,13 +289,13 @@ match container.write("/file.txt", &large_data) {
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| `NotFound` | Path doesn't exist | Check with `exists()` first, or use `mkdir_all` |
+| `NotFound` | Path doesn't exist | Check with `exists()` first, or use `create_dir_all` |
 | `AlreadyExists` | Creating over existing | Remove first, or check existence |
 | `NotADirectory` | Operating on file as dir | Check `metadata().file_type` |
-| `DirectoryNotEmpty` | Removing non-empty dir | Use `remove_all()` instead |
-| `FeatureNotEnabled` | Using disabled feature | Enable in builder (e.g., `.symlinks(true)`) |
+| `DirectoryNotEmpty` | Removing non-empty dir | Use `remove_dir_all()` instead |
 | `FileSizeExceeded` | File too large | Increase limit or split file |
 | `TotalSizeExceeded` | Storage full | Delete files or increase quota |
+| `FeatureNotEnabled` | Feature is disabled by policy | Enable via `ContainerBuilder` (whitelist) |
 
 ---
 
@@ -355,7 +327,7 @@ mod tests {
     fn test_directory_operations() {
         let mut container = test_container();
 
-        container.mkdir_all("/a/b/c").unwrap();
+        container.create_dir_all("/a/b/c").unwrap();
 
         assert!(container.exists("/a").unwrap());
         assert!(container.exists("/a/b").unwrap());
@@ -402,7 +374,7 @@ fn ensure_parent_exists<B: VfsBackend>(
     // FilesContainer handles path parsing internally
     if let Some(parent) = std::path::Path::new(path).parent() {
         if !container.exists(parent)? {
-            container.mkdir_all(parent)?;
+            container.create_dir_all(parent)?;
         }
     }
     Ok(())

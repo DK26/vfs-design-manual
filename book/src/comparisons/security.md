@@ -17,7 +17,7 @@ The AnyFS ecosystem is designed with security as a primary concern. This documen
 | Threat | Description | Mitigation |
 |--------|-------------|------------|
 | **Path traversal** | Attacker attempts to access files outside the container via `../` | Lexical path resolution in `VirtualPath` |
-| **Symlink attacks** | Attacker creates symlinks pointing outside container | Symlinks are contained; targets validated |
+| **Symlink attacks** | Attacker uses symlinks to bypass controls | Symlinks are disabled by default; when enabled, targets validated and resolution is bounded |
 | **Resource exhaustion** | Attacker fills storage or creates excessive files | Capacity limits enforced by `FilesContainer` |
 | **Tenant data leakage** | One tenant accesses another's data | Complete isolation via separate containers |
 
@@ -61,36 +61,42 @@ Unlike POSIX filesystems, paths are resolved **lexically** without consulting th
 // /foo/bar/.. always resolves to /foo (pure string manipulation)
 ```
 
-**Guarantee**: Path resolution is deterministic and cannot be influenced by symlinks or filesystem state.
+**Guarantee**: Lexical normalization is deterministic. If symlinks are disabled (default), resolution cannot be influenced by filesystem state; if enabled, symlink traversal is contained and bounded.
 
-### 3. Symlink Safety
+### 3. Symlink Safety (Opt-In)
 
-When symlinks are enabled (`.symlinks(true)`):
+Symlink safety:
 
-- Symlink targets are validated as `VirtualPath`
-- Resolution has a configurable depth limit (default: 20)
+- Symlinks are **disabled by default** (least privilege / whitelist)
+- If enabled, symlink targets are validated as `VirtualPath`
+- Resolution is bounded by a configurable hop limit (default: 40)
 - Symlinks cannot point outside the container
 
 ```rust
-// Symlink creation validates the target
-container.symlink(
-    &VirtualPath::new("/shortcut")?,
-    &VirtualPath::new("/deeply/nested/path")?  // Must be valid VirtualPath
-)?;
+use anyfs_container::ContainerBuilder;
 
-// Following symlinks respects depth limit
-container.read(&VirtualPath::new("/shortcut")?)?;  // Max 20 hops
+let mut container = ContainerBuilder::new(backend)
+    .symlinks()
+    .max_symlink_resolution(40)
+    .build()?;
+
+// Symlink creation validates the target (when enabled)
+container.symlink("/deeply/nested/path", "/shortcut")?;
+
+// Following symlinks respects the depth limit
+container.read("/shortcut")?;  // Max 40 hops
 ```
 
-**Guarantee**: Symlink loops are detected; symlinks cannot escape containment.
+**Guarantee**: Symlink loops are detected; symlinks cannot escape containment (when enabled).
 
 ### 4. Capacity Limits
 
 `FilesContainer` enforces configurable limits:
 
 ```rust
-let container = FilesContainer::builder()
-    .backend(backend)
+use anyfs_container::ContainerBuilder;
+
+let container = ContainerBuilder::new(backend)
     .max_total_size(100 * 1024 * 1024)  // 100 MB total
     .max_file_size(10 * 1024 * 1024)    // 10 MB per file
     .max_node_count(10_000)              // 10K files/directories
@@ -125,8 +131,7 @@ fn create_tenant_storage(tenant_id: &str) -> FilesContainer<SqliteBackend> {
     let db_path = format!("tenants/{}.db", tenant_id);
     let backend = SqliteBackend::create(&db_path).unwrap();
 
-    FilesContainer::builder()
-        .backend(backend)
+    ContainerBuilder::new(backend)
         .max_total_size(tenant_quota(tenant_id))
         .build()
         .unwrap()
@@ -149,8 +154,8 @@ fn handle_user_upload(
     // - Ensures absolute path
     let path = VirtualPath::new(&format!("/uploads/{}", user_filename))?;
 
-    // Safe to use — already validated
-    container.write(&path, data)?;
+    // Safe to use - already validated
+    container.write(path.as_str(), data)?;
     Ok(())
 }
 ```
@@ -158,14 +163,13 @@ fn handle_user_upload(
 ### Sandboxed Execution
 
 ```rust
+use anyfs_container::ContainerBuilder;
+
 // Create an isolated sandbox for untrusted code
-let sandbox = FilesContainer::builder()
-    .backend(MemoryBackend::new())
+let sandbox = ContainerBuilder::new(MemoryBackend::new())
     .max_total_size(10 * 1024 * 1024)  // 10 MB limit
     .max_file_size(1024 * 1024)         // 1 MB per file
     .max_node_count(100)                // Max 100 files
-    .symlinks(false)                    // Disable symlinks
-    .hard_links(false)                  // Disable hard links
     .build()?;
 
 // Untrusted code can only access this sandbox
@@ -181,7 +185,7 @@ let sandbox = FilesContainer::builder()
 - [ ] Set appropriate capacity limits for your use case
 - [ ] Use separate containers for separate tenants/users
 - [ ] Validate user input before creating `VirtualPath`
-- [ ] Disable symlinks/hard links if not needed
+- [ ] Consider restricting link operations if not needed
 - [ ] Keep `strict-path` and `rusqlite` dependencies updated
 
 ### For Backend Implementers

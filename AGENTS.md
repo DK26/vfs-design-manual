@@ -6,13 +6,83 @@
 
 ## Project Overview
 
-This is the **VFS Ecosystem** — three Rust crates for virtual filesystem abstraction:
+This is the **AnyFS Ecosystem** — a **two-layer architecture** for virtual filesystem abstraction:
 
-| Crate | Purpose |
-|-------|---------|
-| `anyfs-traits` | Minimal crate — trait definition, types, re-exports `VirtualPath` |
-| `anyfs` | Core VFS — re-exports traits, provides built-in backends (optional features) |
-| `anyfs-container` | Higher-level wrapper — capacity limits, tenant isolation |
+### Layer 1: anyfs (Low-Level)
+
+| Crate | Purpose | Target User |
+|-------|---------|-------------|
+| `anyfs` | Filesystem-like `Vfs` trait (inode operations) | Backend implementers |
+
+### Layer 2: anyfs-container (High-Level)
+
+| Crate | Purpose | Target User |
+|-------|---------|-------------|
+| `anyfs-container` | `std::fs`-like API with capacity limits | Application developers |
+
+### Supporting Concepts
+
+| Concept | Purpose |
+|---------|---------|
+| `FsSemantics` | Pluggable path resolution rules (Linux, Windows, Simple) |
+
+### Key Insight
+
+- **anyfs** = "How do I store inodes and content?" (low-level, no paths)
+- **anyfs-container** = "How do I use this like std::fs?" (high-level, paths)
+
+---
+
+## The Two-Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  APPLICATION CODE                                           │
+│                                                             │
+│  // This looks just like std::fs!                           │
+│  container.write("/data/file.txt", b"hello")?;              │
+│  container.read_dir("/data")?;                              │
+│  container.create_dir_all("/var/log")?;                     │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  anyfs-container: FilesContainer<V, S>                      │
+│  ═══════════════════════════════════════                    │
+│                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐                   │
+│  │  Path Resolution │  │ Capacity Limits │                   │
+│  │  (FsSemantics)   │  │ (CapacityLimits)│                   │
+│  └────────┬────────┘  └────────┬────────┘                   │
+│           │                    │                            │
+│           └────────┬───────────┘                            │
+│                    ▼                                        │
+│           ┌───────────────┐                                 │
+│           │ std::fs-like  │                                 │
+│           │     API       │                                 │
+│           └───────┬───────┘                                 │
+│                   │                                         │
+├───────────────────┼─────────────────────────────────────────┤
+│                   ▼                                         │
+│  anyfs: Vfs trait                                           │
+│  ════════════════════                                       │
+│                                                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐            │
+│  │create_inode │ │   lookup    │ │    read     │            │
+│  │delete_inode │ │   link      │ │    write    │            │
+│  │ get_inode   │ │   unlink    │ │  truncate   │            │
+│  │update_inode │ │   readdir   │ │    sync     │            │
+│  └─────────────┘ └─────────────┘ └─────────────┘            │
+│                                                             │
+│  NO PATHS — ONLY InodeId                                    │
+│                                                             │
+├──────────────────┬──────────────────┬───────────────────────┤
+│                  │                  │                       │
+│   MemoryVfs      │   SqliteVfs      │   RealFsVfs           │
+│   ══════════     │   ═════════      │   ═════════           │
+│   HashMap        │   .db file       │   strict-path         │
+│                  │                  │                       │
+└──────────────────┴──────────────────┴───────────────────────┘
+```
 
 ---
 
@@ -22,371 +92,337 @@ This repository contains documentation from multiple design iterations. **IGNORE
 
 ### ✅ CURRENT DESIGN (use this)
 
-- **Crate names:** `anyfs-traits`, `anyfs`, `anyfs-container`
-- **Trait crate:** `anyfs-traits` — minimal, contains `VfsBackend` trait + types
-- **Path type in VfsBackend trait:** `&VirtualPath` (from `strict-path` crate)
-- **Path type in FilesContainer API:** `impl AsRef<Path>` (for user ergonomics)
-- **Trait name:** `VfsBackend` (defined in `anyfs-traits`)
-- **Trait style:** Path-based methods aligned with `std::fs` (`read`, `write`, `create_dir`, etc.)
-- **Backends:** `VRootFsBackend`, `MemoryBackend`, `SqliteBackend` (in `anyfs`, feature-gated)
-- **Three crates:** `anyfs-traits` (trait), `anyfs` (backends), `anyfs-container` (wrapper with limits)
+- **Two layers:** `anyfs` (low-level) and `anyfs-container` (high-level)
+- **Low-level trait:** `Vfs` — inode-based operations (no paths!)
+- **High-level API:** `FilesContainer<V, S>` — `std::fs`-like (paths)
+- **Semantics:** Pluggable via `FsSemantics` trait
+- **Backends:** `MemoryVfs`, `SqliteVfs`, `RealFsVfs`
 
 ### ❌ OLD DESIGN (ignore this)
 
 If you see any of these, **it's from the old design — do not use:**
 
-- `vfs-switchable` crate name — **WRONG** (renamed to `anyfs`)
-- `vfs` as single crate name — **WRONG** (conflicts with existing crates.io package)
-- `impl AsRef<Path>` in VfsBackend trait — **WRONG** (VfsBackend uses `&VirtualPath`)
-- Custom `VirtualPath` type definition — **WRONG** (use re-export from `strict-path`)
+- `VfsBackend` trait with path-based methods — **WRONG** (old single-layer design)
+- `&VirtualPath` in trait methods — **WRONG** (now uses `InodeId`)
+- Single trait handling both paths and storage — **WRONG** (now separated)
+- `anyfs-traits` as separate crate — **OUTDATED** (merged into `anyfs`)
+- Any mention of "20 path-based methods" — **WRONG** (old design)
+- `vfs-switchable` crate name — **WRONG** (renamed)
 - `NodeId`, `ContentId`, `ChunkId` — **WRONG** (old graph-store model)
-- `StorageBackend` trait with `insert_node`, `insert_edge` — **WRONG** (old graph-store model)
-- `Transaction`, `Snapshot` traits — **WRONG** (old transactional model)
-- `FsBackend` — **WRONG** name (it's `VRootFsBackend` to convey virtual root containment)
-- `FilesContainer` as the only project — **WRONG** (there are THREE crates now)
-- Two-crate structure (`anyfs` + `anyfs-container`) — **OUTDATED** (now three crates)
-- Any mention of "graph store" or "node/edge" model — **WRONG**
-- `list()` method — **WRONG** (renamed to `read_dir()` for std::fs alignment)
-- `mkdir()` / `mkdir_all()` — **WRONG** (renamed to `create_dir()` / `create_dir_all()`)
-- Single `remove()` method — **WRONG** (split into `remove_file()` and `remove_dir()`)
-- `remove_all()` — **WRONG** (renamed to `remove_dir_all()`)
-- "13 methods" in trait — **OUTDATED** (now 20 methods with symlinks, hard links, permissions)
 
 ---
 
-## The Correct Architecture
+## The Two-Layer API
 
-```
-┌─────────────────────────────────────────┐
-│  User Application                       │
-├─────────────────────────────────────────┤
-│  anyfs-container                        │  ← Capacity limits, tenant isolation
-│  FilesContainer<B: VfsBackend>          │     Uses impl AsRef<Path> (ergonomic)
-├─────────────────────────────────────────┤
-│  anyfs                                  │  ← Built-in backends (feature-gated)
-├──────────┬──────────┬───────────────────┤
-│ VRootFs  │  Memory  │  SQLite           │  ← Optional backend implementations
-│ Backend  │  Backend │  Backend          │
-├──────────┴──────────┴───────────────────┤
-│  anyfs-traits                           │  ← Minimal: trait + types
-│  VfsBackend trait, VfsError, Metadata   │     Re-exports VirtualPath
-├─────────────────────────────────────────┤
-│  strict-path (external)                 │  ← VirtualPath, VirtualRoot
-└─────────────────────────────────────────┘
-```
-
-### Dependency Graph
-
-```
-strict-path (external)
-     ↑
-anyfs-traits (trait + types)
-     ↑
-     ├── anyfs (re-exports traits, provides backends)
-     │
-     └── anyfs-container (wraps any VfsBackend)
-```
-
-**Key insight:** Two-layer path handling:
-1. **User-facing (FilesContainer):** `impl AsRef<Path>` — ergonomic, accepts any path-like type
-2. **Internal (VfsBackend):** `&VirtualPath` — type-safe, pre-validated
-
----
-
-## The Correct Trait (in anyfs-traits)
+### Layer 1: anyfs — Vfs Trait (Filesystem-Like)
 
 ```rust
-// anyfs-traits/src/lib.rs
-pub use strict_path::VirtualPath;
+/// Low-level filesystem trait. NO path handling.
+/// Backend implementers work directly with inodes.
+pub trait Vfs: Send {
+    // ═══════════════════════════════════════════════════════════
+    // INODE LIFECYCLE
+    // ═══════════════════════════════════════════════════════════
 
-/// A virtual filesystem backend.
-/// All backends implement full filesystem semantics including symlinks and hard links.
-/// Method names align with std::fs where applicable.
-pub trait VfsBackend: Send {
-    // ═══════════════════════════════════════════════════════════════════════════
-    // READ OPERATIONS
-    // ═══════════════════════════════════════════════════════════════════════════
+    /// Create a new inode (file, directory, or symlink)
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError>;
 
-    /// Read entire file contents as bytes. Follows symlinks. (like std::fs::read)
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+    /// Get inode metadata
+    fn get_inode(&self, id: InodeId) -> Result<InodeData, VfsError>;
 
-    /// Read entire file contents as UTF-8 string. Follows symlinks. (like std::fs::read_to_string)
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
+    /// Update inode metadata (mode, timestamps, etc.)
+    fn update_inode(&mut self, id: InodeId, data: InodeData) -> Result<(), VfsError>;
 
-    /// Read a byte range from a file. Follows symlinks. (extension)
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+    /// Delete inode (must have nlink=0)
+    fn delete_inode(&mut self, id: InodeId) -> Result<(), VfsError>;
 
-    /// Check if path exists. Follows symlinks. (like Path::exists)
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
+    // ═══════════════════════════════════════════════════════════
+    // DIRECTORY OPERATIONS
+    // ═══════════════════════════════════════════════════════════
 
-    /// Get metadata, following symlinks. (like std::fs::metadata)
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    /// Add entry to directory: parent[name] = child
+    fn link(&mut self, parent: InodeId, name: &str, child: InodeId) -> Result<(), VfsError>;
 
-    /// Get metadata without following symlinks. (like std::fs::symlink_metadata)
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    /// Remove entry from directory, returns removed child inode
+    fn unlink(&mut self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
 
-    /// Read directory contents. (like std::fs::read_dir)
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
+    /// Lookup child by name in directory
+    fn lookup(&self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
 
-    /// Read symbolic link target. (like std::fs::read_link)
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+    /// List all entries in directory
+    fn readdir(&self, dir: InodeId) -> Result<Vec<(String, InodeId)>, VfsError>;
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // WRITE OPERATIONS
-    // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════
+    // CONTENT I/O
+    // ═══════════════════════════════════════════════════════════
 
-    /// Write bytes to file, creating or overwriting. Follows symlinks. (like std::fs::write)
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    /// Read bytes from file at offset
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
 
-    /// Append bytes to file. Follows symlinks. (like OpenOptions::append)
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    /// Write bytes to file at offset
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError>;
 
-    /// Create directory. (like std::fs::create_dir)
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    /// Truncate or extend file to size
+    fn truncate(&mut self, id: InodeId, size: u64) -> Result<(), VfsError>;
 
-    /// Create directory and all parent directories. (like std::fs::create_dir_all)
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    // ═══════════════════════════════════════════════════════════
+    // SYNC & ROOT
+    // ═══════════════════════════════════════════════════════════
 
-    /// Remove file. Removes symlink itself, not target. (like std::fs::remove_file)
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
+    /// Flush all pending writes to durable storage
+    fn sync(&mut self) -> Result<(), VfsError>;
 
-    /// Remove empty directory. (like std::fs::remove_dir)
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-
-    /// Remove directory and all contents recursively. (like std::fs::remove_dir_all)
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-
-    /// Rename or move file/directory. (like std::fs::rename)
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-
-    /// Copy file. Follows symlinks. (like std::fs::copy)
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // LINKS
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /// Create symbolic link. `link` will point to `original`. (like std::os::unix::fs::symlink)
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-
-    /// Create hard link. `link` will share content with `original`. (like std::fs::hard_link)
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // PERMISSIONS
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /// Set permissions on file or directory. (like std::fs::set_permissions)
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
+    /// Get root directory inode
+    fn root(&self) -> InodeId;
 }
 ```
 
-**This is 20 path-based methods aligned with `std::fs`. NOT a graph store. NOT transactional.**
-
-**VirtualPath** comes from `strict-path` crate — re-exported by `anyfs-traits` (and `anyfs`):
-```rust
-// anyfs-traits/src/lib.rs
-pub use strict_path::VirtualPath;
-
-// anyfs/src/lib.rs (re-exports everything from traits)
-pub use anyfs_traits::*;
-```
-
----
-
-## FilesContainer (User-Facing API)
+### Layer 2: anyfs-container — FilesContainer (std::fs-Like)
 
 ```rust
-use std::path::Path;
-use anyfs::{VfsBackend, VirtualPath};
+/// High-level container with std::fs-like API.
+/// Application developers use this — never touch Vfs directly.
+impl<V: Vfs, S: FsSemantics> FilesContainer<V, S> {
+    // ═══════════════════════════════════════════════════════════
+    // READ OPERATIONS (match std::fs)
+    // ═══════════════════════════════════════════════════════════
 
-impl<B: VfsBackend> FilesContainer<B> {
-    // User-facing: accepts flexible paths for ergonomics
-    // Method names match VfsBackend (aligned with std::fs)
-
+    /// Like std::fs::read
     pub fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, ContainerError>;
-    pub fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, ContainerError>;
-    pub fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, ContainerError>;
-    pub fn exists(&self, path: impl AsRef<Path>) -> Result<bool, ContainerError>;
-    pub fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, ContainerError>;
-    pub fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, ContainerError>;
-    pub fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, ContainerError>;
-    pub fn read_link(&self, path: impl AsRef<Path>) -> Result<VirtualPath, ContainerError>;
 
+    /// Like std::fs::read_to_string
+    pub fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, ContainerError>;
+
+    /// Like std::fs::metadata
+    pub fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, ContainerError>;
+
+    /// Like std::fs::symlink_metadata
+    pub fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, ContainerError>;
+
+    /// Like std::fs::read_dir
+    pub fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, ContainerError>;
+
+    /// Like std::fs::read_link
+    pub fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, ContainerError>;
+
+    /// Like Path::exists
+    pub fn exists(&self, path: impl AsRef<Path>) -> bool;
+
+    // ═══════════════════════════════════════════════════════════
+    // WRITE OPERATIONS (match std::fs)
+    // ═══════════════════════════════════════════════════════════
+
+    /// Like std::fs::write
     pub fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), ContainerError>;
-    pub fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), ContainerError>;
+
+    /// Like std::fs::create_dir
     pub fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::create_dir_all
     pub fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::remove_file
     pub fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::remove_dir
     pub fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::remove_dir_all
     pub fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::rename
     pub fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::copy
     pub fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), ContainerError>;
 
+    // ═══════════════════════════════════════════════════════════
+    // LINK OPERATIONS (match std::fs / std::os::unix::fs)
+    // ═══════════════════════════════════════════════════════════
+
+    /// Like std::os::unix::fs::symlink
     pub fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    /// Like std::fs::hard_link
     pub fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), ContainerError>;
+
+    // ═══════════════════════════════════════════════════════════
+    // PERMISSIONS (match std::fs)
+    // ═══════════════════════════════════════════════════════════
+
+    /// Like std::fs::set_permissions
     pub fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), ContainerError>;
+
+    // ═══════════════════════════════════════════════════════════
+    // CONTAINER-SPECIFIC (not in std::fs)
+    // ═══════════════════════════════════════════════════════════
+
+    /// Get current capacity usage
+    pub fn usage(&self) -> &CapacityUsage;
+
+    /// Get capacity limits
+    pub fn limits(&self) -> &CapacityLimits;
 }
 ```
+
+---
+
+## FsSemantics Trait
+
+Path resolution is pluggable via `FsSemantics`:
+
+```rust
+/// Filesystem semantics — defines behavior rules, not storage.
+pub trait FsSemantics: Send + Sync {
+    /// Path separator character (e.g., '/' for Linux, '\\' for Windows)
+    fn separator(&self) -> char;
+
+    /// Split path into components
+    fn components<'a>(&self, path: &'a str) -> Vec<&'a str>;
+
+    /// Normalize path (resolve `.`, `..`, redundant separators)
+    fn normalize(&self, path: &str) -> String;
+
+    /// Is filesystem case-sensitive?
+    fn case_sensitive(&self) -> bool;
+
+    /// Maximum symlink resolution depth
+    fn max_symlink_depth(&self) -> u32;
+
+    // ... more methods for permissions, naming rules, etc.
+}
+```
+
+**Built-in semantics:**
+- `LinuxSemantics` — POSIX-like paths, case-sensitive
+- `WindowsSemantics` — Windows paths, case-insensitive
+- `SimpleSemantics` — Minimal, no symlinks, for testing
 
 ---
 
 ## The Three Backends
 
-### 1. VRootFsBackend
-
-- Uses `strict-path::VirtualRoot` for containment
-- A real directory on disk acts as the virtual root
-- Paths are clamped (e.g., `/etc/passwd` → `root_dir/etc/passwd`)
-- Name conveys "Virtual Root Filesystem" — NOT just "Fs"
-
-### 2. MemoryBackend
+### 1. MemoryVfs
 
 - In-memory HashMap storage
-- Uses `VirtualPath` as keys directly
-- For testing
+- Stores inodes and content in Rust data structures
+- For testing and ephemeral use
 
-### 3. SqliteBackend
+### 2. SqliteVfs
 
 - Single `.db` file contains entire filesystem
 - Portable — copy file to move container
-- Internal schema is implementation detail
+- Production-ready, crash-safe
 
----
+### 3. RealFsVfs
 
-## Key Dependencies
-
-| Crate | Used By | Purpose |
-|-------|---------|---------|
-| `strict-path` | `anyfs-traits` | VirtualPath type (re-exported) |
-| `thiserror` | `anyfs-traits` | Error types |
-| `strict-path` | `anyfs` [vrootfs] | VirtualRoot for containment |
-| `rusqlite` | `anyfs` [sqlite] | SQLite database access |
+- Uses `strict-path::VirtualRoot` for containment
+- A real directory on disk acts as the virtual root
+- Paths are clamped (cannot escape root)
 
 ---
 
 ## Common Mistakes to Avoid
 
-### ❌ WRONG: Using old crate name
+### ❌ WRONG: Confusing the two layers
 
 ```rust
-// WRONG - old crate name
-use vfs_switchable::{VfsBackend, VRootFsBackend};
-```
-
-```rust
-// CORRECT - current crate name
-use anyfs::{VfsBackend, VRootFsBackend};
-```
-
-### ❌ WRONG: impl AsRef<Path> in VfsBackend
-
-```rust
-// WRONG - VfsBackend uses &VirtualPath, not impl AsRef<Path>
-trait VfsBackend {
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
+// WRONG — Vfs trait doesn't have path-based methods
+impl Vfs for MyBackend {
+    fn read(&self, path: &str) -> Result<Vec<u8>, VfsError> { ... }
 }
 ```
 
 ```rust
-// CORRECT - VfsBackend uses &VirtualPath
-trait VfsBackend {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+// CORRECT — Vfs trait uses InodeId
+impl Vfs for MyBackend {
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError> { ... }
 }
 ```
 
-### ❌ WRONG: Defining custom VirtualPath
+### ❌ WRONG: Application code using Vfs directly
 
 ```rust
-// WRONG - don't define your own VirtualPath
-pub struct VirtualPath(String);
+// WRONG — Applications should use FilesContainer
+let vfs = MemoryVfs::new();
+let ino = vfs.lookup(vfs.root(), "file.txt")?;
+vfs.read(ino, 0, &mut buf)?;
 ```
 
 ```rust
-// CORRECT - re-export from strict-path
-pub use strict_path::VirtualPath;
+// CORRECT — Applications use std::fs-like API
+let container = FilesContainer::new(MemoryVfs::new(), LinuxSemantics::new());
+let data = container.read("/file.txt")?;
 ```
 
-### ❌ WRONG: FsBackend name
+### ❌ WRONG: Backend handling path resolution
 
 ```rust
-// WRONG - loses semantic meaning of virtual root containment
-let backend = FsBackend::new("/data")?;
-```
-
-```rust
-// CORRECT - name conveys virtual root containment
-let backend = VRootFsBackend::new("/data")?;
-```
-
-### ❌ WRONG: Graph-store trait
-
-```rust
-// WRONG - this is the old design
-trait StorageBackend {
-    fn insert_node(&mut self, node: &NodeRecord) -> Result<(), Error>;
-    fn insert_edge(&mut self, edge: &Edge) -> Result<(), Error>;
+// WRONG — Backends shouldn't parse paths
+impl Vfs for MyBackend {
+    fn create_file(&mut self, path: &str) -> Result<(), VfsError> {
+        let components = path.split('/');  // NO! Not your job!
+        ...
+    }
 }
 ```
 
 ```rust
-// CORRECT - simple path-based trait
+// CORRECT — Backends just store inodes
+impl Vfs for MyBackend {
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError> {
+        let id = self.next_id();
+        self.inodes.insert(id, InodeData::new(kind, mode));
+        Ok(id)
+    }
+}
+```
+
+### ❌ WRONG: Using old path-based VfsBackend trait
+
+```rust
+// WRONG - old single-layer design
 trait VfsBackend {
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
     fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
 }
 ```
 
-### ❌ WRONG: Using old method names
-
 ```rust
-// WRONG - old method names (pre-std::fs alignment)
-vfs.list(path)?;
-vfs.mkdir(path)?;
-vfs.mkdir_all(path)?;
-vfs.remove(path)?;
-vfs.remove_all(path)?;
-```
-
-```rust
-// CORRECT - std::fs aligned names
-vfs.read_dir(path)?;
-vfs.create_dir(path)?;
-vfs.create_dir_all(path)?;
-vfs.remove_file(path)?;   // for files
-vfs.remove_dir(path)?;    // for empty directories
-vfs.remove_dir_all(path)?;
+// CORRECT - new two-layer design
+trait Vfs {
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError>;
+}
 ```
 
 ---
 
-## File Structure
+## How Path Resolution Works
+
+When a user calls `container.write("/data/file.txt", b"hello")`:
 
 ```
-anyfs-traits/              # Crate 1: Minimal trait + types
-├── Cargo.toml             # Depends on: strict-path, thiserror
-├── src/
-│   ├── lib.rs             # Re-exports VirtualPath, defines trait
-│   ├── backend.rs         # VfsBackend trait
-│   ├── types.rs           # Metadata, DirEntry, FileType
-│   └── error.rs           # VfsError
+1. Parse path via FsSemantics
+   "/data/file.txt" → ["data", "file.txt"]
 
-anyfs/                     # Crate 2: Built-in backends
-├── Cargo.toml             # Depends on: anyfs-traits + optional deps
-├── src/
-│   ├── lib.rs             # Re-exports anyfs-traits::*
-│   ├── vrootfs/           # [feature: vrootfs] VRootFsBackend
-│   ├── memory/            # [feature: memory] MemoryBackend (default)
-│   └── sqlite/            # [feature: sqlite] SqliteBackend
+2. Walk to parent via Vfs
+   vfs.root() → InodeId(1)
+   vfs.lookup(1, "data") → InodeId(5)
 
-anyfs-container/           # Crate 3: Isolation layer
-├── Cargo.toml             # Depends on: anyfs-traits
-├── src/
-│   ├── lib.rs
-│   ├── container.rs       # FilesContainer<B: VfsBackend>
-│   ├── builder.rs         # ContainerBuilder
-│   ├── limits.rs          # CapacityLimits
-│   └── error.rs           # ContainerError
+3. Check capacity limits
+   usage + 5 bytes ≤ limit?
+
+4. Create/get file inode
+   vfs.lookup(5, "file.txt") or vfs.create_inode(...)
+   → InodeId(12)
+
+5. Write content
+   vfs.truncate(12, 0)
+   vfs.write(12, 0, b"hello")
+
+6. Update usage tracking
+   self.usage.total_size += 5
 ```
 
 ---
@@ -395,193 +431,88 @@ anyfs-container/           # Crate 3: Isolation layer
 
 | Question | Answer |
 |----------|--------|
-| Crate names? | `anyfs-traits`, `anyfs`, `anyfs-container` |
-| Where is the trait defined? | `anyfs-traits` (re-exported by `anyfs`) |
-| Path type in VfsBackend? | `&VirtualPath` (from strict-path) |
-| Path type in FilesContainer? | `impl AsRef<Path>` (for ergonomics) |
-| Where does VirtualPath come from? | `strict-path` crate (re-exported by anyfs-traits) |
-| Backend trait name? | `VfsBackend` |
-| Filesystem backend name? | `VRootFsBackend` (NOT `FsBackend`) |
-| How to implement custom backend? | Depend on `anyfs-traits` only |
-| Total trait methods? | **20** (aligned with std::fs) |
-| Directory listing method? | `read_dir()` (NOT `list()`) |
-| Create directory method? | `create_dir()` (NOT `mkdir()`) |
-| Remove file method? | `remove_file()` (NOT `remove()`) |
-| Remove directory method? | `remove_dir()` (NOT `remove()`) |
-| Symlinks supported? | Yes, all backends |
-| Hard links supported? | Yes, all backends |
-| Does it use transactions? | No (old design) |
-| Does it use NodeId/edges? | No (old design) |
-| What provides containment? | `strict-path::VirtualRoot` |
+| How many layers? | Two: `anyfs` (low-level) and `anyfs-container` (high-level) |
+| What trait do backends implement? | `Vfs` (in `anyfs`) |
+| What do applications use? | `FilesContainer` (in `anyfs-container`) |
+| Does Vfs handle paths? | **No** — it uses `InodeId` only |
+| Does FilesContainer handle paths? | **Yes** — it uses `impl AsRef<Path>` |
+| Which API matches std::fs? | `FilesContainer` methods |
+| Where is path resolution? | `FsSemantics` trait, used by `FilesContainer` |
+| Where are capacity limits? | `FilesContainer` only |
+| What implements Vfs? | `MemoryVfs`, `SqliteVfs`, `RealFsVfs` |
+| What semantics are available? | `LinuxSemantics`, `WindowsSemantics`, `SimpleSemantics` |
+
+---
+
+## Crate Structure
+
+```
+anyfs/                         # Low-level: Vfs trait + backends
+├── Cargo.toml
+└── src/
+    ├── lib.rs
+    ├── vfs.rs                 # Vfs trait
+    ├── inode.rs               # InodeId, InodeData, InodeKind
+    ├── types.rs               # FileType, Metadata, DirEntry
+    ├── error.rs               # VfsError
+    ├── memory/                # MemoryVfs backend
+    ├── sqlite/                # SqliteVfs backend
+    └── realfs/                # RealFsVfs backend
+
+anyfs-container/               # High-level: std::fs-like API
+├── Cargo.toml
+└── src/
+    ├── lib.rs
+    ├── container.rs           # FilesContainer<V, S>
+    ├── builder.rs             # ContainerBuilder
+    ├── semantics/             # FsSemantics trait + implementations
+    │   ├── mod.rs
+    │   ├── linux.rs           # LinuxSemantics
+    │   ├── windows.rs         # WindowsSemantics
+    │   └── simple.rs          # SimpleSemantics
+    ├── limits.rs              # CapacityLimits
+    ├── usage.rs               # CapacityUsage
+    └── error.rs               # ContainerError
+```
+
+---
+
+## Design Decisions
+
+### Why Two Layers?
+
+| Concern | Handled By |
+|---------|------------|
+| How to store inodes/content | `anyfs` (Vfs trait) |
+| How to interpret paths | `anyfs-container` (FsSemantics) |
+| Capacity limits | `anyfs-container` (FilesContainer) |
+| User-facing API | `anyfs-container` (std::fs-like) |
+
+### Why Inodes Instead of Paths?
+
+| Benefit | Explanation |
+|---------|-------------|
+| **Hard links** | Multiple paths → same inode → same content |
+| **Symlink resolution** | Resolve target, get inode, done |
+| **Rename efficiency** | Change parent entry, inode unchanged |
+| **FUSE support** | FUSE uses inode numbers |
+| **Identity checking** | Same inode = same file |
+
+### Why Pluggable Semantics?
+
+- Mix any semantics with any storage
+- Test with `SimpleSemantics` (no symlinks, fast)
+- Use `WindowsSemantics` on Linux for compatibility
+- Custom semantics for special use cases
 
 ---
 
 ## When in Doubt
 
-1. **Crate names:** `anyfs-traits`, `anyfs`, `anyfs-container`
-2. **Trait location:** `anyfs-traits` crate (re-exported by `anyfs`)
-3. **VfsBackend path type:** `&VirtualPath` — type-safe, from strict-path
-4. **FilesContainer path type:** `impl AsRef<Path>` — ergonomic user-facing API
-5. **Backend model:** Simple path-based methods, NOT graph store
-6. **Crate structure:** THREE crates
-7. **Backend names:** `VRootFsBackend` (NOT `FsBackend`), `MemoryBackend`, `SqliteBackend`
-8. **Custom backend:** Depend only on `anyfs-traits`
+1. **Two layers:** `anyfs` = low-level inodes, `anyfs-container` = high-level paths
+2. **Backend implementers:** Implement `Vfs` trait (inode operations)
+3. **Application developers:** Use `FilesContainer` (std::fs-like API)
+4. **Path handling:** Done by `FsSemantics` in `anyfs-container`
+5. **Capacity limits:** Enforced by `FilesContainer`
 
 If documentation conflicts with this file, **this file is correct**.
-
----
-
-## Design Decisions & Rationale
-
-This section documents WHY design choices were made, to help future sessions understand the reasoning.
-
-### Decision 1: Crate Name — `anyfs` (not `vfs-*`)
-
-**Choice:** `anyfs` and `anyfs-container`
-
-**Rejected alternatives:**
-- `vfs` — Conflicts with existing popular crate on crates.io (1.5M+ downloads)
-- `vfs-core` — Still in `vfs-*` namespace, could cause confusion
-- `vfs-switchable` — Implies the VFS itself is "switchable", which is misleading
-- `vdrive`, `vstorage` — Considered but `anyfs` better conveys "any filesystem backend"
-
-**Rationale:**
-- `anyfs` clearly communicates "any filesystem backend can be plugged in"
-- No namespace collision with existing crates
-- Short, memorable, and unique
-- The project is about storage simplicity and containment, which `anyfs` supports
-
-### Decision 2: Two-Layer Path Handling
-
-**Choice:**
-- `VfsBackend` trait methods use `&VirtualPath`
-- `FilesContainer` API uses `impl AsRef<Path>`
-
-**Rationale:**
-- **User ergonomics:** Application code can pass `&str`, `String`, `&Path`, `PathBuf` — whatever is convenient
-- **Type safety internally:** Backends receive pre-validated `VirtualPath` — they don't need to re-validate
-- **Single validation point:** Path validation happens once in `FilesContainer`, not in every backend
-- **Containment guarantee:** `VirtualPath` (from `strict-path`) cannot escape root — structural safety
-
-**How it works:**
-```
-User calls: container.read("/data/file.txt")  // Any path-like type
-                    ↓
-FilesContainer: VirtualPath::new(path)?       // Validate once
-                    ↓
-Backend: self.backend.read(&vpath)            // Receives safe path
-```
-
-### Decision 3: VirtualPath from strict-path (not custom)
-
-**Choice:** Re-export `strict_path::VirtualPath`, don't define our own
-
-**Rationale:**
-- `strict-path` already provides a battle-tested `VirtualPath` type
-- Avoids code duplication
-- `strict-path` also provides `VirtualRoot` which `VRootFsBackend` needs
-- Single source of truth for path validation logic
-
-**Wrong approach:**
-```rust
-// DON'T DO THIS - duplicates strict-path functionality
-pub struct VirtualPath(String);
-impl VirtualPath { ... }
-```
-
-**Correct approach:**
-```rust
-// DO THIS - re-export from strict-path
-pub use strict_path::VirtualPath;
-```
-
-### Decision 4: Backend Name — `VRootFsBackend` (not `FsBackend`)
-
-**Choice:** `VRootFsBackend`
-
-**Rationale:**
-- `FsBackend` implies direct filesystem access — **misleading and dangerous**
-- `VRootFsBackend` communicates:
-  - `VRoot` = Virtual Root (contained)
-  - `Fs` = Filesystem
-  - `Backend` = Implements VfsBackend trait
-- Users immediately understand this is sandboxed, not raw filesystem access
-- Matches the underlying `strict_path::VirtualRoot` it uses
-
-### Decision 5: Three Crates
-
-**Choice:** `anyfs-traits` + `anyfs` + `anyfs-container`
-
-**Rationale:**
-- **Separation of concerns:**
-  - `anyfs-traits` = minimal trait + types (for custom backend implementers)
-  - `anyfs` = built-in backends (feature-gated)
-  - `anyfs-container` = policy layer (quotas, limits, isolation)
-- **Minimal dependencies for custom backends:** Implementers depend only on `anyfs-traits`
-- **No forced transitive deps:** Custom backend doesn't pull in `rusqlite`, etc.
-- **Follows Rust ecosystem patterns:** Like `tower-service` vs `tower`, `futures-core` vs `futures`
-
-**Dependency flow:**
-```
-strict-path → anyfs-traits → anyfs (backends)
-                          → anyfs-container
-```
-
-### Decision 6: Path-Based Trait Aligned with std::fs
-
-**Choice:** 20 methods aligned with `std::fs` naming (`read()`, `write()`, `create_dir()`, etc.)
-
-**Rejected alternative:** Graph-store model with `NodeId`, `ContentId`, edges, transactions
-
-**Rationale:**
-- **Simplicity:** Filesystem operations are naturally path-based
-- **Familiarity:** Method names match `std::fs` (e.g., `create_dir` not `mkdir`)
-- **Full filesystem semantics:** Symlinks, hard links, and permissions built-in
-- **Backend simplicity:** Easier to implement backends
-- **No over-engineering:** Graph model was solving problems we don't have
-
-**Method renames for std::fs alignment:**
-- `list()` → `read_dir()`
-- `mkdir()` → `create_dir()`
-- `mkdir_all()` → `create_dir_all()`
-- `remove()` → split into `remove_file()` + `remove_dir()`
-- `remove_all()` → `remove_dir_all()`
-
-### Decision 7: Errors Use VirtualPath (not String)
-
-**Choice:** `VfsError::NotFound(VirtualPath)` instead of `VfsError::NotFound(String)`
-
-**Rationale:**
-- Errors originate from operations on validated paths
-- `VirtualPath` is already owned and cloneable
-- Type consistency — if we use `VirtualPath` everywhere else, errors should too
-- Can extract path info without parsing strings
-
----
-
-## Historical Context
-
-This repository went through several design iterations:
-
-1. **v0.1 (Graph Store):** Used `NodeId`, `ContentId`, edges — over-engineered
-2. **v0.2 (Path-Based, `impl AsRef<Path>`):** Simplified to path-based, but used `impl AsRef<Path>` in trait
-3. **v0.3 (Current):** Two-layer path handling, `anyfs` naming, `&VirtualPath` in trait
-
-The `review_findings.md` file documents inconsistencies found between v0.2 documents. This session resolved those inconsistencies and established v0.3 as the canonical design.
-
----
-
-## Files to Trust vs Ignore
-
-### ✅ Trust These (Current Design)
-- `AGENTS.md` (this file) — **AUTHORITATIVE**
-- `book/src/` — All documentation lives here in the mdbook
-
-### ⚠️ Historical Content (Appendix)
-- `book/src/appendix/review-findings.md` — Documents OLD inconsistencies (resolved)
-- `book/src/appendix/pre-container-design.md` — Historical, pre-container design
-
-### 🔴 Ignore If Conflicts
-- Any document using `vfs-switchable`, `vfs-core`, or single `vfs` crate name
-- Any document defining custom `VirtualPath` type
-- Any document with graph-store model (`NodeId`, `insert_edge`, etc.)

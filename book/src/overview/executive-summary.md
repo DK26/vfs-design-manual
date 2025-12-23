@@ -112,7 +112,7 @@ let mut container = ContainerBuilder::new(
     .build()?;
 
 // Use familiar filesystem operations
-container.mkdir("/documents")?;
+container.create_dir("/documents")?;
 container.write("/documents/hello.txt", b"Hello!")?;
 
 let content = container.read("/documents/hello.txt")?;

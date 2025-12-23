@@ -1,30 +1,31 @@
-# VFS Container — Comparison & Positioning
+# AnyFS Container - Comparison and Positioning
 
-**How VFS Container compares to existing solutions**
+**How AnyFS Container compares to existing solutions**
+
+AnyFS Container (`anyfs-container`) is a policy layer (quotas + isolation) over a pluggable virtual filesystem backend (`VfsBackend` from `anyfs-traits`). With the SQLite backend (`anyfs` feature `sqlite`), a tenant's filesystem becomes a single portable `.db` file. It defaults to a least-privilege feature set; advanced features (symlinks, hard links, permissions) are opt-in.
 
 ---
 
 ## Executive Comparison
 
-| Solution | Type | Isolation | Portable | Multi-tenant | Backend Agnostic |
-|----------|------|-----------|----------|--------------|------------------|
-| **VFS Container** | Library | ✅ Complete | ✅ Single file | ✅ Built-in | ✅ Trait-based |
-| SQLAR | Archive format | ❌ None | ✅ Single file | ❌ No | ❌ SQLite only |
-| libsqlfs | FUSE filesystem | ⚠️ Via mount | ✅ Single file | ❌ No | ❌ SQLite only |
-| AgentFS | Agent sandbox | ⚠️ Namespace-based | ✅ Single file | ⚠️ Partial | ❌ SQLite only |
-| memfs | In-memory FS | ✅ Complete | ❌ No persistence | ❌ No | ❌ Memory only |
-| vfs crate | Abstraction | ⚠️ Depends on backend | ⚠️ Backend-dependent | ❌ No | ✅ Trait-based |
-| Docker/Containers | Runtime | ✅ Complete | ❌ Complex | ✅ Yes | N/A |
+| Solution | Type | Isolation | Portability | Multi-tenant | Backend choice |
+|----------|------|----------:|------------:|-------------:|---------------:|
+| **AnyFS Container** | Library | Yes | Backend-dependent (SQLite = single file) | Yes (per-tenant containers + quotas) | Yes (trait-based) |
+| SQLAR | Archive format | No | Yes (single file) | No | No (SQLite only) |
+| libsqlfs | FUSE filesystem | Varies (via mount) | Yes (single file) | No | No (SQLite only) |
+| AgentFS | Agent sandbox | Yes (namespaces) | Yes (SQLite) | Partial | No (SQLite only) |
+| `vfs` crate | Abstraction | Backend-dependent | Backend-dependent | No | Yes (trait-based) |
+| Docker/containers | Runtime | Yes | Complex | Yes | N/A |
 
 ---
 
 ## Detailed Comparisons
 
-### vs. SQLAR (SQLite Archive)
+### vs. SQLAR (SQLite archive)
 
-**What it is:** SQLite's official archive format. Stores files in a simple table with optional compression.
+**What it is:** SQLite's official archive format. It's great for import/export and backups, but it's not a VFS API.
 
-**Schema:**
+**Schema (representative):**
 ```sql
 CREATE TABLE sqlar(
   name TEXT PRIMARY KEY,
@@ -35,177 +36,117 @@ CREATE TABLE sqlar(
 );
 ```
 
-| Aspect | SQLAR | VFS Container |
-|--------|-------|---------------|
-| **Abstraction** | None (raw SQL) | High-level API |
-| **Transactions** | Manual | Automatic |
-| **Backend flexibility** | SQLite only | Pluggable |
-| **Features** | Basic files | Symlinks, hard links, xattrs |
-| **Capacity limits** | None | Built-in |
-| **Path handling** | String keys | Validated VirtualPath |
+| Aspect | SQLAR | AnyFS Container |
+|--------|-------|----------------|
+| API | SQL statements | `FilesContainer` methods (`read`, `write`, `read_dir`, ...) |
+| Quotas | No | Yes (container-enforced) |
+| Isolation | No | Yes (validated virtual paths, no host escape) |
+| Transactions (public API) | Manual | No (SQLite backend uses transactions internally) |
+| Link semantics | Not the focus | Supported (opt-in: symlink + hard link + permissions) |
 
-**When to use SQLAR:** Simple archive/restore of files. No application logic needed.
+**Use SQLAR when:** you want a simple archive/restore format.
 
-**When to use VFS Container:** Application needs filesystem-like operations, isolation, or multi-tenancy.
+**Use AnyFS Container when:** your application needs filesystem-like operations + isolation + quotas.
 
 ---
 
 ### vs. libsqlfs (Guardian Project)
 
-**What it is:** FUSE filesystem backed by SQLite, developed for secure mobile storage.
+**What it is:** A FUSE filesystem backed by SQLite, aimed at secure mobile storage.
 
-| Aspect | libsqlfs | VFS Container |
-|--------|----------|---------------|
-| **Language** | C | Rust |
-| **Interface** | FUSE mount | Library API |
-| **Host integration** | Mounts to host FS | No host access |
-| **POSIX compliance** | Full | Intentionally not |
-| **Encryption** | Via SQLCipher | Backend concern |
-| **Use case** | Encrypted filesystem | Application data container |
+| Aspect | libsqlfs | AnyFS Container |
+|--------|----------|----------------|
+| Interface | Mounted filesystem | Library API |
+| Deployment | Requires FUSE + OS integration | No mount, no host path access |
+| Scope | POSIX filesystem | `std::fs`-aligned trait (not full POSIX) |
 
-**When to use libsqlfs:** Need a real mounted filesystem with encryption (e.g., mobile app secure storage).
+**Use libsqlfs when:** you need a real mounted filesystem.
 
-**When to use VFS Container:** Application controls all file access, no mount needed.
+**Use AnyFS Container when:** you want embedded application storage without mounting.
 
 ---
 
 ### vs. AgentFS (Turso)
 
-**What it is:** SQLite-backed virtual filesystem for AI agent sandboxing.
+**What it is:** A SQLite-backed virtual filesystem aimed at sandboxing AI agents.
 
-| Aspect | AgentFS | VFS Container |
-|--------|---------|---------------|
-| **Focus** | AI agent sandboxing | General-purpose |
-| **Features** | POSIX-like + audit log + K/V store | Core filesystem + optional features |
-| **Isolation** | Linux namespaces | Structural (no host paths) |
-| **FUSE support** | Yes | No |
-| **Backend** | SQLite only | Pluggable |
-| **Maturity** | Alpha | Design phase |
+| Aspect | AgentFS | AnyFS Container |
+|--------|---------|----------------|
+| Focus | Agent sandboxing + audit | General-purpose embedded storage |
+| Isolation | OS namespaces | Structural (validated virtual paths) |
+| Backend | SQLite only | Pluggable (SQLite is one option) |
 
-**When to use AgentFS:** AI/ML agents needing auditable, sandboxed operations with FUSE mount capability.
+**Use AgentFS when:** you want OS-level sandboxing + auditing.
 
-**When to use VFS Container:** Need backend flexibility, simpler model, or don't need FUSE.
+**Use AnyFS Container when:** you want a small, embeddable library with backend choice and quotas.
 
 ---
 
-### vs. vfs Crate (Rust)
+### vs. `vfs` crate (Rust)
 
-**What it is:** Rust crate providing virtual filesystem abstraction with multiple backends.
+**What it is:** A general Rust VFS trait + backends.
 
-| Aspect | vfs crate | VFS Container |
-|--------|-----------|---------------|
-| **Trait design** | Path-based operations | Node/edge operations |
-| **Backend complexity** | Must handle paths, resolution | Just stores nodes/edges |
-| **Transactions** | Not enforced | Mandatory |
-| **Feature flags** | No | Yes (symlinks, etc.) |
-| **Capacity limits** | No | Yes |
-| **SQLite backend** | Not included | Reference implementation |
+| Aspect | `vfs` crate | AnyFS Container |
+|--------|-------------|----------------|
+| Trait design | Path-based operations | Path-based `VfsBackend` (`std::fs`-aligned) |
+| Path safety | Backend-dependent | Centralized validation into `VirtualPath` |
+| SQLite backend | Not included | Built-in backend (feature-gated) |
+| Quotas | No | Yes (`anyfs-container`) |
 
-**When to use vfs crate:** Need drop-in replacement for `std::fs` with same API.
+**Use `vfs` when:** you want a drop-in abstraction close to `std::fs`.
 
-**When to use VFS Container:** Need simpler backend implementation, transactions, limits.
+**Use AnyFS Container when:** you need portable storage + quotas + containment guarantees.
 
 ---
 
-### vs. Docker/Containers
+### vs. Docker/containers
 
 **What it is:** OS-level virtualization with isolated filesystem namespaces.
 
-| Aspect | Containers | VFS Container |
-|--------|------------|---------------|
-| **Isolation level** | OS process | Library |
-| **Overhead** | Process + namespace | None |
-| **Portability** | Requires runtime | Single file |
-| **Use case** | Run applications | Store data |
-| **Complexity** | High | Low |
+| Aspect | Containers | AnyFS Container |
+|--------|------------|----------------|
+| Isolation level | OS process | Library |
+| Overhead | High | Low |
+| Primary use | Execute code | Store data |
 
-**When to use containers:** Running untrusted code, full environment isolation.
+**Use containers when:** you need to run untrusted code.
 
-**When to use VFS Container:** Just need isolated data storage, no code execution.
-
----
-
-### vs. In-Memory Filesystems (memfs, pyfakefs)
-
-**What they are:** Complete in-memory filesystem implementations for testing.
-
-| Aspect | memfs/pyfakefs | VFS Container |
-|--------|----------------|---------------|
-| **Persistence** | None | Yes (SQLite) |
-| **Primary use** | Testing | Production + testing |
-| **API** | Patches OS APIs | Own API |
-| **Backend** | Memory only | Pluggable |
-
-**When to use memfs:** Testing code that uses `fs` module directly.
-
-**When to use VFS Container:** Need persistence, or code designed for VFS Container API.
-
----
-
-## Positioning Matrix
-
-```
-                        Backend Agnostic
-                              │
-                              │
-         vfs crate ───────────┼─────────── VFS Container ◄── YOU ARE HERE
-                              │                 │
-                              │                 │
-    Filesystem Integration    │                 │    Application Integration
-              ▲               │                 │              ▲
-              │               │                 │              │
-              │               │                 │              │
-         libsqlfs ────────────┼─────────── AgentFS
-              │               │                 │
-              │               │                 │
-              └───────────────┼─────────────────┘
-                              │
-                        SQLite Only
-```
+**Use AnyFS Container when:** you just need isolated application data storage.
 
 ---
 
 ## Feature Matrix
 
-| Feature | VFS Container | SQLAR | libsqlfs | AgentFS | vfs crate |
-|---------|--------------|-------|----------|---------|-----------|
-| Directories | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Files | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Symlinks | ✅ Optional | ❌ | ✅ | ✅ | ⚠️ Backend |
-| Hard links | ✅ Optional | ❌ | ✅ | ❌ | ⚠️ Backend |
-| Permissions | ✅ Optional | ⚠️ mode only | ✅ | ✅ | ⚠️ Backend |
-| Extended attrs | ✅ Optional | ❌ | ✅ | ❌ | ❌ |
-| Transactions | ✅ Required | Manual | ✅ | ✅ | ❌ |
-| Capacity limits | ✅ Built-in | ❌ | ❌ | ❌ | ❌ |
-| Streaming I/O | 🔮 Future | ❌ | ✅ | ✅ | ⚠️ Backend |
-| Async API | 🔮 Future | N/A | ❌ | ⚠️ Partial | ⚠️ Backend |
-| FUSE mount | ❌ Intentionally | ❌ | ✅ | ✅ | ⚠️ Backend |
-| Compression | Backend | ✅ deflate | ❌ | ❌ | ⚠️ Backend |
-| Encryption | Backend | ❌ | ✅ SQLCipher | ❌ | ⚠️ Backend |
-
-Legend: ✅ Yes | ❌ No | ⚠️ Partial/depends | 🔮 Planned
+| Feature | AnyFS Container | SQLAR | libsqlfs | AgentFS | `vfs` crate |
+|---------|------------------|-------|----------|---------|------------|
+| Directories | Yes | Yes | Yes | Yes | Yes |
+| Files | Yes | Yes | Yes | Yes | Yes |
+| Symlinks | Yes | Limited/unstandardized | Yes | Varies | Backend-dependent |
+| Hard links | Yes | No | Yes | Varies | Backend-dependent |
+| Permissions | Yes (simple) | Limited (mode only) | Yes | Varies | Backend-dependent |
+| Extended attrs | No (future) | No | Varies | Varies | No |
+| Transactions (public API) | No | Manual | Yes | Varies | No |
+| Capacity limits | Yes (built-in) | No | No | Varies | No |
+| Streaming I/O | No (future) | No | Yes | Varies | Backend-dependent |
+| Async API | No (future) | N/A | No | Varies | Backend-dependent |
+| FUSE mount | No (by design) | No | Yes | Yes | Backend-dependent |
+| Compression | Backend | Yes (deflate) | Varies | Varies | Backend-dependent |
+| Encryption | Backend | No | Yes (SQLCipher) | Varies | Backend-dependent |
 
 ---
 
-## When to Use VFS Container
+## When to Use AnyFS Container
 
-### ✅ Good Fit
+**Good fit:**
+- Multi-tenant SaaS that needs per-tenant quotas
+- Desktop apps that want portable user data
+- Testing that needs deterministic isolated storage
+- Plugin systems that need per-plugin isolation
 
-- **Multi-tenant SaaS** — Each tenant gets isolated storage with quotas
-- **Desktop applications** — Portable user data in a single file
-- **Testing** — Deterministic, isolated filesystem for tests
-- **Embedded systems** — No OS filesystem dependency
-- **AI/ML pipelines** — Sandboxed data storage without execution risk
-- **Plugin systems** — Isolated storage per plugin
-- **Game save data** — Self-contained, portable saves
-
-### ❌ Not a Good Fit
-
-- **Need to mount to host OS** — Use libsqlfs or FUSE-based solution
-- **Need to execute code from storage** — Use containers
-- **Need maximum throughput** — Use native filesystem
-- **Need distributed storage** — Use distributed database
-- **Need POSIX compatibility** — Use libsqlfs
+**Not a good fit:**
+- You must mount a filesystem into the host OS (use a FUSE solution)
+- You need full POSIX behavior (xattrs/ACLs/etc.)
+- You need maximum throughput over safety/portability
 
 ---
 
@@ -217,46 +158,24 @@ Legend: ✅ Yes | ❌ No | ⚠️ Partial/depends | 🔮 Planned
 // Old: raw SQL
 conn.execute("INSERT INTO sqlar(name, data) VALUES (?, ?)", [path, data])?;
 
-// New: VFS Container
-container.write(&VirtualPath::new(path)?, data)?;
+// New: AnyFS Container
+container.write(path, data)?;
 ```
 
-### From std::fs
+### From `std::fs`
 
 ```rust
 // Old: host filesystem
 std::fs::write("/data/file.txt", content)?;
 
-// New: VFS Container
-container.write(&VirtualPath::new("/data/file.txt")?, content)?;
-```
-
-### From vfs crate
-
-```rust
-// Old: vfs crate
-let fs: VfsPath = MemoryFS::new().into();
-fs.join("file.txt")?.create_file()?.write_all(b"content")?;
-
-// New: VFS Container  
-let container = FilesContainer::new(MemoryBackend::new());
-container.write(&VirtualPath::new("/file.txt")?, b"content")?;
+// New: AnyFS Container
+container.write("/data/file.txt", content)?;
 ```
 
 ---
 
 ## Summary
 
-**VFS Container occupies a unique niche:**
+AnyFS Container occupies a niche between archives (SQLAR) and mounted filesystems (FUSE): it is an **application-level** filesystem API with **quotas** and **containment guarantees**, with **backend choice** (including a portable SQLite option).
 
-1. **More structured than SQLAR** — Proper API, transactions, limits
-2. **More portable than libsqlfs** — No FUSE, no mount, pure library
-3. **More flexible than AgentFS** — Pluggable backends, simpler model
-4. **More opinionated than vfs crate** — Transactions required, features opt-in
-5. **Lighter than containers** — Just data storage, no runtime
-
-If you need a **safe, portable, application-level virtual filesystem** with **pluggable storage** and **built-in resource limits**, VFS Container is designed for you.
-
----
-
-*For technical details, see the [Design Document](../architecture/vfs-container-design.md).*
+*For technical details, see the [Design Overview](../architecture/design-overview.md).* 

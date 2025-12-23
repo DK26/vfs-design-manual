@@ -8,10 +8,10 @@
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [ADR-001](#adr-001-path-based-vfsbackend-trait) | Path-Based VfsBackend Trait (20 methods) | **Accepted** |
-| [ADR-002](#adr-002-three-crate-structure) | Three-Crate Structure | **Accepted** |
-| [ADR-003](#adr-003-two-layer-path-handling) | Two-Layer Path Handling | **Accepted** |
-| [ADR-004](#adr-004-virtualpath-from-strict-path) | VirtualPath from strict-path | **Accepted** |
+| [ADR-001](#adr-001-inode-based-vfs-trait) | Inode-Based Vfs Trait | **Accepted** |
+| [ADR-002](#adr-002-two-crate-structure) | Two-Crate Structure | **Accepted** |
+| [ADR-003](#adr-003-two-layer-architecture) | Two-Layer Architecture | **Accepted** |
+| [ADR-004](#adr-004-pluggable-fssemantics) | Pluggable FsSemantics | **Accepted** |
 | [ADR-005](#adr-005-lexical-path-resolution) | Lexical Path Resolution | **Accepted** |
 | [ADR-006](#adr-006-full-symlink-and-hardlink-support) | Full Symlink and Hard Link Support | **Accepted** |
 | [ADR-007](#adr-007-capacity-enforcement-in-container) | Capacity Enforcement in Container | **Accepted** |
@@ -22,200 +22,205 @@
 
 ### Superseded ADRs (Historical)
 
-These decisions were from an earlier graph-store design that was rejected:
+These decisions were from earlier designs that have been superseded:
 
-| Old ADR | Topic | Superseded By |
-|---------|-------|---------------|
-| Storage-Agnostic Backend (graph) | `StorageBackend` with nodes/edges | ADR-001 (path-based) |
-| Node/Edge Data Model | `NodeId`, `ContentId`, `Edge` | ADR-001 (path-based) |
-| Mandatory Transactions | `transact()` closure API | ADR-001 (simple methods) |
-| Newtype IDs | `NodeId`, `ContentId`, `ChunkId` | ADR-001 (paths as identifiers) |
+| Old Design | Topic | Superseded By |
+|------------|-------|---------------|
+| Graph-Store Model | `StorageBackend` with nodes/edges | ADR-001 (inode-based) |
+| Path-Based VfsBackend | 20 methods with `&VirtualPath` | ADR-001 (inode-based) |
+| Three-Crate Structure | `anyfs-traits` + `anyfs` + `anyfs-container` | ADR-002 (two crates) |
+| Single Path Semantics | Fixed POSIX-like paths | ADR-004 (pluggable semantics) |
 
 ---
 
-## ADR-001: Path-Based VfsBackend Trait
+## ADR-001: Inode-Based Vfs Trait
 
 ### Status
-**Accepted** (Updated: now 20 methods with symlinks/hardlinks)
+**Accepted** (Updated: replaces path-based VfsBackend)
 
 ### Context
-We need to support multiple storage backends (SQLite, memory, filesystem). The question is: what abstraction should backends implement?
+We need to support multiple storage backends (SQLite, memory, filesystem). Earlier designs used either:
+1. A graph-store model with `NodeId`, edges, and transactions (over-engineered)
+2. A path-based `VfsBackend` with 20 methods using `&VirtualPath` (paths in backend)
 
-An earlier design used a graph-store model with `NodeId`, `ContentId`, edges, and mandatory transactions. This was over-engineered for filesystem operations.
+Both approaches mixed storage concerns with path semantics.
 
 ### Decision
-Create a **path-based** `VfsBackend` trait with 20 methods aligned with `std::fs`:
+Create an **inode-based** `Vfs` trait with 13 methods:
 
 ```rust
-pub trait VfsBackend: Send {
-    // Read operations (8)
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+pub trait Vfs: Send {
+    // Inode lifecycle (4)
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError>;
+    fn get_inode(&self, id: InodeId) -> Result<InodeData, VfsError>;
+    fn update_inode(&mut self, id: InodeId, data: InodeData) -> Result<(), VfsError>;
+    fn delete_inode(&mut self, id: InodeId) -> Result<(), VfsError>;
 
-    // Write operations (9)
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    // Directory operations (4)
+    fn link(&mut self, parent: InodeId, name: &str, child: InodeId) -> Result<(), VfsError>;
+    fn unlink(&mut self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn lookup(&self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn readdir(&self, dir: InodeId) -> Result<Vec<(String, InodeId)>, VfsError>;
 
-    // Links (2)
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    // Content I/O (3)
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError>;
+    fn truncate(&mut self, id: InodeId, size: u64) -> Result<(), VfsError>;
 
-    // Permissions (1)
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
+    // Sync & root (2)
+    fn sync(&mut self) -> Result<(), VfsError>;
+    fn root(&self) -> InodeId;
 }
 ```
 
+Key insight: **No paths in Vfs**. Only `InodeId` and entry names.
+
 ### Consequences
 **Positive:**
-- Familiar API (method names match `std::fs`)
-- Full filesystem semantics (symlinks, hard links, permissions)
-- Simple to implement backends
-- No graph-store complexity
-- Paths are natural identifiers for filesystem operations
+- Backend simplicity: no path parsing or normalization
+- FUSE compatibility: inode model maps directly to FUSE
+- Semantic flexibility: any path semantics can be layered on top
+- Clear separation: backends handle storage, containers handle paths
+- Natural hard link support: multiple entries can point to same inode
 
 **Negative:**
-- More methods to implement (20 vs original 13)
-- Backends must handle symlink resolution
+- Unfamiliar to developers expecting path-based APIs
+- Requires container layer for usable path API
 
 ### Alternatives Considered
-1. **Graph-store model** (`NodeId`, edges, transactions): Rejected — over-engineered for our needs
-2. **FUSE-style trait**: Rejected — too complex, POSIX-focused
-3. **13-method trait without symlinks**: Superseded — needed full filesystem semantics
+1. **Graph-store model**: Rejected — over-engineered for filesystem operations
+2. **Path-based VfsBackend**: Rejected — mixed storage with path semantics
+3. **FUSE-style trait**: Rejected — too POSIX-focused
 
 ---
 
-## ADR-002: Three-Crate Structure
+## ADR-002: Two-Crate Structure
 
 ### Status
-**Accepted**
+**Accepted** (Updated: was three crates)
 
 ### Context
-How should we organize the codebase? A single crate is simple but forces all dependencies on all users.
+Earlier design used three crates (`anyfs-traits`, `anyfs`, `anyfs-container`). With the inode-based design, `anyfs-traits` is no longer needed as a separate crate since the trait is small enough to include in `anyfs`.
 
 ### Decision
-Split into **three crates**:
+Split into **two crates**:
 
 | Crate | Purpose | Dependencies |
 |-------|---------|--------------|
-| `anyfs-traits` | Minimal trait + types | `strict-path`, `thiserror` |
-| `anyfs` | Built-in backends (feature-gated) | `anyfs-traits` + optional deps |
-| `anyfs-container` | Capacity limits, tenant isolation | `anyfs-traits` |
+| `anyfs` | Vfs trait + built-in backends | `thiserror` + optional deps |
+| `anyfs-container` | FilesContainer + FsSemantics | `anyfs` |
 
 ```
-strict-path
+anyfs (Vfs trait + backends)
      ↑
-anyfs-traits
+anyfs-container (FilesContainer + FsSemantics)
      ↑
-     ├── anyfs (backends)
-     └── anyfs-container (isolation layer)
+Your Application
 ```
 
 ### Consequences
 **Positive:**
-- Custom backend implementers only depend on `anyfs-traits` (tiny, no heavy deps)
+- Simpler structure than three crates
+- Backend implementers depend only on `anyfs`
 - Built-in backends are opt-in via feature flags
-- Follows Rust ecosystem patterns (`tower-service` vs `tower`)
+- Follows Rust ecosystem patterns
 
 **Negative:**
-- More crates to maintain
-- Users need to depend on multiple crates
+- Backend implementers pull in the trait crate with backend code (though feature-gated)
 
 ### Alternatives Considered
 1. **Single crate**: Rejected — forces `rusqlite` on everyone
-2. **Two crates** (`anyfs` + `anyfs-container`): Rejected — custom backends would pull in built-in backend deps
+2. **Three crates**: Rejected — separate traits crate unnecessary with small Vfs trait
 
 ---
 
-## ADR-003: Two-Layer Path Handling
+## ADR-003: Two-Layer Architecture
 
 ### Status
-**Accepted**
+**Accepted** (New)
 
 ### Context
-Paths need validation for safety. Where should validation happen?
+Path handling and storage are separate concerns. Mixing them in one API leads to complexity and inflexibility.
 
 ### Decision
-Use **two-layer path handling**:
+Separate concerns into **two layers**:
 
-1. **User-facing (FilesContainer)**: Accepts `impl AsRef<Path>` for ergonomics
-2. **Internal (VfsBackend)**: Uses `&VirtualPath` for type safety
-
-```rust
-// FilesContainer (user-facing)
-impl<B: VfsBackend> FilesContainer<B> {
-    pub fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, ContainerError> {
-        let vpath = VirtualPath::new(path.as_ref())?;  // Validate once
-        Ok(self.backend.read(&vpath)?)                  // Backend gets safe path
-    }
-}
-
-// VfsBackend (internal)
-pub trait VfsBackend {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-}
 ```
+┌─────────────────────────────────────────────────────────────┐
+│  anyfs-container: FilesContainer<V, S>                      │
+│  • std::fs-like API (impl AsRef<Path>)                      │
+│  • Path resolution via FsSemantics                          │
+│  • Capacity enforcement                                     │
+├─────────────────────────────────────────────────────────────┤
+│  anyfs: Vfs trait                                           │
+│  • Inode-based operations (InodeId)                         │
+│  • No path logic                                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Layer 1 (anyfs)**: Inode-based storage for backend implementers
+**Layer 2 (anyfs-container)**: Path-based API for application developers
 
 ### Consequences
 **Positive:**
-- User ergonomics: Pass `&str`, `String`, `&Path`, `PathBuf`
-- Type safety: Backends receive pre-validated paths
-- Single validation point: No redundant checks
+- Backend simplicity: no path parsing in backends
+- Semantic flexibility: mix any semantics with any storage
+- Clear responsibilities: each layer does one thing well
+- Testability: use `SimpleSemantics` for fast tests
+- FUSE compatibility: inode model maps directly to FUSE
 
 **Negative:**
-- Two different path types to understand
+- Two concepts to understand (inodes vs paths)
+- More code in container layer for path resolution
 
 ### Alternatives Considered
-1. **`impl AsRef<Path>` everywhere**: Rejected — backends would need to re-validate
-2. **`&VirtualPath` everywhere**: Rejected — poor user ergonomics
+1. **Single-layer path API**: Rejected — backends need to handle path semantics
+2. **Single-layer inode API**: Rejected — poor developer ergonomics
 
 ---
 
-## ADR-004: VirtualPath from strict-path
+## ADR-004: Pluggable FsSemantics
 
 ### Status
-**Accepted**
+**Accepted** (New)
 
 ### Context
-We need a safe, validated path type. Should we define our own or reuse an existing crate?
+Different platforms have different path conventions (Linux uses `/`, Windows uses `\`, case sensitivity varies). A fixed path model limits flexibility.
 
 ### Decision
-**Re-export `VirtualPath` from `strict-path`** crate:
+Make path resolution **pluggable** via `FsSemantics` trait:
 
 ```rust
-// In anyfs-traits/src/lib.rs
-pub use strict_path::VirtualPath;
+pub trait FsSemantics: Send + Sync {
+    fn separator(&self) -> char;
+    fn components<'a>(&self, path: &'a str) -> Vec<&'a str>;
+    fn normalize(&self, path: &str) -> String;
+    fn case_sensitive(&self) -> bool;
+    fn max_symlink_depth(&self) -> u32;
+}
 ```
 
-The `strict-path` crate provides:
-- `VirtualPath` — validated, normalized paths
-- `VirtualRoot` — containment for filesystem backend
+**Built-in implementations:**
+
+| Semantics | Separator | Case Sensitive | Symlinks |
+|-----------|-----------|----------------|----------|
+| `LinuxSemantics` | `/` | Yes | Yes |
+| `WindowsSemantics` | `\` | No | Yes |
+| `SimpleSemantics` | `/` | Yes | No |
 
 ### Consequences
 **Positive:**
-- No code duplication
-- Battle-tested implementation
-- `VRootFsBackend` can use `VirtualRoot` directly
+- Cross-platform flexibility: same backend with different path rules
+- Testing: `SimpleSemantics` for fast, simple tests
+- Customization: applications can implement custom semantics
 
 **Negative:**
-- External dependency
-- Must track upstream changes
+- More configuration for simple use cases
+- Potential confusion about which semantics to use
 
 ### Alternatives Considered
-1. **Custom `VirtualPath`**: Rejected — duplicates `strict-path` functionality
-2. **Raw `String` paths**: Rejected — no type safety
+1. **Fixed POSIX semantics**: Rejected — limits Windows support
+2. **Runtime-configurable**: Rejected — complexity for rare use case
 
 ---
 
@@ -232,8 +237,8 @@ Paths are **lexically normalized** without consulting the filesystem:
 
 ```rust
 // Pure string manipulation, no filesystem access
-VirtualPath::new("/../../../etc/passwd")  // → "/etc/passwd" (clamped)
-VirtualPath::new("/foo/../bar")           // → "/bar"
+normalize("/foo/../bar")           // → "/bar"
+normalize("/../../../etc/passwd")  // → "/etc/passwd" (clamped)
 ```
 
 Key properties:
@@ -251,54 +256,42 @@ Key properties:
 - Some POSIX behaviors aren't replicated
 - Users expecting POSIX semantics may be surprised
 
-### Alternatives Considered
-1. **POSIX-style resolution**: Rejected — complex, security implications
-2. **Reject all `..`**: Rejected — too restrictive
-
 ---
 
 ## ADR-006: Full Symlink and Hard Link Support
 
 ### Status
-**Accepted** (Updated: symlinks and hard links are now built-in, not opt-in)
+**Accepted**
 
 ### Context
-Earlier design made symlinks and hard links opt-in features. This was reconsidered because:
-- All three backends can support symlinks and hard links
-- The API should be consistent across backends
-- Simulated symlinks/hardlinks are just data structures (no security implications)
+Filesystems support symlinks and hard links. Should backends support them?
 
 ### Decision
-Symlinks and hard links are **built-in to all backends**:
+Full support in all backends:
+
+- **Symlinks**: Stored as `InodeKind::Symlink { target }`. Container resolves them.
+- **Hard links**: Multiple directory entries point to the same `InodeId`.
+- **nlink tracking**: Backends track hard link count in `InodeData::nlink`.
 
 ```rust
-// All backends support these methods
-backend.symlink("/target", "/link")?;
-backend.hard_link("/original", "/link")?;
-backend.read_link("/link")?;
-backend.symlink_metadata("/link")?;
+pub enum InodeKind {
+    File,
+    Directory,
+    Symlink { target: String },
+}
 ```
 
-**Important clarification:** For `MemoryBackend` and `SqliteBackend`, these are *simulated* operations:
-- Symlinks are stored as entries pointing to a target path
-- Hard links share content via a common `ContentId`
-- No real OS symlinks are created
-
-Only `VRootFsBackend` creates real OS symlinks and hard links.
+Symlink resolution happens at the container layer via `FsSemantics::max_symlink_depth()`.
 
 ### Consequences
 **Positive:**
-- Consistent API across all backends
-- Full filesystem semantics in the trait
-- Simpler mental model (no feature flags)
+- Consistent contract across all backends
+- Natural fit for inode model (hard links are just multiple entries)
+- Container controls symlink resolution policy
 
 **Negative:**
-- Backend implementers must implement all 20 methods
-- Slightly more complex backends
-
-### Alternatives Considered
-1. **Opt-in via ContainerBuilder**: Superseded — unnecessary complexity
-2. **Separate traits for link support**: Rejected — fragmenting the API
+- Backends must track nlink correctly
+- Symlink resolution adds complexity to container
 
 ---
 
@@ -326,7 +319,7 @@ pub struct CapacityLimits {
 ### Consequences
 **Positive:**
 - Consistent enforcement across all backends
-- Backends stay simple
+- Backends stay simple (pure storage)
 - Limits configurable per-container
 
 **Negative:**
@@ -347,8 +340,8 @@ Should the API be sync, async, or both?
 Start with a **synchronous API**:
 
 ```rust
-pub trait VfsBackend: Send {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+pub trait Vfs: Send {
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
     // ... all sync methods
 }
 ```
@@ -383,9 +376,8 @@ Differences from POSIX:
 - No device files, sockets, FIFOs
 - No hard links to directories
 - Lexical (not physical) path resolution
-- No user/group ownership
+- Simplified permissions model
 - No file locking primitives
-- Symlinks are optional
 
 ### Consequences
 **Positive:**
@@ -415,7 +407,8 @@ Backends are **feature-gated**:
 default = ["memory"]
 memory = []
 sqlite = ["rusqlite"]
-vrootfs = ["strict-path"]
+realfs = ["strict-path"]
+full = ["memory", "sqlite", "realfs"]
 ```
 
 ### Consequences
@@ -436,41 +429,34 @@ vrootfs = ["strict-path"]
 **Accepted**
 
 ### Context
-The original 13-method trait used common but non-standard names:
-- `list()` instead of `read_dir()`
-- `mkdir()` instead of `create_dir()`
-- `remove()` for both files and directories
-
-Users familiar with Rust's `std::fs` found this confusing.
+The `FilesContainer` API should be familiar to Rust developers.
 
 ### Decision
-Rename methods to align with `std::fs`:
+Method names align with `std::fs`:
 
-| Old Name | New Name | std::fs Equivalent |
-|----------|----------|-------------------|
-| `list()` | `read_dir()` | `std::fs::read_dir` |
-| `mkdir()` | `create_dir()` | `std::fs::create_dir` |
-| `mkdir_all()` | `create_dir_all()` | `std::fs::create_dir_all` |
-| `remove()` | `remove_file()` + `remove_dir()` | Split per std::fs |
-| `remove_all()` | `remove_dir_all()` | `std::fs::remove_dir_all` |
-
-Additional methods added:
-- `read_to_string()` — matches `std::fs::read_to_string`
-- `symlink_metadata()` — matches `std::fs::symlink_metadata`
+| FilesContainer | std::fs |
+|----------------|---------|
+| `read()` | `std::fs::read` |
+| `write()` | `std::fs::write` |
+| `read_to_string()` | `std::fs::read_to_string` |
+| `create_dir()` | `std::fs::create_dir` |
+| `create_dir_all()` | `std::fs::create_dir_all` |
+| `remove_file()` | `std::fs::remove_file` |
+| `remove_dir()` | `std::fs::remove_dir` |
+| `remove_dir_all()` | `std::fs::remove_dir_all` |
+| `read_dir()` | `std::fs::read_dir` |
+| `rename()` | `std::fs::rename` |
+| `copy()` | `std::fs::copy` |
+| `metadata()` | `std::fs::metadata` |
+| `symlink_metadata()` | `std::fs::symlink_metadata` |
 
 ### Consequences
 **Positive:**
 - Familiar naming for Rust developers
-- Clear distinction between `remove_file` and `remove_dir`
 - Less cognitive load when switching between `std::fs` and `anyfs`
 
 **Negative:**
-- Breaking change from earlier versions
-- Documentation must be updated
-
-### Alternatives Considered
-1. **Keep original names**: Rejected — inconsistency with `std::fs` caused confusion
-2. **Provide both aliases**: Rejected — API bloat, maintenance burden
+- Some `std::fs` methods don't have direct equivalents
 
 ---
 

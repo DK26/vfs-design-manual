@@ -1,6 +1,6 @@
 [book]
-title = "VFS Ecosystem Manual"
-description = "Complete documentation for the VFS Ecosystem - switchable virtual filesystem backends for Rust"
+title = "AnyFS Ecosystem Manual"
+description = "Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust"
 authors = ["David Krasnitsky"]
 language = "en"
 
@@ -30,7 +30,6 @@ runnable = true
 enable = true
 limit-results = 30
 teaser-word-count = 30
-use-hierarchical-menu = true
 
 [preprocessor.links]
 

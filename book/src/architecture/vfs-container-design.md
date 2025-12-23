@@ -1,4 +1,7 @@
-# VFS Container — Design Document
+# Historical: VFS Container (graph-store) - Design Document
+
+> This RFC describes an older, superseded design (StorageBackend / NodeId / ChunkId graph-store model). It is kept for historical context only.
+> Current design: see [Design Overview](./design-overview.md) and [Architecture Decision Records](./adrs.md) (ADR-001). Do not implement this RFC.
 
 **Version:** 0.1.0-draft  
 **Status:** RFC (Request for Comments)  

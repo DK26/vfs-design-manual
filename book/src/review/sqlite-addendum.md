@@ -1,4 +1,10 @@
-# Addendum — SQLite as Container Format vs Custom Binary Format
+# Addendum — SQLite as Container Format vs Custom Binary Format (Historical)
+
+> This addendum was written during the earlier graph-store design iteration. The SQLite-vs-binary tradeoffs are still relevant, but references to `StorageBackend`/transactions reflect that older architecture.
+>
+> For the current AnyFS design (path-based `VfsBackend`), see:
+> - `book/src/architecture/adrs.md` (especially ADR-001)
+> - `book/src/architecture/design-overview.md`
 
 **Date:** 2025-12-22  
 **Project:** VFS Container  

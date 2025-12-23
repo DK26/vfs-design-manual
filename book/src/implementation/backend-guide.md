@@ -6,354 +6,420 @@
 
 ## Overview
 
-This guide walks you through implementing a custom `VfsBackend`. By the end, you'll have a working backend that can be used with `FilesContainer`.
+This guide walks you through implementing a custom `Vfs` backend. By the end, you'll have a working backend that can be used with `FilesContainer`.
 
 ---
 
 ## What You're Building
 
-A backend implements the `VfsBackend` trait — a path-based interface aligned with `std::fs`:
+A backend implements the `Vfs` trait — a low-level inode-based interface:
 
 ```rust
-pub trait VfsBackend: Send {
-    // READ OPERATIONS
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+pub trait Vfs: Send {
+    // INODE LIFECYCLE
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError>;
+    fn get_inode(&self, id: InodeId) -> Result<InodeData, VfsError>;
+    fn update_inode(&mut self, id: InodeId, data: InodeData) -> Result<(), VfsError>;
+    fn delete_inode(&mut self, id: InodeId) -> Result<(), VfsError>;
 
-    // WRITE OPERATIONS
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    // DIRECTORY OPERATIONS
+    fn link(&mut self, parent: InodeId, name: &str, child: InodeId) -> Result<(), VfsError>;
+    fn unlink(&mut self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn lookup(&self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn readdir(&self, dir: InodeId) -> Result<Vec<(String, InodeId)>, VfsError>;
 
-    // LINKS
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    // CONTENT I/O
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError>;
+    fn truncate(&mut self, id: InodeId, size: u64) -> Result<(), VfsError>;
 
-    // PERMISSIONS
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
+    // SYNC & ROOT
+    fn sync(&mut self) -> Result<(), VfsError>;
+    fn root(&self) -> InodeId;
 }
 ```
 
 **Key points:**
-- All paths are `&VirtualPath` — already validated, safe, normalized
-- 20 methods total — aligned with `std::fs` naming conventions
-- Symlinks and hard links are simulated (not real OS links unless using `VRootFsBackend`)
-- Backends handle storage; `FilesContainer` handles quotas
+- All operations use `InodeId` — no path handling required
+- 13 methods total — simple, focused operations
+- Symlinks stored as `InodeKind::Symlink { target }` — container handles resolution
+- Hard links: multiple directory entries can point to the same inode
+- Backends handle storage; `FilesContainer` handles paths, semantics, and limits
 
 ---
 
 ## Prerequisites
 
-Only depend on `anyfs-traits` — minimal dependencies:
+Depend on `anyfs`:
 
 ```toml
 [dependencies]
-anyfs-traits = "0.1"
+anyfs = "0.1"
 ```
-
-You do NOT need `anyfs` (which has the built-in backends) or `anyfs-container`.
 
 ---
 
 ## Step 1: Define Your Backend Struct
 
 ```rust
-use anyfs_traits::{VfsBackend, VirtualPath, VfsError, Metadata, DirEntry, FileType};
+use anyfs::{Vfs, InodeId, InodeKind, InodeData, VfsError};
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 /// Example: A backend that stores files in Redis
-pub struct RedisBackend {
+pub struct RedisVfs {
     client: redis::Client,
     prefix: String,
+    root_id: InodeId,
 }
 
-impl RedisBackend {
+impl RedisVfs {
     pub fn new(url: &str, prefix: &str) -> Result<Self, VfsError> {
         let client = redis::Client::open(url)
             .map_err(|e| VfsError::Backend(e.to_string()))?;
-        Ok(Self {
+
+        let mut vfs = Self {
             client,
             prefix: prefix.to_string(),
-        })
+            root_id: InodeId(0),
+        };
+
+        // Ensure root directory exists
+        vfs.ensure_root()?;
+
+        Ok(vfs)
     }
 
-    fn key(&self, path: &VirtualPath) -> String {
-        format!("{}:{}", self.prefix, path.as_str())
+    fn ensure_root(&mut self) -> Result<(), VfsError> {
+        // Check if root exists, create if not
+        if self.get_inode(self.root_id).is_err() {
+            self.store_inode(self.root_id, InodeData {
+                ino: 0,
+                kind: InodeKind::Directory,
+                mode: 0o755,
+                uid: 0,
+                gid: 0,
+                nlink: 2,  // . and ..
+                size: 0,
+                atime: None,
+                mtime: None,
+                ctime: None,
+            })?;
+        }
+        Ok(())
     }
 }
 ```
 
 ---
 
-## Step 2: Implement Read Operations
+## Step 2: Implement Inode Lifecycle
 
 ```rust
-impl VfsBackend for RedisBackend {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
-        // Follow symlinks first
-        let resolved = self.resolve_symlinks(path)?;
+impl Vfs for RedisVfs {
+    fn root(&self) -> InodeId {
+        self.root_id
+    }
 
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError> {
+        // Allocate new inode ID
+        let id = self.allocate_inode_id()?;
+
+        let data = InodeData {
+            ino: id.0,
+            kind,
+            mode,
+            uid: 0,
+            gid: 0,
+            nlink: 0,  // Not linked yet - will be incremented by link()
+            size: 0,
+            atime: Some(SystemTime::now()),
+            mtime: Some(SystemTime::now()),
+            ctime: Some(SystemTime::now()),
+        };
+
+        self.store_inode(id, data)?;
+        Ok(id)
+    }
+
+    fn get_inode(&self, id: InodeId) -> Result<InodeData, VfsError> {
+        // Retrieve inode data from Redis
+        let key = format!("{}:inode:{}", self.prefix, id.0);
         let mut conn = self.client.get_connection()
             .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-        let key = self.key(&resolved);
         let data: Option<Vec<u8>> = redis::cmd("GET")
             .arg(&key)
             .query(&mut conn)
             .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-        data.ok_or_else(|| VfsError::NotFound(path.clone()))
-    }
-
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError> {
-        let bytes = self.read(path)?;
-        String::from_utf8(bytes)
-            .map_err(|e| VfsError::InvalidUtf8(e.utf8_error()))
-    }
-
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError> {
-        let data = self.read(path)?;
-        let start = offset as usize;
-        let end = (start + len).min(data.len());
-
-        if start >= data.len() {
-            return Ok(Vec::new());
-        }
-
-        Ok(data[start..end].to_vec())
-    }
-
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError> {
-        // Follows symlinks - broken symlink returns false
-        match self.resolve_symlinks(path) {
-            Ok(resolved) => {
-                let mut conn = self.client.get_connection()
-                    .map_err(|e| VfsError::Backend(e.to_string()))?;
-                let key = self.key(&resolved);
-                redis::cmd("EXISTS").arg(&key).query(&mut conn)
-                    .map_err(|e| VfsError::Backend(e.to_string()))
-            }
-            Err(_) => Ok(false),  // Broken symlink
+        match data {
+            Some(bytes) => self.deserialize_inode(&bytes),
+            None => Err(VfsError::NotFound(id)),
         }
     }
 
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError> {
-        // Follows symlinks
-        let resolved = self.resolve_symlinks(path)?;
-        self.get_metadata_internal(&resolved)
+    fn update_inode(&mut self, id: InodeId, data: InodeData) -> Result<(), VfsError> {
+        // Verify inode exists
+        let _ = self.get_inode(id)?;
+
+        // Update the inode
+        self.store_inode(id, data)
     }
 
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError> {
-        // Does NOT follow symlinks - returns metadata of symlink itself
-        self.get_metadata_internal(path)
-    }
+    fn delete_inode(&mut self, id: InodeId) -> Result<(), VfsError> {
+        let inode = self.get_inode(id)?;
 
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError> {
-        // List children of directory
-        // Return Vec<DirEntry> with name and file_type for each child
-        todo!()
-    }
-
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError> {
-        // Return symlink target without following
-        // Error if path is not a symlink
-        todo!()
-    }
-}
-```
-
----
-
-## Step 3: Implement Write Operations
-
-```rust
-impl VfsBackend for RedisBackend {
-    // ... read operations from above ...
-
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
-        // Follow symlinks
-        let resolved = self.resolve_symlinks(path)?;
-
-        // Ensure parent directory exists
-        if let Some(parent) = resolved.parent() {
-            if !self.exists(&parent)? {
-                return Err(VfsError::NotFound(parent));
-            }
+        // Can only delete if nlink == 0
+        if inode.nlink > 0 {
+            return Err(VfsError::InodeInUse);
         }
 
+        // Delete inode data
+        let key = format!("{}:inode:{}", self.prefix, id.0);
         let mut conn = self.client.get_connection()
             .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-        let key = self.key(&resolved);
-        redis::cmd("SET")
+        redis::cmd("DEL")
             .arg(&key)
-            .arg(data)
             .query(&mut conn)
             .map_err(|e| VfsError::Backend(e.to_string()))?;
 
-        Ok(())
-    }
-
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
-        let mut existing = self.read(path).unwrap_or_default();
-        existing.extend_from_slice(data);
-        self.write(path, &existing)
-    }
-
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
-        if self.exists(path)? {
-            return Err(VfsError::AlreadyExists(path.clone()));
+        // Also delete content if file
+        if matches!(inode.kind, InodeKind::File) {
+            let content_key = format!("{}:content:{}", self.prefix, id.0);
+            redis::cmd("DEL")
+                .arg(&content_key)
+                .query(&mut conn)
+                .map_err(|e| VfsError::Backend(e.to_string()))?;
         }
-
-        // Ensure parent exists
-        if let Some(parent) = path.parent() {
-            if !self.exists(&parent)? {
-                return Err(VfsError::NotFound(parent));
-            }
-        }
-
-        // Store directory marker
-        // Your implementation here
-        todo!()
-    }
-
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
-        // Create all ancestors, then the target
-        let mut current = VirtualPath::root();
-        for component in path.components() {
-            current = current.join(component)?;
-            if !self.exists(&current)? {
-                self.create_dir(&current)?;
-            }
-        }
-        Ok(())
-    }
-
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
-        let meta = self.symlink_metadata(path)?;
-
-        // remove_file works on files and symlinks, not directories
-        if meta.file_type == FileType::Directory {
-            return Err(VfsError::IsADirectory(path.clone()));
-        }
-
-        self.delete_entry(path)
-    }
-
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
-        let meta = self.symlink_metadata(path)?;
-
-        if meta.file_type != FileType::Directory {
-            return Err(VfsError::NotADirectory(path.clone()));
-        }
-
-        // Check if directory is empty
-        let children = self.read_dir(path)?;
-        if !children.is_empty() {
-            return Err(VfsError::DirectoryNotEmpty(path.clone()));
-        }
-
-        self.delete_entry(path)
-    }
-
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError> {
-        if !self.exists(path)? {
-            return Err(VfsError::NotFound(path.clone()));
-        }
-
-        // Recursively delete children first
-        let meta = self.symlink_metadata(path)?;
-        if meta.file_type == FileType::Directory {
-            for entry in self.read_dir(path)? {
-                let child = path.join(&entry.name)?;
-                self.remove_dir_all(&child)?;
-            }
-        }
-
-        self.delete_entry(path)
-    }
-
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError> {
-        // Renames symlink itself, not target
-        if !self.exists(from)? {
-            return Err(VfsError::NotFound(from.clone()));
-        }
-
-        // Copy data, then delete original
-        let data = self.read(from)?;
-        self.write(to, &data)?;
-        self.remove_file(from)?;
 
         Ok(())
-    }
-
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError> {
-        // Follows symlinks (copies content, not link)
-        let data = self.read(from)?;
-        self.write(to, &data)
     }
 }
 ```
 
 ---
 
-## Step 4: Implement Link Operations
+## Step 3: Implement Directory Operations
 
 ```rust
-impl VfsBackend for RedisBackend {
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError> {
-        // Store symlink entry (original does not need to exist)
-        // This is a simulated symlink, not a real OS symlink
-        self.store_entry(link, Entry::Symlink { target: original.clone() })
-    }
+impl Vfs for RedisVfs {
+    // ... inode lifecycle from above ...
 
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError> {
-        // Original must exist and be a file
-        let meta = self.symlink_metadata(original)?;
-        if meta.file_type != FileType::File {
-            return Err(VfsError::NotAFile(original.clone()));
+    fn link(&mut self, parent: InodeId, name: &str, child: InodeId) -> Result<(), VfsError> {
+        // Verify parent is a directory
+        let parent_inode = self.get_inode(parent)?;
+        if !matches!(parent_inode.kind, InodeKind::Directory) {
+            return Err(VfsError::NotADirectory(parent));
         }
 
-        // Create new entry pointing to same content
-        // Your implementation: share the content between entries
-        todo!()
+        // Check entry doesn't already exist
+        if self.lookup(parent, name).is_ok() {
+            return Err(VfsError::EntryExists(name.to_string()));
+        }
+
+        // Add directory entry
+        self.store_entry(parent, name, child)?;
+
+        // Increment child's nlink
+        let mut child_inode = self.get_inode(child)?;
+        child_inode.nlink += 1;
+        self.update_inode(child, child_inode)?;
+
+        Ok(())
     }
 
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError> {
-        // Update stored permissions for path
-        todo!()
-    }
+    fn unlink(&mut self, parent: InodeId, name: &str) -> Result<InodeId, VfsError> {
+        // Verify parent is a directory
+        let parent_inode = self.get_inode(parent)?;
+        if !matches!(parent_inode.kind, InodeKind::Directory) {
+            return Err(VfsError::NotADirectory(parent));
+        }
 
-    // Helper: resolve symlinks with loop detection
-    fn resolve_symlinks(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError> {
-        const MAX_DEPTH: u32 = 40;
-        let mut current = path.clone();
-        let mut depth = 0;
+        // Get the child inode
+        let child = self.lookup(parent, name)?;
 
-        loop {
-            match self.symlink_metadata(&current)?.file_type {
-                FileType::Symlink => {
-                    depth += 1;
-                    if depth > MAX_DEPTH {
-                        return Err(VfsError::SymlinkLoop(path.clone()));
-                    }
-                    current = self.read_link(&current)?;
-                }
-                _ => return Ok(current),
+        // If child is a directory, it must be empty
+        let child_inode = self.get_inode(child)?;
+        if matches!(child_inode.kind, InodeKind::Directory) {
+            let entries = self.readdir(child)?;
+            if !entries.is_empty() {
+                return Err(VfsError::DirectoryNotEmpty(child));
             }
         }
+
+        // Remove directory entry
+        self.delete_entry(parent, name)?;
+
+        // Decrement child's nlink
+        let mut child_inode = self.get_inode(child)?;
+        child_inode.nlink -= 1;
+        self.update_inode(child, child_inode)?;
+
+        Ok(child)
+    }
+
+    fn lookup(&self, parent: InodeId, name: &str) -> Result<InodeId, VfsError> {
+        // Find child by name in parent directory
+        let key = format!("{}:entry:{}:{}", self.prefix, parent.0, name);
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let child_id: Option<u64> = redis::cmd("GET")
+            .arg(&key)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        child_id
+            .map(InodeId)
+            .ok_or_else(|| VfsError::EntryNotFound(name.to_string()))
+    }
+
+    fn readdir(&self, dir: InodeId) -> Result<Vec<(String, InodeId)>, VfsError> {
+        // Verify dir is a directory
+        let dir_inode = self.get_inode(dir)?;
+        if !matches!(dir_inode.kind, InodeKind::Directory) {
+            return Err(VfsError::NotADirectory(dir));
+        }
+
+        // List all entries in directory
+        let pattern = format!("{}:entry:{}:*", self.prefix, dir.0);
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let keys: Vec<String> = redis::cmd("KEYS")
+            .arg(&pattern)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let mut entries = Vec::new();
+        for key in keys {
+            // Extract name from key
+            let name = key.rsplit(':').next().unwrap().to_string();
+            let child_id = self.lookup(dir, &name)?;
+            entries.push((name, child_id));
+        }
+
+        Ok(entries)
+    }
+}
+```
+
+---
+
+## Step 4: Implement Content I/O
+
+```rust
+impl Vfs for RedisVfs {
+    // ... previous methods ...
+
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError> {
+        let inode = self.get_inode(id)?;
+        if !matches!(inode.kind, InodeKind::File) {
+            return Err(VfsError::NotAFile(id));
+        }
+
+        // Read content from Redis
+        let content_key = format!("{}:content:{}", self.prefix, id.0);
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let content: Vec<u8> = redis::cmd("GET")
+            .arg(&content_key)
+            .query(&mut conn)
+            .unwrap_or_default();
+
+        // Calculate read range
+        let start = offset as usize;
+        if start >= content.len() {
+            return Ok(0);
+        }
+
+        let end = (start + buf.len()).min(content.len());
+        let bytes_read = end - start;
+        buf[..bytes_read].copy_from_slice(&content[start..end]);
+
+        Ok(bytes_read)
+    }
+
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError> {
+        let mut inode = self.get_inode(id)?;
+        if !matches!(inode.kind, InodeKind::File) {
+            return Err(VfsError::NotAFile(id));
+        }
+
+        // Read existing content
+        let content_key = format!("{}:content:{}", self.prefix, id.0);
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let mut content: Vec<u8> = redis::cmd("GET")
+            .arg(&content_key)
+            .query(&mut conn)
+            .unwrap_or_default();
+
+        // Extend content if needed
+        let start = offset as usize;
+        let end = start + data.len();
+        if end > content.len() {
+            content.resize(end, 0);
+        }
+
+        // Write data
+        content[start..end].copy_from_slice(data);
+
+        // Store content
+        redis::cmd("SET")
+            .arg(&content_key)
+            .arg(&content)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        // Update inode size and mtime
+        inode.size = content.len() as u64;
+        inode.mtime = Some(SystemTime::now());
+        self.update_inode(id, inode)?;
+
+        Ok(data.len())
+    }
+
+    fn truncate(&mut self, id: InodeId, size: u64) -> Result<(), VfsError> {
+        let mut inode = self.get_inode(id)?;
+        if !matches!(inode.kind, InodeKind::File) {
+            return Err(VfsError::NotAFile(id));
+        }
+
+        let content_key = format!("{}:content:{}", self.prefix, id.0);
+        let mut conn = self.client.get_connection()
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        let mut content: Vec<u8> = redis::cmd("GET")
+            .arg(&content_key)
+            .query(&mut conn)
+            .unwrap_or_default();
+
+        // Resize content
+        content.resize(size as usize, 0);
+
+        // Store truncated content
+        redis::cmd("SET")
+            .arg(&content_key)
+            .arg(&content)
+            .query(&mut conn)
+            .map_err(|e| VfsError::Backend(e.to_string()))?;
+
+        // Update inode
+        inode.size = size;
+        inode.mtime = Some(SystemTime::now());
+        self.update_inode(id, inode)?;
+
+        Ok(())
+    }
+
+    fn sync(&mut self) -> Result<(), VfsError> {
+        // Redis is typically synchronous, but you could flush here
+        Ok(())
     }
 }
 ```
@@ -362,52 +428,40 @@ impl VfsBackend for RedisBackend {
 
 ## Step 5: Handle Types Correctly
 
-### Metadata
+### InodeId
 
 ```rust
-use std::time::SystemTime;
-
-pub struct Metadata {
-    pub file_type: FileType,
-    pub size: u64,
-    pub permissions: Permissions,
-    pub nlink: u64,  // Number of hard links
-    pub created: Option<SystemTime>,
-    pub modified: Option<SystemTime>,
-    pub accessed: Option<SystemTime>,
-}
+/// Unique inode identifier
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct InodeId(pub u64);
 ```
 
-### Permissions
+### InodeKind
 
 ```rust
-pub struct Permissions {
-    readonly: bool,
-}
-
-impl Permissions {
-    pub fn new() -> Self { Self { readonly: false } }
-    pub fn readonly(&self) -> bool { self.readonly }
-    pub fn set_readonly(&mut self, readonly: bool) { self.readonly = readonly; }
-}
-```
-
-### DirEntry
-
-```rust
-pub struct DirEntry {
-    pub name: String,
-    pub file_type: FileType,
-}
-```
-
-### FileType
-
-```rust
-pub enum FileType {
+#[derive(Clone, Debug)]
+pub enum InodeKind {
     File,
     Directory,
-    Symlink,
+    Symlink { target: String },
+}
+```
+
+### InodeData
+
+```rust
+#[derive(Clone, Debug)]
+pub struct InodeData {
+    pub ino: u64,
+    pub kind: InodeKind,
+    pub mode: u32,              // Unix permission bits
+    pub uid: u32,
+    pub gid: u32,
+    pub nlink: u64,             // Hard link count
+    pub size: u64,
+    pub atime: Option<SystemTime>,
+    pub mtime: Option<SystemTime>,
+    pub ctime: Option<SystemTime>,
 }
 ```
 
@@ -419,30 +473,26 @@ Use the appropriate `VfsError` variants:
 
 ```rust
 pub enum VfsError {
-    NotFound(VirtualPath),
-    AlreadyExists(VirtualPath),
-    NotAFile(VirtualPath),
-    NotADirectory(VirtualPath),
-    NotASymlink(VirtualPath),
-    DirectoryNotEmpty(VirtualPath),
-    IsADirectory(VirtualPath),
-    InvalidPath(String),
-    InvalidUtf8(std::str::Utf8Error),
-    PermissionDenied(VirtualPath),
-    SymlinkLoop(VirtualPath),
-    Io(std::io::Error),
-    Backend(String),  // For backend-specific errors
+    NotFound(InodeId),          // Inode doesn't exist
+    NotAFile(InodeId),          // Expected file, got directory/symlink
+    NotADirectory(InodeId),     // Expected directory
+    DirectoryNotEmpty(InodeId), // Cannot delete non-empty directory
+    EntryExists(String),        // Directory entry already exists
+    EntryNotFound(String),      // Directory entry doesn't exist
+    InodeInUse,                 // Cannot delete inode with nlink > 0
+    Io(std::io::Error),         // I/O error
+    Backend(String),            // Backend-specific error
 }
 ```
 
 **Best practices:**
-- Use `NotFound` when a path doesn't exist
-- Use `AlreadyExists` when creating over existing path
-- Use `NotADirectory` when `read_dir` is called on a file
-- Use `NotAFile` when reading a directory
-- Use `IsADirectory` when `remove_file` is called on a directory
-- Use `NotASymlink` when `read_link` is called on a non-symlink
-- Use `SymlinkLoop` when symlink resolution exceeds 40 levels
+- Use `NotFound` when an inode doesn't exist
+- Use `EntryNotFound` when a directory entry doesn't exist
+- Use `EntryExists` when creating a duplicate entry
+- Use `NotADirectory` when directory operations are called on non-directories
+- Use `NotAFile` when file operations are called on non-files
+- Use `DirectoryNotEmpty` when unlinking a non-empty directory
+- Use `InodeInUse` when deleting an inode that still has links
 - Use `Backend(msg)` for storage-specific errors
 
 ---
@@ -450,20 +500,27 @@ pub enum VfsError {
 ## Step 7: Using Your Backend
 
 ```rust
-use anyfs_container::{FilesContainer, ContainerBuilder};
+use anyfs_container::{FilesContainer, LinuxSemantics, ContainerBuilder, CapacityLimits};
 
-// Direct usage
-let backend = RedisBackend::new("redis://localhost", "myapp")?;
-let mut container = FilesContainer::new(backend);
+// Simple usage
+let vfs = RedisVfs::new("redis://localhost", "myapp")?;
+let mut container = FilesContainer::new(vfs, LinuxSemantics::new());
 
 container.write("/data/file.txt", b"hello")?;
 
 // With capacity limits
-let backend = RedisBackend::new("redis://localhost", "tenant_123")?;
-let mut container = ContainerBuilder::new(backend)
-    .max_total_size(100 * 1024 * 1024)  // 100 MB
-    .max_file_size(10 * 1024 * 1024)    // 10 MB
+let vfs = RedisVfs::new("redis://localhost", "tenant_123")?;
+let mut container = ContainerBuilder::new()
+    .vfs(vfs)
+    .semantics(LinuxSemantics::new())
+    .limits(CapacityLimits {
+        max_total_size: Some(100 * 1024 * 1024),  // 100 MB
+        max_file_size: Some(10 * 1024 * 1024),    // 10 MB
+        ..Default::default()
+    })
     .build()?;
+
+container.write("/uploads/doc.pdf", &pdf_data)?;
 ```
 
 ---
@@ -472,21 +529,21 @@ let mut container = ContainerBuilder::new(backend)
 
 Before shipping your backend:
 
-- [ ] All 20 `VfsBackend` methods implemented
-- [ ] `read` follows symlinks, returns `NotFound` for missing files
-- [ ] `write` follows symlinks, checks parent exists
-- [ ] `create_dir` returns `AlreadyExists` if path exists
-- [ ] `remove_file` returns `IsADirectory` for directories
-- [ ] `remove_dir` returns `DirectoryNotEmpty` for non-empty dirs
-- [ ] `remove_dir_all` handles recursive deletion
-- [ ] `symlink` stores target (original doesn't need to exist)
-- [ ] `hard_link` shares content, increments `nlink`
-- [ ] `read_link` returns `NotASymlink` for non-symlinks
-- [ ] `symlink_metadata` does NOT follow symlinks
-- [ ] `metadata` follows symlinks
-- [ ] Symlink loop detection (max 40 levels)
-- [ ] Metadata returns correct `FileType` and `nlink`
-- [ ] `read_dir` returns only direct children (not recursive)
+- [ ] All 13 `Vfs` methods implemented
+- [ ] `root()` returns root directory inode
+- [ ] `create_inode()` allocates unique inode IDs
+- [ ] `get_inode()` returns `NotFound` for missing inodes
+- [ ] `delete_inode()` returns `InodeInUse` if `nlink > 0`
+- [ ] `link()` increments child's `nlink`
+- [ ] `unlink()` decrements child's `nlink`
+- [ ] `unlink()` returns `DirectoryNotEmpty` for non-empty directories
+- [ ] `lookup()` returns `EntryNotFound` for missing entries
+- [ ] `readdir()` returns all direct children
+- [ ] `read()` respects offset and buffer size
+- [ ] `write()` extends file size if needed
+- [ ] `truncate()` handles both shrinking and extending
+- [ ] Symlinks stored as `InodeKind::Symlink { target }`
+- [ ] Hard links share same inode (multiple entries, same `InodeId`)
 
 ---
 
@@ -494,10 +551,10 @@ Before shipping your backend:
 
 For reference implementations, see the built-in backends in `anyfs`:
 
-- **MemoryBackend** — HashMap-based, simplest implementation
-- **SqliteBackend** — SQLite database, production-ready
-- **VRootFsBackend** — Host filesystem via `strict-path`
+- **MemoryVfs** — HashMap-based, simplest implementation
+- **SqliteVfs** — SQLite database, production-ready
+- **RealFsVfs** — Host filesystem via `strict-path`
 
 ---
 
-*For the full trait definition, see [Project Structure](../overview/project-structure.md).*
+*For the full trait definition, see [Vfs Trait](../traits/vfs-trait.md).*

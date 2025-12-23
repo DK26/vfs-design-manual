@@ -1,8 +1,15 @@
-# VFS Container — Review Response & Decisions
+# AnyFS — Review Response & Decisions (Historical: Graph-Store Design)
+
+> This document is **historical** and reflects an earlier (rejected) design iteration: a graph-store `StorageBackend` with `NodeId`/`Edge`/`ChunkId` and mandatory transactions.
+>
+> The **current** AnyFS design is **path-based** (20 `std::fs`-aligned methods) with `VfsBackend` defined in `anyfs-traits`, as captured in:
+> - `book/src/architecture/adrs.md` (especially ADR-001)
+> - `book/src/architecture/design-overview.md`
+> - `book/src/overview/project-structure.md`
 
 **Date:** 2025-12-22  
 **In Response To:** Full Architecture Review + SQLite Addendum  
-**Status:** Decisions made, ready for implementation
+**Status:** Archived (superseded by ADR-001)
 
 ---
 

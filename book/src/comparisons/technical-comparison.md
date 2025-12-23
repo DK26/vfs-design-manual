@@ -1,4 +1,4 @@
-# VFS Container — Technical Comparison with Alternatives
+# AnyFS Container — Technical Comparison with Alternatives
 
 **Detailed analysis for peer review**
 
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document provides a rigorous technical comparison between VFS Container and existing Rust virtual filesystem solutions. The goal is to answer:
+This document provides a rigorous technical comparison between AnyFS Container and existing Rust virtual filesystem solutions. The goal is to answer:
 
 1. **How does our design differ?**
 2. **What makes ours better?**
@@ -24,7 +24,7 @@ This document provides a rigorous technical comparison between VFS Container and
 | **virtual-filesystem** | 7K+ | std-conformant VFS with sandbox option |
 | **OpenDAL** | Millions | Apache project for cloud/object storage |
 | **gvfs** | Low | PhysFS-inspired game-oriented VFS |
-| **VFS Container** | New | Isolation-first, SQLite-backed VFS (our design) |
+| **AnyFS Container** | New | Isolation-first, quota-controlled filesystem abstraction (our design) |
 
 ---
 
@@ -75,21 +75,25 @@ pub trait Access: Send + Sync {
 - Layer system for middleware (retry, logging, etc.)
 - 50+ backend implementations
 
-### VFS Container: `StorageBackend` Trait (MVP Design)
+### AnyFS: `VfsBackend` Trait
 
 ```rust
-// VFS Container - direct operations, ~14 methods
-pub trait StorageBackend: Send {
+use anyfs_traits::VirtualPath;
+
+pub trait VfsBackend: Send {
     // Read operations
-    fn exists(&self, path: &VirtualPath) -> bool;
-    fn is_file(&self, path: &VirtualPath) -> bool;
-    fn is_dir(&self, path: &VirtualPath) -> bool;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
     fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
+    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
+    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
+    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
+    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
     fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    
-    // Write operations  
+    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+
+    // Write operations
     fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
+    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
     fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
     fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
     fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
@@ -97,61 +101,29 @@ pub trait StorageBackend: Send {
     fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
     fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
     fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+
+    // Links
+    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+
+    // Permissions
+    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
 }
 ```
 
 **Characteristics:**
-- Paths are validated `VirtualPath` type — backend receives pre-validated input
-- Sync-first (async can be added later)
-- `&mut self` for writes — explicit mutability
-- Core enforces capacity limits, symlink resolution
-- Backend is simpler: just storage
-
-### VFS Container: `StorageBackend` Trait (Original Node/Edge Design)
-
-```rust
-// VFS Container - node/edge operations, ~13 methods
-pub trait StorageBackend: Send {
-    fn transact<F, T>(&mut self, f: F) -> Result<T, BackendError>
-    where F: FnOnce(&mut dyn Transaction) -> Result<T, BackendError>;
-    
-    fn snapshot(&self) -> Box<dyn Snapshot + '_>;
-}
-
-pub trait Snapshot: Send {
-    fn get_node(&self, id: NodeId) -> Result<Option<NodeRecord>, BackendError>;
-    fn get_edge(&self, parent: NodeId, name: &Name) -> Result<Option<NodeId>, BackendError>;
-    fn list_edges(&self, parent: NodeId) -> Result<Vec<Edge>, BackendError>;
-    fn read_chunk(&self, id: ChunkId) -> Result<Option<Vec<u8>>, BackendError>;
-}
-
-pub trait Transaction: Snapshot {
-    fn insert_node(&mut self, node: &NodeRecord) -> Result<(), BackendError>;
-    fn update_node(&mut self, id: NodeId, node: &NodeRecord) -> Result<(), BackendError>;
-    fn delete_node(&mut self, id: NodeId) -> Result<(), BackendError>;
-    fn insert_edge(&mut self, edge: &Edge) -> Result<(), BackendError>;
-    fn delete_edge(&mut self, parent: NodeId, name: &Name) -> Result<(), BackendError>;
-    fn write_chunk(&mut self, id: ChunkId, data: &[u8]) -> Result<(), BackendError>;
-    fn delete_content(&mut self, id: ContentId) -> Result<(), BackendError>;
-    fn next_node_id(&mut self) -> Result<NodeId, BackendError>;
-    fn next_content_id(&mut self) -> Result<ContentId, BackendError>;
-}
-```
-
-**Characteristics:**
-- Backend is a graph store (nodes + edges)
-- Mandatory transactions
-- Core handles ALL filesystem semantics
-- Optimized for SQLite (direct table mapping)
-- More complex to implement for filesystem backend
-
+- Backend receives validated `&VirtualPath` (constructed once in `FilesContainer`)
+- Sync-first API (async can be added later)
+- No streaming handles in the trait (use `read_range` for partial reads)
+- Method names align with `std::fs`
+- `anyfs-container` provides ergonomic `impl AsRef<Path>` methods and enforces quotas/limits
 ---
 
-## 2. What Makes VFS Container Better
+## 2. What Makes AnyFS Container Better
 
 ### 2.1 Validated Path Types
 
-| Aspect | vfs | VFS Container |
+| Aspect | vfs | AnyFS Container |
 |--------|-----|---------------|
 | Path type | `&str` | `VirtualPath` |
 | Validation | Backend's responsibility | Pre-validated by type |
@@ -167,7 +139,7 @@ fn create_file(&self, path: &str) -> VfsResult<...> {
     // Easy to forget or do incorrectly
 }
 
-// VFS Container: Pre-validated
+// AnyFS Container: Pre-validated
 fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
     // VirtualPath is guaranteed normalized and safe
     // Backend just uses it
@@ -176,7 +148,7 @@ fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
 
 ### 2.2 Built-in Capacity Limits
 
-| Feature | vfs | OpenDAL | VFS Container |
+| Feature | vfs | OpenDAL | AnyFS Container |
 |---------|-----|---------|---------------|
 | Max file size | ❌ | ❌ | ✅ Built-in |
 | Max total storage | ❌ | ❌ | ✅ Built-in |
@@ -186,54 +158,46 @@ fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
 
 **Impact:** Multi-tenant systems get resource limits without custom implementation. Backends don't need to implement quotas.
 
-### 2.3 Opt-in Feature Complexity
+### 2.3 Feature-Gated Built-in Backends
 
-| Feature | vfs | VFS Container |
-|---------|-----|---------------|
-| Symlinks | Always (backend-dependent) | Opt-in via config |
-| Hard links | Backend-dependent | Opt-in via config |
-| Permissions | Backend-dependent | Opt-in via config |
-| Extended attrs | Not supported | Opt-in via config |
+AnyFS ships built-in backends behind Cargo features to keep dependencies minimal:
 
-**Impact:** Simple use cases stay simple. You only pay for what you use.
+- `memory` (default)
+- `sqlite` (enables `rusqlite`)
+- `vrootfs` (enables the host filesystem backend via `strict-path`)
 
-```rust
-// VFS Container: explicit feature activation
-let container = FilesContainer::builder()
-    .backend(backend)
-    .symlinks(true)      // Explicitly enabled
-    .hard_links(false)   // Explicitly disabled
-    .build()?;
-
-// Operations on disabled features return clear errors
-container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
+```toml
+[dependencies]
+anyfs = { version = "0.1", features = ["sqlite", "vrootfs"] }
+anyfs-container = "0.1"
 ```
 
+**Impact:** Users pay compile-time and dependency cost only for the backends they use, while the `VfsBackend` API stays consistent.
 ### 2.4 SQLite as First-Class Backend
 
-| Aspect | vfs | VFS Container |
+| Aspect | vfs | AnyFS Container |
 |--------|-----|---------------|
 | SQLite backend | Not included | Reference implementation |
 | Single-file portability | Not designed for | Core design goal |
-| Transactional operations | Not enforced | Mandatory (in node/edge design) |
+| Transactional operations | Not enforced | Internal (SQLite uses transactions), not part of the trait |
 | Crash safety | Backend-dependent | ACID via SQLite |
 
 **Impact:** Portable data capsules are a primary use case, not an afterthought.
 
 ### 2.5 Security by Construction
 
-| Threat | vfs | VFS Container |
+| Threat | vfs | AnyFS Container |
 |--------|-----|---------------|
 | Path traversal | Backend must prevent | VirtualPath prevents |
-| Symlink escape | Backend must prevent | Core handles resolution |
+| Symlink escape | Backend must prevent | Symlink targets are `VirtualPath` (cannot escape root) |
 | Resource exhaustion | Not addressed | Capacity limits |
-| Host FS escape | AltrootFS attempts | Structural (no host paths) |
+| Host FS escape | AltrootFS attempts | `VRootFsBackend` clamps via `VirtualRoot`; other backends do not touch host FS |
 
 **Impact:** Security is architectural, not policy-dependent.
 
 ---
 
-## 3. What Makes VFS Container Worse
+## 3. What Makes AnyFS Container Worse
 
 ### 3.1 Fewer Backends (Initially)
 
@@ -241,13 +205,13 @@ container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
 |----------|----------|
 | vfs | 5 (Physical, Memory, Altroot, Overlay, Embedded) |
 | OpenDAL | 50+ (S3, GCS, Azure, HDFS, etc.) |
-| VFS Container | 3 planned (SQLite, Memory, FS) |
+| AnyFS Container | 3 planned (SQLite, Memory, FS) |
 
 **Impact:** Cloud storage users should use OpenDAL. We don't compete there.
 
 ### 3.2 No Streaming API (Initially)
 
-| Feature | vfs | OpenDAL | VFS Container |
+| Feature | vfs | OpenDAL | AnyFS Container |
 |---------|-----|---------|---------------|
 | Streaming read | ✅ `Box<dyn Read>` | ✅ `Reader` | ❌ `Vec<u8>` only |
 | Streaming write | ✅ `Box<dyn Write>` | ✅ `Writer` | ❌ `&[u8]` only |
@@ -257,7 +221,7 @@ container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
 
 ### 3.3 Sync-Only API (Initially)
 
-| Feature | vfs | OpenDAL | VFS Container |
+| Feature | vfs | OpenDAL | AnyFS Container |
 |---------|-----|---------|---------------|
 | Async API | ✅ Optional | ✅ Primary | ❌ Sync only |
 | Tokio integration | ✅ | ✅ | ❌ |
@@ -267,7 +231,7 @@ container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
 
 ### 3.4 No Overlay/Composition
 
-| Feature | vfs | VFS Container |
+| Feature | vfs | AnyFS Container |
 |---------|-----|---------------|
 | OverlayFS | ✅ Built-in | ❌ Not planned |
 | AltrootFS | ✅ Built-in | Use FS backend with root |
@@ -278,7 +242,7 @@ container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
 
 ### 3.5 Less Mature
 
-| Aspect | vfs | VFS Container |
+| Aspect | vfs | AnyFS Container |
 |--------|-----|---------------|
 | Years in production | 5+ | 0 |
 | Downloads | 1.5M+ | 0 |
@@ -296,14 +260,12 @@ container.symlink(&link, &target)?;  // VfsError::FeatureNotEnabled("symlinks")
 | Solution | Backend trait methods |
 |----------|----------------------|
 | vfs | ~15 |
-| VFS Container (MVP) | ~14 |
-| VFS Container (Node/Edge) | ~13 |
+| AnyFS (`VfsBackend`) | 20 |
 
-**Analysis:** Similar complexity. Not a differentiator.
-
+**Analysis:** AnyFS exposes more methods to cover links and permissions, but method count alone is not a differentiator — semantics and safety boundaries matter more.
 ### 4.2 Core Functionality Coverage
 
-Both vfs and VFS Container support:
+Both vfs and AnyFS Container support:
 - ✅ Read/write files
 - ✅ Create/remove directories
 - ✅ List directory contents
@@ -320,7 +282,7 @@ Both vfs and VFS Container support:
 |----------|---------|
 | vfs | Apache-2.0 |
 | OpenDAL | Apache-2.0 |
-| VFS Container | Apache-2.0 (planned) |
+| AnyFS Container | Apache-2.0 (planned) |
 
 **Analysis:** All permissive. Not a differentiator.
 
@@ -356,7 +318,7 @@ Both vfs and VFS Container support:
 - Offline-capable storage
 - Small projects (heavy dependency)
 
-### When to Use VFS Container
+### When to Use AnyFS Container
 
 ✅ **Best for:**
 - Multi-tenant SaaS with per-tenant quotas
@@ -376,7 +338,7 @@ Both vfs and VFS Container support:
 
 ## 6. Decision Matrix
 
-| Requirement | vfs | OpenDAL | VFS Container |
+| Requirement | vfs | OpenDAL | AnyFS Container |
 |-------------|-----|---------|---------------|
 | Simple in-memory testing | ✅ | ⚠️ Overkill | ✅ |
 | Cloud storage (S3, etc.) | ❌ | ✅ | ❌ |
@@ -387,7 +349,7 @@ Both vfs and VFS Container support:
 | Streaming large files | ✅ | ✅ | ⚠️ Future |
 | Async operations | ✅ | ✅ | ⚠️ Future |
 | Path traversal safety | ⚠️ Backend | ⚠️ Backend | ✅ Core |
-| Symlink loop protection | ⚠️ Backend | N/A | ✅ Core |
+| Symlink loop protection | Backend-dependent | N/A | Yes (when enabled; bounded hop limit) |
 | Embedded resources | ✅ | ❌ | ❌ |
 | Production maturity | ✅ High | ✅ High | ⚠️ New |
 
@@ -395,18 +357,18 @@ Both vfs and VFS Container support:
 
 ## 7. Architectural Differences Summary
 
-| Aspect | vfs | OpenDAL | VFS Container |
+| Aspect | vfs | OpenDAL | AnyFS Container |
 |--------|-----|---------|---------------|
 | **Primary model** | Filesystem ops | Object storage | Filesystem + isolation |
-| **Backend complexity** | Must handle paths + storage | Complex (cloud APIs) | Storage only |
+| **Backend complexity** | Must handle paths + storage | Complex (cloud APIs) | Implements filesystem semantics; container adds limits |
 | **Path validation** | Backend | Backend | Core (VirtualPath type) |
-| **Transactions** | No | No | Yes (node/edge design) |
+| **Transactions** | No | No | Internal (SQLite backend), not in trait |
 | **Capacity limits** | No | No | Yes (core) |
-| **Feature toggling** | No | No | Yes (symlinks, etc.) |
-| **Symlink handling** | Backend | N/A | Core |
+| **Feature toggling** | No | No | Cargo features for built-in backends + FilesContainer feature whitelist (default-deny) |
+| **Symlink handling** | Backend | N/A | Opt-in: disabled by default; loop detection + hop limit when enabled |
 | **Primary backend** | PhysicalFS | Cloud services | SQLite |
 | **Namespace** | Hierarchical | Flat (prefix-based) | Hierarchical |
-| **File handles** | Streaming | Streaming | Bulk (MVP) |
+| **File handles** | Streaming | Streaming | Bulk (use `read_range` for partial reads) |
 | **Async** | Optional | Primary | Sync only (MVP) |
 
 ---
@@ -416,19 +378,19 @@ Both vfs and VFS Container support:
 ### Our Strengths
 1. **Validated paths** — `VirtualPath` type eliminates a class of bugs
 2. **Built-in limits** — Multi-tenant safety without custom code
-3. **Feature toggles** — Complexity is opt-in
-4. **SQLite-first** — Portable, transactional, single-file
+3. **std::fs-aligned API** — Familiar method names and semantics
+4. **SQLite backend** — Portable single-file storage with mature tooling
 5. **Isolation by design** — Security is structural
 
 ### Our Weaknesses
 1. **New/unproven** — No production track record
 2. **Fewer backends** — SQLite, Memory, FS only
 3. **Sync-only** — Blocks on I/O
-4. **No streaming** — Full file loads only
+4. **No streaming handles** — Uses bulk reads/writes + `read_range` (streaming may be needed later)
 5. **No composition** — Single backend, no layers
 
 ### Our Niche
-VFS Container is **not** a general-purpose VFS replacement. It's specifically designed for:
+AnyFS Container is **not** a general-purpose VFS replacement. It's specifically designed for:
 
 > **Portable, isolated, quota-controlled data containers**
 
@@ -442,7 +404,7 @@ If you need cloud storage, use OpenDAL. If you need overlay filesystems, use vfs
 
 1. **Is our niche defensible?** Does the combination of isolation + SQLite + quotas justify a new crate vs. building on vfs?
 
-2. **MVP trait design?** Should we use the direct-operations trait (simpler) or the node/edge trait (better for SQLite)?
+2. **Streaming surface?** Should we add a streaming API (e.g., `open_read`/`open_write`) as an extension trait?
 
 3. **Streaming priority?** Should streaming be in MVP or deferred? Large file support affects use cases significantly.
 
@@ -477,21 +439,22 @@ let root: VfsPath = MemoryFS::new().into();
 root.join("file.txt")?.create_file()?.write_all(b"hello")?;
 ```
 
-**VFS Container:**
+**AnyFS Container:**
 ```rust
-use vfs::{FilesContainer, VRootFsBackend, MemoryBackend, VirtualPath};
+use anyfs::{MemoryBackend, VRootFsBackend};
+use anyfs_container::FilesContainer;
 
 // Physical (via strict-path)
-let container = FilesContainer::new(VRootFsBackend::new("/some/path")?);
+let mut container = FilesContainer::new(VRootFsBackend::new("/some/path")?);
 
 // Memory
-let container = FilesContainer::new(MemoryBackend::new());
+let mut container = FilesContainer::new(MemoryBackend::new());
 
 // Write
-container.write(&VirtualPath::new("/file.txt")?, b"hello")?;
+container.write("/file.txt", b"hello")?;
 ```
 
-**Difference:** VFS Container requires explicit path construction. More verbose, but path is guaranteed valid.
+**Difference:** AnyFS Container accepts ergonomic path inputs (`impl AsRef<Path>`) and validates/normalizes them into `VirtualPath` before calling the backend.
 
 ### Error Handling
 
@@ -504,19 +467,21 @@ match root.join("file.txt")?.open_file() {
 }
 ```
 
-**VFS Container:**
+**AnyFS Container:**
 ```rust
-match container.read(&path) {
+use anyfs_container::ContainerError;
+
+match container.read("/file.txt") {
     Ok(data) => { /* use data */ }
-    Err(VfsError::NotFound(p)) => { /* handle, includes path */ }
-    Err(VfsError::Capacity(e)) => { /* quota exceeded */ }
+    Err(ContainerError::NotFound(p)) => { /* handle, includes path */ }
+    Err(ContainerError::TotalSizeExceeded { used, limit }) => { /* quota exceeded */ }
     Err(e) => { /* other error */ }
 }
 ```
 
-**Difference:** VFS Container has capacity-specific errors. Error types include the path for context.
+**Difference:** AnyFS Container has capacity-specific errors, and error variants include the path for context.
 
 ---
 
 *Document version: 1.0*  
-*For technical details, see the [Design Document](../architecture/vfs-container-design.md)*
+*For technical details, see the [Design Overview](../architecture/design-overview.md)*

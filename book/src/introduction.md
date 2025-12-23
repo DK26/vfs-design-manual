@@ -31,16 +31,15 @@ Three crates:
 ## Quick Example
 
 ```rust
-use anyfs::{VfsBackend, MemoryBackend};
+use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-fn save(vfs: &mut impl VfsBackend) -> Result<(), VfsError> {
-    vfs.create_dir_all("/data")?;
-    vfs.write("/data/file.txt", b"hello")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut container = FilesContainer::new(MemoryBackend::new());
+    container.create_dir_all("/data")?;
+    container.write("/data/file.txt", b"hello")?;
     Ok(())
 }
-
-let mut mem = MemoryBackend::new();
-save(&mut mem)?;
 ```
 
 ## How to Use This Manual
@@ -54,7 +53,7 @@ This manual is organized into logical sections for different audiences:
 | [Design & Architecture](./architecture/design-overview.md) | Architects, Contributors | Technical deep-dive |
 | [Comparisons](./comparisons/positioning.md) | Evaluators | How we compare to alternatives |
 | [Implementation](./implementation/backend-guide.md) | Backend Implementers | Custom backend creation |
-| [Review & Decisions](./review/decisions.md) | Contributors | Design decisions and rationale |
+| [Review & Decisions](./review/decisions.md) | Contributors | Historical review record (graph-store era) |
 
 ## Status
 
@@ -67,9 +66,11 @@ This manual is organized into logical sections for different audiences:
 
 The following documents are authoritative sources of truth:
 
-1. **[AnyFS Container Design (RFC)](./architecture/vfs-container-design.md)** - Full technical specification
+1. **[Design Overview](./architecture/design-overview.md)** - Current architecture and API
 2. **[Architecture Decision Records](./architecture/adrs.md)** - Key design decisions
-3. **[Review Response & Decisions](./review/decisions.md)** - Final decisions after review
+3. **[Project Structure](./overview/project-structure.md)** - Crate layout and type contracts
+
+The `book/src/review/` documents are kept for historical context and describe an earlier (rejected) graph-store design.
 
 ---
 

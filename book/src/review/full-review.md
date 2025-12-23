@@ -1,4 +1,10 @@
-# VFS Container — Full Architecture & Design Review
+# AnyFS — Full Architecture & Design Review (Historical: Graph-Store Design)
+
+> This review covers an earlier (rejected) design iteration that modeled the backend as a transactional graph store (`NodeId`/`Edge`/chunks).
+>
+> The current AnyFS design is path-based (`VfsBackend` with 20 `std::fs`-aligned methods). For current decisions see:
+> - `book/src/architecture/adrs.md` (especially ADR-001)
+> - `book/src/architecture/design-overview.md`
 
 **Review Date:** 2025-12-22  
 **Project:** VFS Container  

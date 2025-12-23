@@ -38,6 +38,11 @@ let container = FilesContainer::new(
 
 // Full configuration with capacity limits
 let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
+    // Security posture: advanced features are opt-in (whitelist)
+    .symlinks()
+    .max_symlink_resolution(40)
+    .hard_links()
+    .permissions()
     .max_total_size(100 * 1024 * 1024)  // 100 MB
     .max_file_size(10 * 1024 * 1024)    // 10 MB
     .max_node_count(10_000)
@@ -45,7 +50,8 @@ let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
     .max_path_depth(64)
     .build()?;
 
-// Note: Symlinks and hard links are supported by all backends
+// Note: advanced features (symlinks/hard links/permissions) are disabled by default and must be explicitly enabled
+// When symlinks are disabled, operations reject paths that traverse symlinks (nofollow).
 ```
 
 ---
@@ -110,7 +116,7 @@ for entry in entries {
     println!("{}: {:?}", entry.name, entry.file_type);
 }
 
-// Read symlink target (without following)
+// Read symlink target (without following; requires symlinks enabled)
 let target = container.read_link("/path")?;   // → VirtualPath
 ```
 
@@ -127,10 +133,10 @@ container.write("/path", b"content")?;
 // Append to file
 container.append("/path", b"more")?;
 
-// Create symlink
+// Create symlink (requires symlinks enabled)
 container.symlink("/target", "/link")?;       // link points to target
 
-// Create hard link
+// Create hard link (requires hard links enabled)
 container.hard_link("/original", "/link")?;   // link shares content with original
 
 // Delete (std::fs aligned: separate file/dir methods)
@@ -138,7 +144,7 @@ container.remove_file("/path")?;              // file only
 container.remove_dir("/path")?;               // empty directory only
 container.remove_dir_all("/path")?;           // recursive
 
-// Set permissions
+// Set permissions (requires permissions enabled)
 container.set_permissions("/path", Permissions::new())?;
 
 // Rename/move
@@ -150,24 +156,9 @@ container.copy("/from", "/to")?;              // single file
 
 ---
 
-## Import / Export
+## Import / Export (Future)
 
-```rust
-use std::path::Path;
-
-// Import from host filesystem
-let stats = container.import_from_host(
-    Path::new("/real/path/to/folder"),
-    "/imported",
-)?;
-println!("Imported {} files, {} bytes", stats.files_imported, stats.bytes_imported);
-
-// Export to host filesystem
-let stats = container.export_to_host(
-    "/documents",
-    Path::new("/real/export/path"),
-)?;
-```
+Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.
 
 ---
 
@@ -216,8 +207,8 @@ match container.write("/path", &data) {
         println!("File too large: {} > {} bytes", size, limit);
     }
 
-    Err(ContainerError::FeatureNotEnabled(feature)) => {
-        println!("Feature not enabled: {}", feature);
+    Err(ContainerError::FeatureNotEnabled(name)) => {
+        println!("Feature not enabled: {}", name);
     }
 
     Err(e) => println!("Other error: {}", e),

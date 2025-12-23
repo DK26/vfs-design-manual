@@ -21,8 +21,21 @@
 # Design & Architecture
 
 - [Design Overview](./architecture/design-overview.md)
-- [AnyFS Container Design (RFC)](./architecture/vfs-container-design.md)
+- [Two-Layer Architecture](./architecture/two-layer-design.md)
 - [Architecture Decision Records](./architecture/adrs.md)
+
+---
+
+# Traits & APIs
+
+- [Vfs Trait (anyfs)](./traits/vfs-trait.md)
+- [FilesContainer (anyfs-container)](./traits/files-container.md)
+
+---
+
+# Guides
+
+- [Which Layer Should I Use?](./guides/which-layer.md)
 
 ---
 
@@ -37,6 +50,7 @@
 
 # Implementation
 
+- [Implementation Plan](./implementation/plan.md)
 - [Backend Implementer's Guide](./implementation/backend-guide.md)
 
 ---
@@ -51,5 +65,6 @@
 
 # Appendix
 
+- [Historical: Graph-Store Container RFC](./architecture/vfs-container-design.md)
 - [Historical: Pre-Container Design](./appendix/pre-container-design.md)
 - [Historical: Review Findings](./appendix/review-findings.md)

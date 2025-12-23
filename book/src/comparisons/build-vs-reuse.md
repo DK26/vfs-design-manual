@@ -1,294 +1,133 @@
-# VFS Container — Build vs. Reuse Analysis
+# AnyFS Container - Build vs. Reuse Analysis
 
-**Can your goals be achieved with existing crates?**
-
----
-
-## Your Core Requirements
-
-1. **Multi-tenant isolation** — Each tenant gets their own namespace
-2. **Portable single-file storage** — Move, copy, backup as one file
-3. **SQLite backing** — The "single file" is a SQLite database
-4. **Standard filesystem operations** — read, write, mkdir, etc.
+**Can your goals be achieved with existing crates, or does this project need to exist?**
 
 ---
 
-## What Exists in the Rust Ecosystem
+## Core Requirements
 
-### 1. `vfs` Crate (VFS Abstraction)
+1. **Tenant isolation** - each tenant gets an isolated namespace
+2. **Capacity limits** - per-tenant quotas and safe failure modes
+3. **Portable storage option** - a single-file backend (SQLite) for easy move/copy/backup
+4. **Filesystem semantics** - `std::fs`-aligned operations including opt-in symlinks and hard links
+5. **Containment by construction** - prevent path traversal and symlink escapes
 
-**What it does:** Provides a `FileSystem` trait with multiple backends (Physical, Memory, Overlay, Embedded).
+---
 
-**Does it have SQLite backend?** ❌ **NO**
+## What Already Exists
 
-**Could you add one?** Yes — implement `FileSystem` trait with SQLite storage.
+### `vfs` crate (Rust)
 
-```rust
-// vfs crate's trait (simplified)
-pub trait FileSystem: Send + Sync {
-    fn read_dir(&self, path: &str) -> VfsResult<Box<dyn Iterator<Item = String>>>;
-    fn create_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndWrite>>;
-    fn open_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndRead>>;
-    fn metadata(&self, path: &str) -> VfsResult<VfsMetadata>;
-    // ... ~15 methods total
-}
-```
+**What it is:** A general virtual filesystem abstraction with multiple backends.
 
-### 2. `rusqlite` (SQLite Bindings)
+**What it does well:**
+- Provides an abstraction layer similar to `std::fs`
+- Has multiple existing backends
 
-**What it does:** Ergonomic SQLite bindings for Rust.
+**What it does not provide (out of the box):**
+- SQLite-backed portable storage
+- Capacity limits / quota enforcement
+- Built-in tenant isolation patterns
+- Two-layer path handling (ergonomic user paths + validated internal paths)
 
-**Relevant features:**
-- Transactions ✅
-- Blob streaming ✅ (`feature = "blob"`)
-- In-memory databases ✅
+You *can* implement a SQLite backend for `vfs`, but you still need to design quotas + isolation yourself.
 
-**Does it provide filesystem abstraction?** ❌ **NO** — just raw SQLite access.
+### `rusqlite`
 
-### 3. `sqlite-vfs` / `sqlite-plugin` (SQLite VFS)
+**What it is:** SQLite bindings.
 
-**What it does:** Lets you implement SQLite's internal VFS — i.e., where SQLite stores its `.db` file.
+**What it provides:** DB access, transactions, blobs (with features), migrations.
 
-**Is this what you want?** ❌ **NO** — This is the opposite direction. You want to store filesystem data *inside* SQLite, not control where SQLite stores itself.
+**What it does not provide:** Filesystem semantics or path safety.
 
-### 4. `strict-path` (Safe Path Handling)
+### `strict-path`
 
-**What it does:** Type-safe path boundaries with `VirtualRoot`/`VirtualPath`.
+**What it is:** Path validation + containment primitives (`VirtualRoot`, `VirtualPath`).
 
-**Relevant features:**
-- Path traversal protection ✅
-- Built-in I/O operations ✅
-- Sandboxing ✅
+**What it provides:** The "can't escape the root" guarantee that the whole design depends on.
 
-**Does it provide SQLite storage?** ❌ **NO** — backs onto real filesystem.
+**What it does not provide:** Storage backends (SQLite, memory, etc.) or a filesystem API.
 
-### 5. SQLAR (SQLite Archive Format)
+### SQLAR (SQLite archive format)
 
-**What it is:** SQLite's official archive format — simple table with `(name, mode, mtime, sz, data)`.
+**What it is:** A standardized "files in a SQLite table" archive format.
 
-**Rust crate?** ❌ **NO production-ready crate** — would need to build yourself.
-
-**Limitations:** Flat namespace (paths as keys), no directory semantics, no transactions across operations.
+**Why it's not enough:** It's an archive format, not a filesystem API with quotas, isolation, and link semantics.
 
 ---
 
 ## Gap Analysis
 
-| Requirement | vfs | rusqlite | strict-path | SQLAR |
-|-------------|-----|----------|-------------|-------|
-| Filesystem API | ✅ | ❌ | ✅ | ❌ |
-| SQLite storage | ❌ | ✅ (raw) | ❌ | ✅ (schema) |
-| Single-file portable | ❌ | ✅ | ❌ | ✅ |
-| Multi-tenant | ❌ | Manual | ❌ | ❌ |
-| Path validation | ❌ | N/A | ✅ | ❌ |
-| Capacity limits | ❌ | ❌ | ❌ | ❌ |
+| Requirement | `vfs` crate | SQLAR | `rusqlite` | `strict-path` |
+|-------------|------------:|------:|-----------:|--------------:|
+| Filesystem API | Yes | No | No | No |
+| SQLite-backed portable storage | No | Yes (format) | Yes (raw) | No |
+| Tenant isolation model | No | No | Manual | No |
+| Capacity limits / quotas | No | No | Manual | No |
+| Path traversal safety | Backend-dependent | Manual | Manual | Yes |
+| Link semantics (symlink + hard link) | Backend-dependent | Not the focus | Manual | N/A |
 
-**The gap:** There is NO existing crate that provides:
-> "A filesystem API backed by SQLite with tenant isolation"
-
----
-
-## Your Options
-
-### Option A: Implement `vfs::FileSystem` for SQLite
-
-**Approach:** Create a `SqliteFS` that implements the `vfs` crate's `FileSystem` trait.
-
-```rust
-use vfs::{FileSystem, VfsResult, VfsMetadata};
-
-pub struct SqliteFS {
-    conn: rusqlite::Connection,
-}
-
-impl FileSystem for SqliteFS {
-    fn create_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndWrite + Send>> {
-        // Validate path (we must do this ourselves)
-        // Insert into nodes/edges tables
-        // Return a wrapper that writes to SQLite blob
-    }
-    // ... implement ~15 methods
-}
-```
-
-**Pros:**
-- Ecosystem compatibility — works with existing `vfs` code
-- Less API design work
-- Users familiar with `vfs` can adopt easily
-
-**Cons:**
-- Paths are `&str` — we must validate in every method
-- No built-in capacity limits — we implement ourselves
-- Streaming handles (`Box<dyn Read>`) add complexity for SQLite blobs
-- No transaction support across operations in `vfs` trait
-
-**Effort:** ~2-3 weeks
-
-### Option B: Build Our Own Thin Wrapper
-
-**Approach:** Create a minimal abstraction specifically for SQLite-backed storage.
-
-```rust
-pub struct FilesContainer {
-    conn: rusqlite::Connection,
-}
-
-impl FilesContainer {
-    pub fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    pub fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    pub fn mkdir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    // ... ~14 methods
-}
-```
-
-**Pros:**
-- Full control over API
-- Validated paths (`VirtualPath`) by design
-- Built-in capacity limits
-- Transactions naturally fit
-- Simpler (no streaming handles to wrap)
-
-**Cons:**
-- No `vfs` ecosystem compatibility
-- Users learn new API
-- More design work
-
-**Effort:** ~2-3 weeks (similar to Option A)
-
-### Option C: Minimal rusqlite Wrapper
-
-**Approach:** Just wrap rusqlite with basic filesystem helpers, no abstraction layer.
-
-```rust
-pub fn write_file(conn: &Connection, path: &str, data: &[u8]) -> Result<()> {
-    conn.execute("INSERT OR REPLACE INTO files (path, data) VALUES (?, ?)", params![path, data])
-}
-
-pub fn read_file(conn: &Connection, path: &str) -> Result<Vec<u8>> {
-    conn.query_row("SELECT data FROM files WHERE path = ?", params![path], |row| row.get(0))
-}
-```
-
-**Pros:**
-- Fastest to implement
-- Direct SQLite access when needed
-- No abstraction overhead
-
-**Cons:**
-- No type safety
-- No path validation
-- No capacity limits
-- Ad-hoc API, hard to maintain
-- Every user re-invents the wheel
-
-**Effort:** ~1 week
-
-### Option D: Hybrid — Our Abstraction + vfs Compatibility Layer
-
-**Approach:** Build our own `FilesContainer`, then optionally wrap it to implement `vfs::FileSystem`.
-
-```rust
-// Our core
-pub struct FilesContainer { ... }
-
-// vfs compatibility (optional feature)
-impl vfs::FileSystem for FilesContainerVfsAdapter { ... }
-```
-
-**Pros:**
-- Best of both worlds
-- Users can choose API style
-- Migration path for `vfs` users
-
-**Cons:**
-- More code to maintain
-- Two APIs to document
-
-**Effort:** ~3-4 weeks
+**Conclusion:** You can reuse key building blocks, but no existing crate composes into:
+> "A tenant-isolated filesystem API with quotas, backed by SQLite, with containment guarantees."
 
 ---
 
-## My Recommendation
+## Options
 
-### For Your Specific Goals:
+### Option A: Implement a SQLite backend for the `vfs` crate
 
-| Goal | Best Option |
-|------|-------------|
-| Multi-tenant isolation | **Option B** (own abstraction) |
-| Move SQLite file = move tenant | **Any** (this is just SQLite) |
-| Backup/replicate easily | **Any** (this is just SQLite) |
-| Capacity limits per tenant | **Option B** (built-in) |
-| Type-safe paths | **Option B** (VirtualPath) |
-| Ecosystem compatibility | **Option A or D** |
+**Pros**
+- Immediate ecosystem compatibility
+- Familiar trait surface area
 
-### Concrete Recommendation:
+**Cons**
+- Still need to build tenant isolation + quotas outside the trait
+- Path containment becomes backend/adapter responsibility
+- Streaming handle APIs can increase SQLite complexity
 
-**Go with Option B (Build Our Own) because:**
+### Option B: Current AnyFS architecture (recommended)
 
-1. **Your use case is specific** — tenant isolation + quotas + portability. The `vfs` crate isn't designed for this.
+**Approach:** Keep responsibilities separated into three crates:
+- `anyfs-traits`: `VfsBackend` + types, uses `&VirtualPath`
+- `anyfs`: feature-gated built-in backends (`MemoryBackend`, `VRootFsBackend`, `SqliteBackend`)
+- `anyfs-container`: `FilesContainer` wrapper (ergonomic `impl AsRef<Path>` + quotas)
 
-2. **SQLite backend doesn't exist anyway** — You're building something new regardless of abstraction choice.
+**Why this exists:** It makes containment a property of the type system and concentrates validation in one place:
+`FilesContainer` validates user paths once, then calls the backend with `&VirtualPath`.
 
-3. **Validated paths matter** — `VirtualPath` catches bugs at compile time, not runtime.
+### Option C: Stay on raw `rusqlite` (+ your own helpers)
 
-4. **Capacity limits are core to multi-tenant** — Building them in from the start is cleaner than bolting on.
+Fastest to prototype, but it becomes an ad-hoc filesystem without a stable contract, and quotas/isolation are easy to get wrong.
 
-5. **`vfs` compatibility can come later** — If there's demand, add adapter as Option D.
+### Option D: Add a compatibility adapter later (optional)
 
-### What We DO Reuse:
-
-| Crate | What We Use It For |
-|-------|-------------------|
-| `rusqlite` | All SQLite operations |
-| `strict-path` | Filesystem backend (MVP validation) |
-| `thiserror` | Error types |
-
-We're not building everything from scratch — we're building a **thin layer** on top of battle-tested crates.
+Implement AnyFS as designed, then (optionally) provide an adapter that implements `vfs` traits on top of `FilesContainer`.
 
 ---
 
-## Implementation Path
-
-```
-Week 1: Core types (VirtualPath, errors) + FS backend via strict-path
-Week 2: FilesContainer API + tests
-Week 3: SQLite backend (schema + implementation)
-Week 4: Capacity limits + polish
-```
-
-### Minimal Viable Product:
+## Minimal Example (per-tenant SQLite file)
 
 ```rust
-use vfs::{FilesContainer, SqliteBackend, VirtualPath};
+use anyfs::SqliteBackend;
+use anyfs_container::ContainerBuilder;
 
-// Create tenant storage
-let tenant_db = format!("tenants/{}.db", tenant_id);
-let container = FilesContainer::builder()
-    .backend(SqliteBackend::open_or_create(&tenant_db)?)
-    .max_total_size(100 * 1024 * 1024)  // 100 MB quota
+let tenant_db = "tenant_123.db";
+
+let mut container = ContainerBuilder::new(SqliteBackend::open_or_create(tenant_db)?)
+    .max_total_size(100 * 1024 * 1024) // 100 MiB per tenant
     .build()?;
 
-// Use standard filesystem operations
-container.mkdir(&VirtualPath::new("/documents")?)?;
-container.write(&VirtualPath::new("/documents/report.pdf")?, &pdf_bytes)?;
+container.create_dir_all("/documents")?;
+container.write("/documents/report.pdf", b"...")?;
 
-// Move tenant = move SQLite file
-std::fs::rename(&tenant_db, &new_location)?;
-
-// Backup tenant = copy SQLite file  
-std::fs::copy(&tenant_db, &backup_path)?;
+// Portability: moving/copying the tenant is just moving/copying the DB file.
+std::fs::copy(tenant_db, "tenant_123.backup.db")?;
 ```
 
 ---
 
-## Summary
+## Recommendation
 
-| Question | Answer |
-|----------|--------|
-| Can existing crates achieve your goals? | **Partially** — rusqlite + strict-path help, but no complete solution |
-| Does SQLite filesystem backend exist? | **No** — this is the gap |
-| Should you use `vfs` crate? | **Optional** — you can, but it doesn't add much for your use case |
-| Should you build from scratch? | **Thin layer only** — reuse rusqlite, strict-path |
-| What's the effort? | **~3-4 weeks** to working MVP |
+Build on existing primitives (`strict-path`, `rusqlite`, `thiserror`), but keep the AnyFS split (traits / backends / container). That combination is what makes the design both ergonomic and hard to misuse.
 
-**Bottom line:** You need to build something, but it's a thin layer on top of existing crates, not a ground-up implementation. The core insight is that your specific combination (SQLite + filesystem API + tenant isolation + quotas) doesn't exist, and composing existing crates doesn't get you there cleanly.
+For a concrete phased rollout, see `book/src/implementation/plan.md`.
