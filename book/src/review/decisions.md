@@ -2,14 +2,18 @@
 
 > This document is **historical** and reflects an earlier (rejected) design iteration: a graph-store `StorageBackend` with `NodeId`/`Edge`/`ChunkId` and mandatory transactions.
 >
-> The **current** AnyFS design is **path-based** (20 `std::fs`-aligned methods) with `VfsBackend` defined in `anyfs-traits`, as captured in:
-> - `book/src/architecture/adrs.md` (especially ADR-001)
+> The **current** AnyFS design (v0.4.0) uses a **two-layer architecture**:
+> - **Layer 1 (`anyfs`)**: Inode-based `Vfs` trait (13 methods) for backend implementers
+> - **Layer 2 (`anyfs-container`)**: Path-based `FilesContainer` with `std::fs`-like API for application developers
+>
+> See the authoritative design in:
 > - `book/src/architecture/design-overview.md`
-> - `book/src/overview/project-structure.md`
+> - `book/src/architecture/two-layer-design.md`
+> - `book/src/traits/vfs-trait.md`
 
-**Date:** 2025-12-22  
-**In Response To:** Full Architecture Review + SQLite Addendum  
-**Status:** Archived (superseded by ADR-001)
+**Date:** 2025-12-22
+**In Response To:** Full Architecture Review + SQLite Addendum
+**Status:** Archived (superseded by ADR-001, ADR-003)
 
 ---
 

@@ -22,7 +22,7 @@ A two-layer architecture separating storage from semantics:
 ├─────────────────────────────────────────────────────────────┤
 │  anyfs: Vfs trait (inode operations)                       │
 ├──────────────────┬──────────────────┬───────────────────────┤
-│  MemoryVfs       │  SqliteVfs       │  RealFsVfs            │
+│  MemoryVfs       │  SqliteVfs       │  VRootVfs            │
 └──────────────────┴──────────────────┴───────────────────────┘
 ```
 

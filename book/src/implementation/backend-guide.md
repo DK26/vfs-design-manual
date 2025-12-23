@@ -553,7 +553,7 @@ For reference implementations, see the built-in backends in `anyfs`:
 
 - **MemoryVfs** — HashMap-based, simplest implementation
 - **SqliteVfs** — SQLite database, production-ready
-- **RealFsVfs** — Host filesystem via `strict-path`
+- **VRootVfs** — Host filesystem via `strict-path`
 
 ---
 

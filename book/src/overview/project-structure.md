@@ -29,7 +29,7 @@
 │  • No path logic — raw inode operations                     │
 │  • Target: Backend implementers                             │
 ├──────────────────┬──────────────────┬───────────────────────┤
-│  MemoryVfs       │  SqliteVfs       │  RealFsVfs            │
+│  MemoryVfs       │  SqliteVfs       │  VRootVfs            │
 │  (HashMap)       │  (.db file)      │  (strict-path)        │
 └──────────────────┴──────────────────┴───────────────────────┘
 ```
@@ -67,7 +67,7 @@ anyfs/
 │   ├── sqlite/            # [feature: sqlite] SqliteVfs
 │   │   ├── mod.rs
 │   │   └── schema.rs
-│   └── realfs/            # [feature: realfs] RealFsVfs
+│   └── vrootfs/            # [feature: vrootfs] VRootVfs
 │       └── mod.rs
 │
 └── tests/
@@ -85,8 +85,8 @@ version = "0.1.0"
 default = ["memory"]
 memory = []
 sqlite = ["rusqlite"]
-realfs = ["strict-path"]
-full = ["memory", "sqlite", "realfs"]
+vrootfs = ["strict-path"]
+full = ["memory", "sqlite", "vrootfs"]
 
 [dependencies]
 thiserror = "1"
@@ -267,24 +267,24 @@ impl Vfs for SqliteVfs {
 }
 ```
 
-### RealFsVfs (feature: realfs)
+### VRootVfs (feature: vrootfs)
 
 ```rust
 use strict_path::VirtualRoot;
 
-pub struct RealFsVfs {
+pub struct VRootVfs {
     vroot: VirtualRoot,
     inode_paths: HashMap<InodeId, PathBuf>,
     path_inodes: HashMap<PathBuf, InodeId>,
     next_id: u64,
 }
 
-impl RealFsVfs {
+impl VRootVfs {
     pub fn new(root_dir: impl AsRef<Path>) -> Result<Self, VfsError>;
     pub fn open(root_dir: impl AsRef<Path>) -> Result<Self, VfsError>;
 }
 
-impl Vfs for RealFsVfs {
+impl Vfs for VRootVfs {
     // Maps inode operations to real filesystem via strict-path
 }
 ```

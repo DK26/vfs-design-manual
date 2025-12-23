@@ -407,8 +407,8 @@ Backends are **feature-gated**:
 default = ["memory"]
 memory = []
 sqlite = ["rusqlite"]
-realfs = ["strict-path"]
-full = ["memory", "sqlite", "realfs"]
+vrootfs = ["strict-path"]
+full = ["memory", "sqlite", "vrootfs"]
 ```
 
 ### Consequences

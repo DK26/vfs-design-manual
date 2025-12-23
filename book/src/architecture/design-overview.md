@@ -76,7 +76,7 @@ A two-layer virtual filesystem ecosystem for Rust:
 │  • No path logic — raw inode operations                     │
 │  • Target: Backend implementers                             │
 ├──────────────────┬──────────────────┬───────────────────────┤
-│  MemoryVfs       │  SqliteVfs       │  RealFsVfs            │
+│  MemoryVfs       │  SqliteVfs       │  VRootVfs            │
 │  (HashMap)       │  (.db file)      │  (strict-path)        │
 └──────────────────┴──────────────────┴───────────────────────┘
 ```
@@ -275,7 +275,7 @@ anyfs/
 │   ├── error.rs           # VfsError
 │   ├── memory/            # [feature: memory] MemoryVfs (default)
 │   ├── sqlite/            # [feature: sqlite] SqliteVfs
-│   └── realfs/            # [feature: realfs] RealFsVfs
+│   └── vrootfs/            # [feature: vrootfs] VRootVfs
 │
 └── tests/
     └── conformance.rs     # Tests all backends identically
@@ -300,8 +300,8 @@ optional = true
 default = ["memory"]
 memory = []
 sqlite = ["rusqlite"]
-realfs = ["strict-path"]
-full = ["memory", "sqlite", "realfs"]
+vrootfs = ["strict-path"]
+full = ["memory", "sqlite", "vrootfs"]
 ```
 
 ---
@@ -622,14 +622,14 @@ CREATE TABLE content (
 INSERT INTO inodes (id, kind, mode, nlink) VALUES (0, 'directory', 493, 2);
 ```
 
-### 5.3 RealFsVfs
+### 5.3 VRootVfs
 
 Maps inodes to real filesystem using `strict-path` for containment.
 
 ```rust
 use strict_path::VirtualRoot;
 
-pub struct RealFsVfs {
+pub struct VRootVfs {
     vroot: VirtualRoot,
     // Maps InodeId to path within vroot
     inode_paths: HashMap<InodeId, PathBuf>,
@@ -637,7 +637,7 @@ pub struct RealFsVfs {
     next_id: u64,
 }
 
-impl RealFsVfs {
+impl VRootVfs {
     pub fn new(root_dir: impl AsRef<Path>) -> Result<Self, VfsError>;
     pub fn open(root_dir: impl AsRef<Path>) -> Result<Self, VfsError>;
 }
@@ -767,10 +767,10 @@ windows.write("\\Users\\Admin\\file.txt", b"data")?;
 - [ ] `ContainerBuilder`
 - [ ] Limit enforcement
 
-### Phase 4: RealFsVfs
+### Phase 4: VRootVfs
 
 - [ ] Integrate `strict-path`
-- [ ] Implement `RealFsVfs`
+- [ ] Implement `VRootVfs`
 - [ ] Conformance tests
 
 ### Phase 5: Polish

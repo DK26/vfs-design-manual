@@ -77,7 +77,7 @@ This is the **AnyFS Ecosystem** — a **two-layer architecture** for virtual fil
 │                                                             │
 ├──────────────────┬──────────────────┬───────────────────────┤
 │                  │                  │                       │
-│   MemoryVfs      │   SqliteVfs      │   RealFsVfs           │
+│   MemoryVfs      │   SqliteVfs      │   VRootVfs           │
 │   ══════════     │   ═════════      │   ═════════           │
 │   HashMap        │   .db file       │   strict-path         │
 │                  │                  │                       │
@@ -96,7 +96,7 @@ This repository contains documentation from multiple design iterations. **IGNORE
 - **Low-level trait:** `Vfs` — inode-based operations (no paths!)
 - **High-level API:** `FilesContainer<V, S>` — `std::fs`-like (paths)
 - **Semantics:** Pluggable via `FsSemantics` trait
-- **Backends:** `MemoryVfs`, `SqliteVfs`, `RealFsVfs`
+- **Backends:** `MemoryVfs`, `SqliteVfs`, `VRootVfs`
 
 ### ❌ OLD DESIGN (ignore this)
 
@@ -314,7 +314,7 @@ pub trait FsSemantics: Send + Sync {
 - Portable — copy file to move container
 - Production-ready, crash-safe
 
-### 3. RealFsVfs
+### 3. VRootVfs
 
 - Uses `strict-path::VirtualRoot` for containment
 - A real directory on disk acts as the virtual root
@@ -439,7 +439,7 @@ When a user calls `container.write("/data/file.txt", b"hello")`:
 | Which API matches std::fs? | `FilesContainer` methods |
 | Where is path resolution? | `FsSemantics` trait, used by `FilesContainer` |
 | Where are capacity limits? | `FilesContainer` only |
-| What implements Vfs? | `MemoryVfs`, `SqliteVfs`, `RealFsVfs` |
+| What implements Vfs? | `MemoryVfs`, `SqliteVfs`, `VRootVfs` |
 | What semantics are available? | `LinuxSemantics`, `WindowsSemantics`, `SimpleSemantics` |
 
 ---
@@ -457,7 +457,7 @@ anyfs/                         # Low-level: Vfs trait + backends
     ├── error.rs               # VfsError
     ├── memory/                # MemoryVfs backend
     ├── sqlite/                # SqliteVfs backend
-    └── realfs/                # RealFsVfs backend
+    └── vrootfs/                # VRootVfs backend
 
 anyfs-container/               # High-level: std::fs-like API
 ├── Cargo.toml

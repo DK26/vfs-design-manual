@@ -75,74 +75,84 @@ pub trait Access: Send + Sync {
 - Layer system for middleware (retry, logging, etc.)
 - 50+ backend implementations
 
-### AnyFS: `VfsBackend` Trait
+### AnyFS: Two-Layer Architecture
+
+AnyFS uses a **two-layer design** separating storage from path semantics:
+
+**Layer 1: `Vfs` Trait (anyfs)** — Inode-based, for backend implementers:
 
 ```rust
-use anyfs_traits::VirtualPath;
+pub trait Vfs: Send {
+    // Inode lifecycle
+    fn create_inode(&mut self, kind: InodeKind, mode: u32) -> Result<InodeId, VfsError>;
+    fn get_inode(&self, id: InodeId) -> Result<InodeData, VfsError>;
+    fn update_inode(&mut self, id: InodeId, data: InodeData) -> Result<(), VfsError>;
+    fn delete_inode(&mut self, id: InodeId) -> Result<(), VfsError>;
 
-pub trait VfsBackend: Send {
-    // Read operations
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+    // Directory operations
+    fn link(&mut self, parent: InodeId, name: &str, child: InodeId) -> Result<(), VfsError>;
+    fn unlink(&mut self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn lookup(&self, parent: InodeId, name: &str) -> Result<InodeId, VfsError>;
+    fn readdir(&self, dir: InodeId) -> Result<Vec<(String, InodeId)>, VfsError>;
 
-    // Write operations
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    // Content I/O
+    fn read(&self, id: InodeId, offset: u64, buf: &mut [u8]) -> Result<usize, VfsError>;
+    fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError>;
+    fn truncate(&mut self, id: InodeId, size: u64) -> Result<(), VfsError>;
 
-    // Links
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    // Sync & root
+    fn sync(&mut self) -> Result<(), VfsError>;
+    fn root(&self) -> InodeId;
+}
+```
 
-    // Permissions
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
+**Layer 2: `FilesContainer` (anyfs-container)** — Path-based, for application developers:
+
+```rust
+impl<V: Vfs, S: FsSemantics> FilesContainer<V, S> {
+    pub fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, ContainerError>;
+    pub fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), ContainerError>;
+    pub fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), ContainerError>;
+    // ... std::fs-aligned methods
 }
 ```
 
 **Characteristics:**
-- Backend receives validated `&VirtualPath` (constructed once in `FilesContainer`)
+- **Vfs trait**: Inode-based (13 methods), no path handling
+- **FilesContainer**: Path-based API with pluggable `FsSemantics`
 - Sync-first API (async can be added later)
-- No streaming handles in the trait (use `read_range` for partial reads)
-- Method names align with `std::fs`
-- `anyfs-container` provides ergonomic `impl AsRef<Path>` methods and enforces quotas/limits
+- Capacity limits enforced at container layer
+- Method names in `FilesContainer` align with `std::fs`
 ---
 
 ## 2. What Makes AnyFS Container Better
 
-### 2.1 Validated Path Types
+### 2.1 Separation of Concerns (Two-Layer Architecture)
 
 | Aspect | vfs | AnyFS Container |
 |--------|-----|---------------|
-| Path type | `&str` | `VirtualPath` |
-| Validation | Backend's responsibility | Pre-validated by type |
-| Normalization | Backend's responsibility | Guaranteed by constructor |
-| Traversal safety | Backend must check | Structurally prevented |
+| Path handling | Backend's responsibility | Container layer (`FsSemantics`) |
+| Storage logic | Mixed with path handling | Isolated in `Vfs` trait (inode-based) |
+| Validation | Backend must check | Container validates paths |
+| Traversal safety | Backend must check | Structurally prevented by container |
 
-**Impact:** Backend implementers cannot forget path validation. Invalid paths are caught at construction, not at use.
+**Impact:** Backend implementers focus purely on storage. Path parsing, validation, and symlink resolution happen in the container layer.
 
 ```rust
-// vfs: Backend must validate
+// vfs: Backend must handle paths + storage
 fn create_file(&self, path: &str) -> VfsResult<...> {
-    // Backend must check for "..", null bytes, etc.
-    // Easy to forget or do incorrectly
+    // Backend must validate path, normalize, AND handle storage
 }
 
-// AnyFS Container: Pre-validated
-fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
-    // VirtualPath is guaranteed normalized and safe
-    // Backend just uses it
+// AnyFS: Separation of concerns
+// Backend (Vfs): Just storage with inodes
+fn write(&mut self, id: InodeId, offset: u64, data: &[u8]) -> Result<usize, VfsError> {
+    // No path handling - just write to inode
+}
+
+// Container (FilesContainer): Handles paths
+fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), ContainerError> {
+    // Validates path, resolves to inode, delegates to Vfs
 }
 ```
 
@@ -162,9 +172,9 @@ fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
 
 AnyFS ships built-in backends behind Cargo features to keep dependencies minimal:
 
-- `memory` (default)
-- `sqlite` (enables `rusqlite`)
-- `vrootfs` (enables the host filesystem backend via `strict-path`)
+- `memory` (default) — `MemoryVfs`
+- `sqlite` (enables `rusqlite`) — `SqliteVfs`
+- `vrootfs` (enables `strict-path`) — `VRootVfs`
 
 ```toml
 [dependencies]
@@ -172,7 +182,7 @@ anyfs = { version = "0.1", features = ["sqlite", "vrootfs"] }
 anyfs-container = "0.1"
 ```
 
-**Impact:** Users pay compile-time and dependency cost only for the backends they use, while the `VfsBackend` API stays consistent.
+**Impact:** Users pay compile-time and dependency cost only for the backends they use, while the `Vfs` trait API stays consistent.
 ### 2.4 SQLite as First-Class Backend
 
 | Aspect | vfs | AnyFS Container |
@@ -260,9 +270,9 @@ anyfs-container = "0.1"
 | Solution | Backend trait methods |
 |----------|----------------------|
 | vfs | ~15 |
-| AnyFS (`VfsBackend`) | 20 |
+| AnyFS (`Vfs` trait) | 13 |
 
-**Analysis:** AnyFS exposes more methods to cover links and permissions, but method count alone is not a differentiator — semantics and safety boundaries matter more.
+**Analysis:** AnyFS's `Vfs` trait is simpler (inode-based operations). Path-based methods like `create_dir_all` are in `FilesContainer`, not the backend trait. The two-layer design keeps each layer focused.
 ### 4.2 Core Functionality Coverage
 
 Both vfs and AnyFS Container support:
@@ -359,16 +369,16 @@ Both vfs and AnyFS Container support:
 
 | Aspect | vfs | OpenDAL | AnyFS Container |
 |--------|-----|---------|---------------|
-| **Primary model** | Filesystem ops | Object storage | Filesystem + isolation |
-| **Backend complexity** | Must handle paths + storage | Complex (cloud APIs) | Implements filesystem semantics; container adds limits |
-| **Path validation** | Backend | Backend | Core (VirtualPath type) |
+| **Primary model** | Filesystem ops | Object storage | Two-layer (inode storage + path container) |
+| **Backend complexity** | Must handle paths + storage | Complex (cloud APIs) | Simple (inode ops only); container handles paths |
+| **Path handling** | Backend | Backend | Container layer (`FsSemantics`) |
 | **Transactions** | No | No | Internal (SQLite backend), not in trait |
-| **Capacity limits** | No | No | Yes (core) |
-| **Feature toggling** | No | No | Cargo features for built-in backends + FilesContainer feature whitelist (default-deny) |
-| **Symlink handling** | Backend | N/A | Opt-in: disabled by default; loop detection + hop limit when enabled |
-| **Primary backend** | PhysicalFS | Cloud services | SQLite |
+| **Capacity limits** | No | No | Yes (container layer) |
+| **Feature toggling** | No | No | Cargo features for backends + semantic choice |
+| **Symlink handling** | Backend | N/A | Container resolves; backend stores as `InodeKind::Symlink` |
+| **Primary backend** | PhysicalFS | Cloud services | SQLite (`SqliteVfs`) |
 | **Namespace** | Hierarchical | Flat (prefix-based) | Hierarchical |
-| **File handles** | Streaming | Streaming | Bulk (use `read_range` for partial reads) |
+| **Backend API** | Path-based | Path-based | Inode-based (`InodeId`) |
 | **Async** | Optional | Primary | Sync only (MVP) |
 
 ---
@@ -441,20 +451,26 @@ root.join("file.txt")?.create_file()?.write_all(b"hello")?;
 
 **AnyFS Container:**
 ```rust
-use anyfs::{MemoryBackend, VRootFsBackend};
-use anyfs_container::FilesContainer;
+use anyfs::{MemoryVfs, VRootVfs};
+use anyfs_container::{FilesContainer, LinuxSemantics};
 
 // Physical (via strict-path)
-let mut container = FilesContainer::new(VRootFsBackend::new("/some/path")?);
+let mut container = FilesContainer::new(
+    VRootVfs::new("/some/path")?,
+    LinuxSemantics::new(),
+);
 
 // Memory
-let mut container = FilesContainer::new(MemoryBackend::new());
+let mut container = FilesContainer::new(
+    MemoryVfs::new(),
+    LinuxSemantics::new(),
+);
 
 // Write
 container.write("/file.txt", b"hello")?;
 ```
 
-**Difference:** AnyFS Container accepts ergonomic path inputs (`impl AsRef<Path>`) and validates/normalizes them into `VirtualPath` before calling the backend.
+**Difference:** AnyFS Container separates storage (`Vfs`) from path semantics (`FsSemantics`). The container validates paths and resolves them to inode operations.
 
 ### Error Handling
 

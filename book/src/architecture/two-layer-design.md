@@ -35,7 +35,7 @@ AnyFS separates concerns into two distinct layers:
 │  • No path logic — raw inode operations                     │
 │  • Target: Backend implementers                             │
 ├──────────────────┬──────────────────┬───────────────────────┤
-│  MemoryVfs       │  SqliteVfs       │  RealFsVfs            │
+│  MemoryVfs       │  SqliteVfs       │  VRootVfs            │
 │  (HashMap)       │  (.db file)      │  (strict-path)        │
 └──────────────────┴──────────────────┴───────────────────────┘
 ```
