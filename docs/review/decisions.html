@@ -1,0 +1,691 @@
+<!DOCTYPE HTML>
+<html lang="en" class="rust sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Review Response &amp; Decisions - AnyFS Ecosystem Manual</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "rust";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex-c8daf1e9.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-9ccf518c.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('rust')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">AnyFS Ecosystem Manual</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/DK26/vfs-design-manual" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/DK26/vfs-design-manual/edit/main/book/src/review/decisions.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="anyfs--review-response--decisions-historical-graph-store-design"><a class="header" href="#anyfs--review-response--decisions-historical-graph-store-design">AnyFS — Review Response &amp; Decisions (Historical: Graph-Store Design)</a></h1>
+<blockquote>
+<p>This document is <strong>historical</strong> and reflects an earlier (rejected) design iteration: a graph-store <code>StorageBackend</code> with <code>NodeId</code>/<code>Edge</code>/<code>ChunkId</code> and mandatory transactions.</p>
+<p>This file also contains notes from a later inode-based proposal. Both are superseded.</p>
+<p>The <strong>current</strong> AnyFS design is path-based and uses three crates:</p>
+<ul>
+<li><code>anyfs-traits</code>: <code>VfsBackend</code> trait (20 <code>std::fs</code>-aligned methods) using <code>&amp;VirtualPath</code></li>
+<li><code>anyfs</code>: built-in backends (feature-gated) and re-exports</li>
+<li><code>anyfs-container</code>: <code>FilesContainer&lt;B&gt;</code> policy layer (limits + least-privilege feature whitelist)</li>
+</ul>
+<p>See the authoritative design in:</p>
+<ul>
+<li><code>book/src/architecture/design-overview.md</code></li>
+<li><code>book/src/architecture/adrs.md</code></li>
+<li><code>book/src/traits/vfs-trait.md</code></li>
+</ul>
+</blockquote>
+<p><strong>Date:</strong> 2025-12-22
+<strong>In Response To:</strong> Full Architecture Review + SQLite Addendum
+<strong>Status:</strong> Archived (superseded by ADR-001, ADR-003)</p>
+<hr>
+<h2 id="executive-summary"><a class="header" href="#executive-summary">Executive Summary</a></h2>
+<p>The reviews identified three critical issues and several high/medium priority items. This document records our decisions and the rationale for each.</p>
+<p><strong>Key Decisions Made:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Issue</th><th>Decision</th></tr>
+</thead>
+<tbody>
+<tr><td>CF-1: Competing trait designs</td><td><strong>Graph-store (NodeId/Edge) is authoritative</strong></td></tr>
+<tr><td>CF-2: FsBackend ambiguity</td><td><strong>Remove from MVP scope</strong></td></tr>
+<tr><td>CF-3: Rename cycle prevention</td><td><strong>Ancestry check required, spec added</strong></td></tr>
+<tr><td>HP-1: Large file I/O</td><td><strong>Downgrade AI/ML positioning until streaming exists</strong></td></tr>
+<tr><td>HP-2: Concurrency</td><td><strong>Single-threaded by design, external sync required</strong></td></tr>
+<tr><td>HP-3: Quota with hard links</td><td><strong>Logical bytes per node (not physical/shared)</strong></td></tr>
+<tr><td>SQLite vs Binary</td><td><strong>SQLite-first, schema is versioned contract</strong></td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="critical-findings--responses"><a class="header" href="#critical-findings--responses">Critical Findings — Responses</a></h2>
+<h3 id="cf-1-competing-backend-trait-designs"><a class="header" href="#cf-1-competing-backend-trait-designs">CF-1: Competing Backend Trait Designs</a></h3>
+<p><strong>Finding:</strong> Documents show two different trait designs (graph-store vs direct path ops).</p>
+<p><strong>Decision:</strong> The <strong>graph-store design (NodeId/Edge/Chunk)</strong> is authoritative.</p>
+<p><strong>Rationale:</strong></p>
+<ul>
+<li>Graph model naturally supports hard links, rename atomicity, and reference counting</li>
+<li>SQLite backend maps directly to tables</li>
+<li>Direct path ops would require each backend to re-implement path resolution</li>
+<li>The ADRs already established this; the MVP doc was exploratory</li>
+</ul>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Document 08 (Technical Comparison) MVP trait section will be marked as “exploratory/superseded”</li>
+<li><input disabled="" type="checkbox" checked=""> README will state: “ADRs and anyfs-container-design.md are authoritative”</li>
+<li><input disabled="" type="checkbox" checked=""> Single trait definition in design doc is the source of truth</li>
+</ul>
+<p><strong>Authoritative Trait (for the record):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait StorageBackend: Send {
+    fn transact&lt;F, T&gt;(&amp;mut self, f: F) -&gt; Result&lt;T, BackendError&gt;
+    where F: FnOnce(&amp;mut dyn Transaction) -&gt; Result&lt;T, BackendError&gt;;
+    
+    fn snapshot(&amp;self) -&gt; Box&lt;dyn Snapshot + '_&gt;;
+}
+
+pub trait Snapshot: Send {
+    fn get_node(&amp;self, id: NodeId) -&gt; Result&lt;Option&lt;NodeRecord&gt;, BackendError&gt;;
+    fn get_edge(&amp;self, parent: NodeId, name: &amp;Name) -&gt; Result&lt;Option&lt;NodeId&gt;, BackendError&gt;;
+    fn list_edges(&amp;self, parent: NodeId) -&gt; Result&lt;Vec&lt;Edge&gt;, BackendError&gt;;
+    fn read_chunk(&amp;self, id: ChunkId) -&gt; Result&lt;Option&lt;Vec&lt;u8&gt;&gt;, BackendError&gt;;
+}
+
+pub trait Transaction: Snapshot {
+    fn insert_node(&amp;mut self, node: &amp;NodeRecord) -&gt; Result&lt;(), BackendError&gt;;
+    fn update_node(&amp;mut self, id: NodeId, node: &amp;NodeRecord) -&gt; Result&lt;(), BackendError&gt;;
+    fn delete_node(&amp;mut self, id: NodeId) -&gt; Result&lt;(), BackendError&gt;;
+    fn insert_edge(&amp;mut self, edge: &amp;Edge) -&gt; Result&lt;(), BackendError&gt;;
+    fn delete_edge(&amp;mut self, parent: NodeId, name: &amp;Name) -&gt; Result&lt;(), BackendError&gt;;
+    fn write_chunk(&amp;mut self, id: ChunkId, data: &amp;[u8]) -&gt; Result&lt;(), BackendError&gt;;
+    fn delete_content(&amp;mut self, id: ContentId) -&gt; Result&lt;(), BackendError&gt;;
+    fn next_node_id(&amp;mut self) -&gt; Result&lt;NodeId, BackendError&gt;;
+    fn next_content_id(&amp;mut self) -&gt; Result&lt;ContentId, BackendError&gt;;
+}
+<span class="boring">}</span></code></pre>
+<hr>
+<h3 id="cf-2-fsbackend-ambiguity"><a class="header" href="#cf-2-fsbackend-ambiguity">CF-2: FsBackend Ambiguity</a></h3>
+<p><strong>Finding:</strong> How does a path-based host filesystem satisfy a NodeId/Edge graph API?</p>
+<p><strong>Decision:</strong> <strong>Remove FsBackend from MVP scope.</strong></p>
+<p><strong>Rationale:</strong></p>
+<ul>
+<li>The graph-store trait requires NodeId persistence across restarts</li>
+<li>A true “adapter” over host FS would need a sidecar index (defeating simplicity)</li>
+<li>A “graph-store-on-FS” is just a worse SQLite (files as records)</li>
+<li>MVP focus should be: prove the abstraction with SQLite + Memory</li>
+<li>FsBackend can be added post-MVP if there’s demand, with clear semantics</li>
+</ul>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Remove <code>vfs-fs</code> from MVP crate structure</li>
+<li><input disabled="" type="checkbox" checked=""> Update implementation plan to: SQLite + Memory only</li>
+<li><input disabled="" type="checkbox" checked=""> Add “Future: FsBackend” section explaining the complexity</li>
+</ul>
+<p><strong>MVP Crate Structure (revised):</strong></p>
+<pre><code>anyfs-container/
+├── anyfs/       # Traits, types (StorageBackend, NodeId, VirtualPath)
+├── vfs-sqlite/     # SqliteBackend implementation
+├── vfs-memory/     # MemoryBackend implementation
+└── vfs/            # FilesContainer + builder (batteries included)
+</code></pre>
+<p><strong>Note on <code>strict-path</code>:</strong> We can still use <code>strict-path</code> for import/export operations (copying files from/to host filesystem), just not as a backend.</p>
+<hr>
+<h3 id="cf-3-directory-rename-cycle-prevention"><a class="header" href="#cf-3-directory-rename-cycle-prevention">CF-3: Directory Rename Cycle Prevention</a></h3>
+<p><strong>Finding:</strong> Renaming <code>/a</code> → <code>/a/b/a</code> would create a cycle. This must be prevented.</p>
+<p><strong>Decision:</strong> Add <strong>ancestry check</strong> to rename operation.</p>
+<p><strong>Specification:</strong></p>
+<pre><code>INVARIANT: The directory graph is a tree rooted at NodeId(1).
+           (No node may be its own ancestor.)
+
+RENAME(source, dest):
+  1. Resolve source to source_node_id
+  2. Resolve dest parent to dest_parent_id
+  3. IF source is a directory:
+       Walk ancestors of dest_parent_id up to root
+       IF source_node_id is found in ancestor chain:
+         RETURN Err(VfsError::WouldCreateCycle)
+  4. Proceed with rename (delete old edge, insert new edge)
+</code></pre>
+<p><strong>Error type:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum VfsError {
+    // ... existing variants ...
+    
+    /// Rename would create a directory cycle
+    WouldCreateCycle { source: VirtualPath, dest: VirtualPath },
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Conformance tests required:</strong></p>
+<ul>
+<li><code>rename_dir_into_own_subtree_fails</code></li>
+<li><code>rename_dir_into_deeply_nested_subtree_fails</code></li>
+<li><code>rename_dir_to_sibling_succeeds</code></li>
+<li><code>rename_file_over_existing_file</code> (decide: overwrite or error?)</li>
+</ul>
+<p><strong>Decision on rename-over-existing:</strong></p>
+<ul>
+<li>File over file: <strong>Overwrite</strong> (like POSIX <code>rename</code>)</li>
+<li>Dir over empty dir: <strong>Overwrite</strong> (like POSIX)</li>
+<li>Dir over non-empty dir: <strong>Error</strong> (DirectoryNotEmpty)</li>
+<li>File over dir or dir over file: <strong>Error</strong> (type mismatch)</li>
+</ul>
+<hr>
+<h2 id="high-priority-findings--responses"><a class="header" href="#high-priority-findings--responses">High Priority Findings — Responses</a></h2>
+<h3 id="hp-1-large-file-io-vs-aiml-positioning"><a class="header" href="#hp-1-large-file-io-vs-aiml-positioning">HP-1: Large File I/O vs AI/ML Positioning</a></h3>
+<p><strong>Finding:</strong> Executive summary cites AI/ML use cases, but API is bulk bytes only.</p>
+<p><strong>Decision:</strong> <strong>Downgrade AI/ML positioning</strong> in marketing docs until streaming exists.</p>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Remove “AI/ML pipelines” from executive summary primary use cases</li>
+<li><input disabled="" type="checkbox" checked=""> Add to “Future Considerations”: streaming API for large files</li>
+<li><input disabled="" type="checkbox" checked=""> Keep <code>read_range()</code> in MVP (partial reads are useful)</li>
+<li><input disabled="" type="checkbox" checked=""> Note that <code>rusqlite</code> blob feature enables future streaming without schema change</li>
+</ul>
+<p><strong>Revised primary use cases:</strong></p>
+<ul>
+<li>Multi-tenant SaaS with per-tenant file storage</li>
+<li>Desktop applications with portable user data</li>
+<li>Testing with deterministic filesystem state</li>
+<li>Embedded systems with portable storage</li>
+</ul>
+<hr>
+<h3 id="hp-2-concurrency-model"><a class="header" href="#hp-2-concurrency-model">HP-2: Concurrency Model</a></h3>
+<p><strong>Finding:</strong> Need explicit contract for concurrent access.</p>
+<p><strong>Decision:</strong> <strong>Single-threaded by design; external synchronization required.</strong></p>
+<p><strong>Specification:</strong></p>
+<pre><code>CONCURRENCY CONTRACT:
+
+1. FilesContainer is NOT thread-safe by itself.
+   - All methods take &amp;self or &amp;mut self
+   - &amp;mut self methods require exclusive access
+
+2. For multi-threaded use:
+   - Wrap in Arc&lt;Mutex&lt;FilesContainer&lt;B&gt;&gt;&gt; or similar
+   - Or use a connection pool pattern (one container per thread)
+
+3. Backend-level concurrency:
+   - SQLite has internal locking (safe for multi-process read)
+   - Memory backend has no internal locking
+   - Container API still requires coherent access patterns
+
+4. NOT SUPPORTED in v1:
+   - Concurrent writers to the same container
+   - Multi-process write access (SQLite limitation anyway)
+</code></pre>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Add “Concurrency” section to design doc</li>
+<li><input disabled="" type="checkbox" checked=""> Add example of <code>Arc&lt;Mutex&lt;_&gt;&gt;</code> pattern to getting started guide</li>
+<li><input disabled="" type="checkbox" checked=""> Document SQLite WAL mode as recommended default</li>
+</ul>
+<hr>
+<h3 id="hp-3-quota-accounting-with-hard-links"><a class="header" href="#hp-3-quota-accounting-with-hard-links">HP-3: Quota Accounting with Hard Links</a></h3>
+<p><strong>Finding:</strong> How is <code>total_size</code> computed when nodes share content via hard links?</p>
+<p><strong>Decision:</strong> <strong>Logical bytes per node</strong> (simpler, more predictable for quotas).</p>
+<p><strong>Specification:</strong></p>
+<pre><code>QUOTA ACCOUNTING RULES:
+
+1. total_size = SUM of (size field) for all file nodes
+   - Each file node has its own size, even if content is shared
+   - This is "logical size", not "physical storage"
+
+2. Hard link behavior:
+   - Creating hard link: new node created with same content_id
+   - New node has its own size field (equal to original)
+   - total_size INCREASES (counts both nodes)
+   - This is intentional: quotas should reflect "apparent" usage
+
+3. Delete behavior:
+   - Deleting a file node: total_size DECREASES by node's size
+   - Content deletion: deferred until no nodes reference content_id
+   - Reference counting via link_count in NodeMetadata
+
+4. Copy behavior:
+   - Copy creates new node with NEW content_id
+   - Content is duplicated (no implicit sharing)
+   - total_size INCREASES by copied size
+
+5. Rationale:
+   - Predictable for users ("I have 10 files of 1MB each = 10MB used")
+   - Avoids "I deleted a file but quota didn't change" confusion
+   - Hard links are opt-in and advanced; users opting in understand sharing
+</code></pre>
+<p><strong>Alternative considered:</strong> Physical bytes (deduplicated). Rejected because:</p>
+<ul>
+<li>Complicates quota enforcement (when does space free up?)</li>
+<li>Confuses users about apparent vs actual usage</li>
+<li>Can be added as a separate “physical_size” metric later if needed</li>
+</ul>
+<hr>
+<h2 id="medium-priority-findings--responses"><a class="header" href="#medium-priority-findings--responses">Medium Priority Findings — Responses</a></h2>
+<h3 id="mp-1-importexport-semantics"><a class="header" href="#mp-1-importexport-semantics">MP-1: Import/Export Semantics</a></h3>
+<p><strong>Decision:</strong> Define explicit policy.</p>
+<p><strong>Import Policy:</strong></p>
+<pre><code>IMPORT FROM HOST:
+
+1. Filename encoding:
+   - Attempt UTF-8 interpretation
+   - Non-UTF-8 filenames: SKIP with warning (logged, not fatal)
+   - Null bytes in names: REJECT
+
+2. Symlinks on host:
+   - Default: DO NOT FOLLOW (skip symlinks)
+   - Option: follow_symlinks: bool (if true, import target content)
+
+3. Special files (devices, FIFOs, sockets):
+   - SKIP (not supported in virtual filesystem)
+
+4. Metadata preservation:
+   - Timestamps: PRESERVE if container has permissions enabled
+   - Permissions: PRESERVE if container has permissions enabled
+   - Extended attrs: SKIP (too platform-specific)
+
+5. Limits during import:
+   - Respect container's capacity limits
+   - Fail fast if total_size would exceed max_total_size
+   - max_path_depth applies to imported structure
+</code></pre>
+<p><strong>Export Policy:</strong></p>
+<pre><code>EXPORT TO HOST:
+
+1. Filename encoding:
+   - VirtualPath is always valid UTF-8
+   - Host filesystem may reject certain characters (platform-specific)
+   - On rejection: FAIL with clear error
+
+2. Symlinks in container:
+   - If symlinks enabled: CREATE host symlinks
+   - If target doesn't exist in export: create dangling symlink
+
+3. Metadata:
+   - Timestamps: SET if source has them
+   - Permissions: SET if source has them and host supports
+   - Extended attrs: SKIP
+
+4. Overwrites:
+   - Default: ERROR if host path exists
+   - Option: overwrite: bool
+</code></pre>
+<hr>
+<h3 id="mp-2-extended-attributes-limits"><a class="header" href="#mp-2-extended-attributes-limits">MP-2: Extended Attributes Limits</a></h3>
+<p><strong>Decision:</strong> Add limits and separate storage.</p>
+<p><strong>Specification:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct CapacityLimits {
+    // ... existing fields ...
+    
+    /// Maximum size of a single xattr value (default: 64 KB)
+    pub max_xattr_value_size: Option&lt;usize&gt;,
+    
+    /// Maximum total xattr size per node (default: 1 MB)
+    pub max_xattr_total_size: Option&lt;usize&gt;,
+    
+    /// Maximum number of xattrs per node (default: 100)
+    pub max_xattr_count: Option&lt;u32&gt;,
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Storage decision:</strong> Xattrs stored in separate table, NOT in NodeRecord.</p>
+<pre><code class="language-sql">CREATE TABLE xattrs (
+    node_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    value BLOB NOT NULL,
+    PRIMARY KEY (node_id, name),
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
+</code></pre>
+<p><strong>API:</strong></p>
+<ul>
+<li><code>get_node()</code> does NOT return xattrs (lightweight)</li>
+<li>Separate methods: <code>get_xattr()</code>, <code>set_xattr()</code>, <code>list_xattrs()</code>, <code>remove_xattr()</code></li>
+</ul>
+<hr>
+<h3 id="mp-3-document-numbering"><a class="header" href="#mp-3-document-numbering">MP-3: Document Numbering</a></h3>
+<p><strong>Decision:</strong> Fix it.</p>
+<p><strong>Actions:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Renumber sections consistently</li>
+<li><input disabled="" type="checkbox" checked=""> Update TOC anchors</li>
+<li><input disabled="" type="checkbox" checked=""> Single pass through all docs before implementation</li>
+</ul>
+<hr>
+<h2 id="sqlite-addendum--response"><a class="header" href="#sqlite-addendum--response">SQLite Addendum — Response</a></h2>
+<p><strong>Decision:</strong> Accept all recommendations.</p>
+<h3 id="gono-go-checklist"><a class="header" href="#gono-go-checklist">Go/No-Go Checklist:</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Requirement</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td>Accept SQLite-first for persistence</td><td>✅ Yes</td></tr>
+<tr><td>Commit to schema versioning</td><td>✅ Yes</td></tr>
+<tr><td>Safe dashboard surface (read-only views)</td><td>✅ Yes</td></tr>
+<tr><td>Specify quota/hardlink/GC rules</td><td>✅ Yes (see HP-3)</td></tr>
+<tr><td>Keep filesystem invariants in FilesContainer</td><td>✅ Yes</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="schema-contract"><a class="header" href="#schema-contract">Schema Contract:</a></h3>
+<pre><code class="language-sql">-- Schema version tracking
+CREATE TABLE schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+INSERT INTO schema_meta (key, value) VALUES ('version', '1');
+
+-- Read-only views for external consumers (stable contract)
+CREATE VIEW v_files AS
+SELECT 
+    n.id,
+    -- reconstruct path via recursive CTE (complex but doable)
+    n.size,
+    n.created_at,
+    n.modified_at
+FROM nodes n
+WHERE n.kind = 'file';
+
+CREATE VIEW v_usage AS
+SELECT 
+    COUNT(*) as node_count,
+    SUM(CASE WHEN kind = 'file' THEN size ELSE 0 END) as total_size,
+    SUM(CASE WHEN kind = 'file' THEN 1 ELSE 0 END) as file_count,
+    SUM(CASE WHEN kind = 'directory' THEN 1 ELSE 0 END) as dir_count
+FROM nodes;
+</code></pre>
+<p><strong>Migration policy:</strong></p>
+<ul>
+<li>Forward-only migrations</li>
+<li>Breaking changes require major version bump</li>
+<li>Views are stable interface; internal tables may change</li>
+</ul>
+<hr>
+<h2 id="updated-implementation-plan"><a class="header" href="#updated-implementation-plan">Updated Implementation Plan</a></h2>
+<h3 id="phase-1-core-foundation-week-1"><a class="header" href="#phase-1-core-foundation-week-1">Phase 1: Core Foundation (Week 1)</a></h3>
+<ul>
+<li><code>anyfs</code>: VirtualPath, Name, NodeId, ContentId, ChunkId</li>
+<li><code>anyfs</code>: Error types, NodeRecord, Edge, NodeMetadata</li>
+<li><code>anyfs</code>: StorageBackend, Snapshot, Transaction traits</li>
+</ul>
+<h3 id="phase-2-memory-backend-week-2"><a class="header" href="#phase-2-memory-backend-week-2">Phase 2: Memory Backend (Week 2)</a></h3>
+<ul>
+<li><code>vfs-memory</code>: MemoryBackend with clone-on-transact</li>
+<li>Conformance test suite (50+ tests)</li>
+<li>All tests passing for memory backend</li>
+</ul>
+<h3 id="phase-3-sqlite-backend-weeks-3-4"><a class="header" href="#phase-3-sqlite-backend-weeks-3-4">Phase 3: SQLite Backend (Weeks 3-4)</a></h3>
+<ul>
+<li><code>vfs-sqlite</code>: Schema v1 with WAL mode</li>
+<li><code>vfs-sqlite</code>: SqliteBackend implementation</li>
+<li>Conformance tests passing</li>
+<li>Read-only views for dashboard access</li>
+</ul>
+<h3 id="phase-4-filescontainer-week-5"><a class="header" href="#phase-4-filescontainer-week-5">Phase 4: FilesContainer (Week 5)</a></h3>
+<ul>
+<li><code>vfs</code>: FilesContainer with all operations</li>
+<li>Path resolution, symlink following (if enabled)</li>
+<li>Rename cycle prevention</li>
+<li>Capacity limit enforcement</li>
+</ul>
+<h3 id="phase-5-polish-week-6"><a class="header" href="#phase-5-polish-week-6">Phase 5: Polish (Week 6)</a></h3>
+<ul>
+<li>Import/export with host filesystem</li>
+<li>Documentation updates</li>
+<li>Example applications</li>
+<li>Publish to crates.io</li>
+</ul>
+<hr>
+<h2 id="acceptance-checklist-updated"><a class="header" href="#acceptance-checklist-updated">Acceptance Checklist (Updated)</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"> Single authoritative backend trait (CF-1) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> FsBackend removed from MVP (CF-2) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> Rename cycle prevention spec + tests (CF-3) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> Quota accounting rules specified (HP-3) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> Import/export policies documented (MP-1) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> Xattr limits defined (MP-2) ✅ Decided</li>
+<li><input disabled="" type="checkbox"> Doc numbering fixed (MP-3) ⬜ Todo</li>
+<li><input disabled="" type="checkbox"> Conformance tests pass for SQLite + Memory ⬜ Implementation</li>
+</ul>
+<hr>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>All critical and high-priority issues have been resolved with explicit decisions. The project is <strong>approved to proceed</strong> with implementation, following the revised plan:</p>
+<ol>
+<li><strong>Graph-store trait</strong> is authoritative</li>
+<li><strong>SQLite + Memory</strong> backends for MVP (no FsBackend)</li>
+<li><strong>Rename cycle prevention</strong> via ancestry check</li>
+<li><strong>Logical bytes</strong> for quota accounting</li>
+<li><strong>Schema versioning</strong> with stable read-only views</li>
+<li><strong>Single-threaded</strong> with external sync for multi-thread</li>
+</ol>
+<p>The design is now internally consistent and ready for implementation.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../review/sqlite-addendum.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../appendix/pre-container-design.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../review/sqlite-addendum.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../appendix/pre-container-design.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
