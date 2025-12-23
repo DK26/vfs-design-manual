@@ -1,17 +1,19 @@
-﻿# AnyFS Ecosystem
+# AnyFS Ecosystem
 
-Pluggable virtual filesystem backends for Rust.
+**An open standard for pluggable virtual filesystem backends in Rust.**
 
 ---
 
 ## Overview
 
-AnyFS is a three-crate ecosystem:
+AnyFS is an **open standard** that allows anyone to create custom storage backends. Whether you need to store files in a database, object store, network filesystem, or any other medium—AnyFS provides the contract and tools to make it happen.
+
+The ecosystem is a three-crate design:
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs-traits` | Minimal contract: `VfsBackend` + core types; re-exports `VirtualPath` |
-| `anyfs` | Re-exports `anyfs-traits` + built-in backends (feature-gated) |
+| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types. Backend implementers depend on this. |
+| `anyfs` | Low-level execution layer for calling any `VfsBackend`. Also provides built-in backends (MemoryBackend, SqliteBackend, VRootFsBackend). |
 | `anyfs-container` | `FilesContainer<B: VfsBackend>` policy layer (limits + least-privilege feature whitelist) |
 
 High-level data flow:
@@ -19,10 +21,11 @@ High-level data flow:
 ```text
 Your application
   -> anyfs-container (FilesContainer: ergonomic paths + policy)
-      -> anyfs (built-in backends)
-          -> anyfs-traits (VfsBackend + types)
-              -> strict-path (VirtualPath, VirtualRoot)
+      -> anyfs (executes operations on any VfsBackend)
+          -> any backend (built-in or custom)
 ```
+
+> **Note:** The `strict-path` crate is **only** used by `VRootFsBackend`—a backend that wraps a real host filesystem directory. It is not part of the core AnyFS API.
 
 ---
 

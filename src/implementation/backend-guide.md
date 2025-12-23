@@ -1,36 +1,50 @@
-﻿# Backend Implementer's Guide
+# Backend Implementer's Guide
 
 This guide walks you through implementing a custom AnyFS backend.
 
-If you are writing a backend for other people to consume, depend only on `anyfs-traits`.
+If you are writing a backend for other people to consume, depend only on `anyfs-backend`.
 
 ---
 
 ## What you are implementing
 
-A backend implements `VfsBackend`: a path-based trait aligned with `std::fs` naming.
+A backend implements `VfsBackend`: a path-based trait aligned with `std::fs` naming and signatures.
 
 Key properties:
-- Backends receive `&VirtualPath` (from `strict-path`), not raw strings.
+- Backends accept `impl AsRef<Path>` for all path parameters (same as std::fs).
 - The policy layer (`anyfs-container`) handles quotas/limits and feature whitelisting.
 
 ```rust
-use anyfs_traits::{DirEntry, Metadata, Permissions, VirtualPath, VfsBackend, VfsError};
+use anyfs_backend::{DirEntry, Metadata, Permissions, VfsBackend, VfsError};
+use std::io::{Read, Write};
+use std::path::Path;
 
 pub struct MyBackend {
     // storage fields...
 }
 
 impl VfsBackend for MyBackend {
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError> {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> {
+        let path = path.as_ref();
         todo!()
     }
 
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError> {
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError> {
+        let path = path.as_ref();
         todo!()
     }
 
-    // ... implement all 20 methods
+    fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError> {
+        let path = path.as_ref();
+        todo!()
+    }
+
+    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError> {
+        let path = path.as_ref();
+        todo!()
+    }
+
+    // ... implement all methods
 }
 ```
 
@@ -42,7 +56,7 @@ A practical internal model is a small "virtual inode" representation:
 
 - **Directory**: owns a mapping `name -> child` (or can be derived from a global path index).
 - **File**: points to bytes (inline, blob table, object store key, etc.).
-- **Symlink**: stores a *target* `VirtualPath`.
+- **Symlink**: stores a *target* path (as a string).
 - **Hard links**: multiple paths refer to the same underlying file content.
 
 You do not need to expose any of this publicly; it is an implementation detail.
@@ -66,12 +80,13 @@ Start with these operations:
 - `create_dir` / `create_dir_all`
 - `read_dir`
 - `write` / `read` / `append` / `read_range`
+- `open_read` / `open_write` (streaming I/O)
 - `remove_file` / `remove_dir` / `remove_dir_all`
 - `rename` / `copy`
 
 Guidelines:
 
-- Use `VirtualPath` as your canonical key. It is already normalized.
+- You receive `impl AsRef<Path>` - call `.as_ref()` to get `&Path`.
 - Match `std::fs`-like error expectations:
   - creating an existing directory should return `AlreadyExists`
   - `remove_dir` should fail on non-empty directories
@@ -115,7 +130,7 @@ As with links, `anyfs-container` may deny permission mutation unless enabled.
 Backends should return `VfsError` variants that are meaningful to callers.
 
 Recommended principles:
-- Prefer structured variants like `NotFound(VirtualPath)` over stringly-typed errors.
+- Prefer structured variants like `NotFound(String)` over generic errors.
 - Keep backend-specific errors available (e.g., `VfsError::Backend(String)`) but do not leak host paths when possible.
 
 ---
@@ -137,13 +152,21 @@ See `book/src/implementation/plan.md` for the recommended test breakdown.
 
 ## Checklist
 
-- [ ] Depends only on `anyfs-traits`
-- [ ] Implements all 20 `VfsBackend` methods
+- [ ] Depends only on `anyfs-backend`
+- [ ] Implements all `VfsBackend` methods (including streaming I/O)
 - [ ] Returns correct `std::fs`-like errors
-- [ ] Symlinks store `VirtualPath` targets
+- [ ] Symlinks store target paths as strings
 - [ ] Hard links update `nlink` and share content
 - [ ] Conformance suite passes
 
 ---
 
 For the trait definition, see `book/src/traits/vfs-trait.md`.
+
+---
+
+## Note on VRootFsBackend
+
+If you are implementing a backend that wraps a **real host filesystem directory**, consider using `strict-path::VirtualPath` and `strict-path::VirtualRoot` internally for path containment. This is what `VRootFsBackend` does—it ensures paths cannot escape the designated root directory.
+
+This is an implementation choice for filesystem-based backends, not a requirement of the `VfsBackend` trait.

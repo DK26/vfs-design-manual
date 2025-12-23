@@ -1,4 +1,4 @@
-﻿# AnyFS - Executive Summary
+# AnyFS - Executive Summary
 
 One-page overview for stakeholders and decision-makers.
 
@@ -6,12 +6,13 @@ One-page overview for stakeholders and decision-makers.
 
 ## What is it?
 
-AnyFS is a virtual filesystem library for Rust with swappable storage backends.
+AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust.
 
 You get a familiar, `std::fs`-aligned API (read/write/create_dir/read_dir/etc.) while choosing where the data lives:
-- in-memory (tests)
+- in-memory (fast caching, testing, speed-critical applications)
 - a single SQLite database file (portable storage)
-- a contained host filesystem directory (sandboxed by a virtual root)
+- a contained host filesystem directory (sandboxed by VRootFsBackend)
+- or any custom backend you implement
 
 ---
 
@@ -21,22 +22,24 @@ You get a familiar, `std::fs`-aligned API (read/write/create_dir/read_dir/etc.) 
 |---------|------------------|
 | Multi-tenant isolation | One container per tenant, separate namespaces |
 | Portability | SQLite backend: a tenant filesystem is a single `.db` file |
-| Security | Paths are validated via `VirtualPath` (`strict-path`) |
+| Security | Path normalization prevents traversal attacks |
 | Resource control | Built-in limits: max bytes, max file size, max nodes, etc. |
-| Testing | In-memory backend is fast and deterministic |
+| Speed-critical storage | In-memory backend for caching or temporary storage |
+| Custom storage | Implement your own backend for any storage medium |
 
 ---
 
 ## Key design points
 
 - **Three-crate structure**
-  - `anyfs-traits`: minimal backend contract (`VfsBackend`) and types
-  - `anyfs`: built-in backends (feature-gated), re-exports traits
+  - `anyfs-backend`: minimal backend contract (`VfsBackend` trait) and types
+  - `anyfs`: low-level execution layer for calling any `VfsBackend` (also provides built-in backends)
   - `anyfs-container`: `FilesContainer<B>` policy layer (limits + least privilege)
 
-- **Two-layer path handling**
+- **Simple path handling**
   - User APIs accept `impl AsRef<Path>` for ergonomics.
-  - Backends receive `&VirtualPath` (validated and normalized).
+  - Backends receive normalized `&str` paths.
+  - `strict-path` is only used internally by VRootFsBackend.
 
 - **Least privilege by default**
   - Advanced behavior is denied unless explicitly enabled per container:
@@ -50,11 +53,10 @@ You get a familiar, `std::fs`-aligned API (read/write/create_dir/read_dir/etc.) 
 
 ```rust
 use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut fs = ContainerBuilder::new(SqliteBackend::open_or_create("tenant_123.db")?)
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut fs = FilesContainer::new(SqliteBackend::open_or_create("tenant_123.db")?)
+    .with_max_total_size(100 * 1024 * 1024);
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;

@@ -34,17 +34,15 @@ The AnyFS ecosystem is designed with security as a primary concern. This documen
 
 ## Security Architecture
 
-### 1. Path Containment (via strict-path)
+### 1. Path Normalization
 
-All paths are validated through `VirtualPath` from the `strict-path` crate:
+All user paths are normalized by `FilesContainer` before reaching the backend:
 
 ```rust
-// User input is validated immediately
-let path = VirtualPath::new(user_input)?;
-
+// User input is normalized immediately
 // These attacks are structurally prevented:
-VirtualPath::new("/../../../etc/passwd")  // → "/etc/passwd" (clamped to root)
-VirtualPath::new("/data/../../../../tmp") // → "/tmp" (clamped to root)
+"/../../../etc/passwd"  // → "/etc/passwd" (clamped to root)
+"/data/../../../../tmp" // → "/tmp" (clamped to root)
 ```
 
 **Guarantee**: No path can escape the virtual root, regardless of `..` sequences.
@@ -63,22 +61,32 @@ Unlike POSIX filesystems, paths are resolved **lexically** without consulting th
 
 **Guarantee**: Lexical normalization is deterministic. If symlinks are disabled (default), resolution cannot be influenced by filesystem state; if enabled, symlink traversal is contained and bounded.
 
+### Path Containment by Backend Type
+
+Different backends achieve containment differently:
+
+| Backend | Containment Mechanism |
+|---------|----------------------|
+| `MemoryBackend` | Isolated by OS process memory—no host filesystem access |
+| `SqliteBackend` | Each container is a separate `.db` file—no path traversal possible |
+| `VRootFsBackend` | Uses `strict-path::VirtualRoot` to clamp all paths to a root directory |
+
 ### 3. Symlink Safety (Opt-In)
 
 Symlink safety:
 
 - Symlinks are **disabled by default** (least privilege / whitelist)
-- If enabled, symlink targets are validated as `VirtualPath`
+- If enabled, symlink targets are validated
 - Resolution is bounded by a configurable hop limit (default: 40)
 - Symlinks cannot point outside the container
 
 ```rust
-use anyfs_container::ContainerBuilder;
+use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(backend)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()
+    .with_max_symlink_resolution(40);
 
 // Symlink creation validates the target (when enabled)
 container.symlink("/deeply/nested/path", "/shortcut")?;
@@ -94,30 +102,18 @@ container.read("/shortcut")?;  // Max 40 hops
 `FilesContainer` enforces configurable limits:
 
 ```rust
-use anyfs_container::ContainerBuilder;
+use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let container = ContainerBuilder::new(backend)
-    .max_total_size(100 * 1024 * 1024)  // 100 MB total
-    .max_file_size(10 * 1024 * 1024)    // 10 MB per file
-    .max_node_count(10_000)              // 10K files/directories
-    .max_dir_entries(1_000)              // 1K entries per directory
-    .max_path_depth(64)                  // Max directory depth
-    .build()?;
+let container = FilesContainer::new(MemoryBackend::new())
+    .with_max_total_size(100 * 1024 * 1024)  // 100 MB total
+    .with_max_file_size(10 * 1024 * 1024)    // 10 MB per file
+    .with_max_node_count(10_000)              // 10K files/directories
+    .with_max_dir_entries(1_000)              // 1K entries per directory
+    .with_max_path_depth(64);                 // Max directory depth
 ```
 
 **Guarantee**: Resource exhaustion attacks are mitigated.
-
-### 5. Backend Isolation
-
-Each backend provides isolation differently:
-
-| Backend | Isolation Mechanism |
-|---------|---------------------|
-| `VRootFsBackend` | `strict-path::VirtualRoot` clamps all paths to root directory |
-| `SqliteBackend` | Each container is a separate `.db` file |
-| `MemoryBackend` | Each container is a separate process memory region |
-
-**Guarantee**: Operations on one container cannot affect another.
 
 ---
 
@@ -126,15 +122,16 @@ Each backend provides isolation differently:
 ### Multi-Tenant Isolation
 
 ```rust
+use anyfs::SqliteBackend;
+use anyfs_container::FilesContainer;
+
 // Each tenant gets a completely separate container
 fn create_tenant_storage(tenant_id: &str) -> FilesContainer<SqliteBackend> {
     let db_path = format!("tenants/{}.db", tenant_id);
     let backend = SqliteBackend::create(&db_path).unwrap();
 
-    ContainerBuilder::new(backend)
-        .max_total_size(tenant_quota(tenant_id))
-        .build()
-        .unwrap()
+    FilesContainer::new(backend)
+        .with_max_total_size(tenant_quota(tenant_id))
 }
 
 // No path can cross tenant boundaries — they're different files entirely
@@ -143,19 +140,22 @@ fn create_tenant_storage(tenant_id: &str) -> FilesContainer<SqliteBackend> {
 ### Untrusted Input Handling
 
 ```rust
+use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
+
 fn handle_user_upload(
     container: &mut FilesContainer<impl VfsBackend>,
     user_filename: &str,  // Untrusted input
     data: &[u8],
 ) -> Result<(), ContainerError> {
-    // VirtualPath::new validates the input
+    // FilesContainer normalizes the path internally:
     // - Rejects invalid UTF-8
     // - Normalizes path (removes .., .)
     // - Ensures absolute path
-    let path = VirtualPath::new(&format!("/uploads/{}", user_filename))?;
+    let path = format!("/uploads/{}", user_filename);
 
-    // Safe to use - already validated
-    container.write(path.as_str(), data)?;
+    // Safe to use - container validates before reaching backend
+    container.write(&path, data)?;
     Ok(())
 }
 ```
@@ -163,14 +163,14 @@ fn handle_user_upload(
 ### Sandboxed Execution
 
 ```rust
-use anyfs_container::ContainerBuilder;
+use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
 // Create an isolated sandbox for untrusted code
-let sandbox = ContainerBuilder::new(MemoryBackend::new())
-    .max_total_size(10 * 1024 * 1024)  // 10 MB limit
-    .max_file_size(1024 * 1024)         // 1 MB per file
-    .max_node_count(100)                // Max 100 files
-    .build()?;
+let sandbox = FilesContainer::new(MemoryBackend::new())
+    .with_max_total_size(10 * 1024 * 1024)  // 10 MB limit
+    .with_max_file_size(1024 * 1024)         // 1 MB per file
+    .with_max_node_count(100);               // Max 100 files
 
 // Untrusted code can only access this sandbox
 // Cannot escape, cannot exhaust resources
@@ -184,16 +184,16 @@ let sandbox = ContainerBuilder::new(MemoryBackend::new())
 
 - [ ] Set appropriate capacity limits for your use case
 - [ ] Use separate containers for separate tenants/users
-- [ ] Validate user input before creating `VirtualPath`
-- [ ] Consider restricting link operations if not needed
-- [ ] Keep `strict-path` and `rusqlite` dependencies updated
+- [ ] Let `FilesContainer` handle path normalization—don't bypass it
+- [ ] Consider restricting link operations if not needed (they're off by default)
+- [ ] Keep dependencies updated (especially `rusqlite` for SQLite backend)
 
 ### For Backend Implementers
 
-- [ ] Never bypass `VirtualPath` validation
-- [ ] Ensure all paths are contained within the backend's scope
+- [ ] Ensure paths cannot escape the backend's intended scope
+- [ ] For filesystem backends: use `strict-path` for path containment
 - [ ] Handle concurrent access safely (if supporting `Sync`)
-- [ ] Report errors without leaking internal paths
+- [ ] Report errors without leaking internal/host paths
 
 ---
 

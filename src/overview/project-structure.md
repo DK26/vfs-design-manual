@@ -1,6 +1,6 @@
 # AnyFS - Project Structure
 
-**Status:** Current  
+**Status:** Current
 **Last updated:** 2025-12-23
 
 ---
@@ -8,7 +8,7 @@
 ## Repository Layout
 
 ```
-anyfs-traits/              # Crate 1: core trait + types
+anyfs-backend/             # Crate 1: core trait + types
   Cargo.toml
   src/
     lib.rs
@@ -19,7 +19,7 @@ anyfs-traits/              # Crate 1: core trait + types
 anyfs/                     # Crate 2: built-in backends (feature-gated)
   Cargo.toml
   src/
-    lib.rs                 # re-exports anyfs-traits::*
+    lib.rs                 # backend implementations
     memory/                # [feature: memory] (default)
     vrootfs/               # [feature: vrootfs]
     sqlite/                # [feature: sqlite]
@@ -29,7 +29,6 @@ anyfs-container/           # Crate 3: policy layer (quotas + isolation)
   src/
     lib.rs
     container.rs           # FilesContainer<B: VfsBackend>
-    builder.rs             # ContainerBuilder
     limits.rs              # CapacityLimits
     usage.rs               # CapacityUsage, CapacityRemaining
     error.rs               # ContainerError
@@ -40,13 +39,15 @@ anyfs-container/           # Crate 3: policy layer (quotas + isolation)
 ## Dependency Model
 
 ```
+anyfs-backend (trait + types)
+    <- anyfs (execution layer, calls any VfsBackend)
+    <- anyfs-container (wraps backends with policy)
+
 strict-path (VirtualPath, VirtualRoot)
-    -> anyfs-traits
-         -> anyfs (optional backends)
-         -> anyfs-container (policy/quotas)
+    <- anyfs [vrootfs feature only]
 ```
 
-**Key point:** custom backends depend only on `anyfs-traits`.
+**Key point:** Custom backends depend only on `anyfs-backend`. The `anyfs` crate is the execution layer that can call any backend—built-in or custom. `strict-path` is only used by the `vrootfs` feature.
 
 ---
 
@@ -54,23 +55,23 @@ strict-path (VirtualPath, VirtualRoot)
 
 ```
 User code:  container.read("/a/b.txt")
-   -> FilesContainer validates into VirtualPath
-   -> backend.read(&VirtualPath)
+   -> FilesContainer (policy checks, normalization)
+   -> backend.read(path)  # receives impl AsRef<Path>
 ```
 
-This keeps validation centralized and keeps backends simple.
+Both layers use `impl AsRef<Path>` for std::fs alignment.
 
 ---
 
-## Feature Controls
+## Cargo Features
 
-There are two kinds of feature selection:
+Cargo features in `anyfs` select which built-in backends to include:
 
-1. **Cargo features (compile-time)** select built-in backends in `anyfs` (`memory`, `sqlite`, `vrootfs`).
-2. **Container feature whitelist (runtime policy)** enables advanced filesystem behavior per container instance:
-   - `symlinks()`
-   - `hard_links()`
-   - `permissions()`
+- `memory` — In-memory storage (default)
+- `sqlite` — SQLite-backed persistent storage
+- `vrootfs` — Host filesystem backend (uses `strict-path` internally)
+
+The runtime feature whitelist (symlinks, hard_links, permissions) is configured per `FilesContainer` instance, not at compile time.
 
 ---
 

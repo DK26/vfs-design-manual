@@ -23,9 +23,9 @@ anyfs-container = "0.1"
 ```
 
 Available features for `anyfs`:
-- `memory` — In-memory storage (default, for testing)
-- `sqlite` — SQLite-backed persistent storage
-- `vrootfs` — Host filesystem backend (via strict-path)
+- `memory` — In-memory storage (default). Fast and isolated—useful for testing, caching, or any speed-critical application.
+- `sqlite` — SQLite-backed persistent storage. Portable single-file storage.
+- `vrootfs` — Host filesystem backend (uses `strict-path` internally for path containment).
 
 ---
 
@@ -166,19 +166,16 @@ container.remove_dir_all("/old-folder")?;
 
 ```rust
 use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
+let container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
     // Set capacity limits
-    .max_total_size(500 * 1024 * 1024)  // 500 MB total
-    .max_file_size(50 * 1024 * 1024)    // 50 MB per file
-    .max_node_count(100_000)             // 100K files/dirs
-    .max_dir_entries(5_000)              // 5K entries per directory
-
+    .with_max_total_size(500 * 1024 * 1024)  // 500 MB total
+    .with_max_file_size(50 * 1024 * 1024)    // 50 MB per file
+    .with_max_node_count(100_000)             // 100K files/dirs
+    .with_max_dir_entries(5_000)              // 5K entries per directory
     // Set depth limits
-    .max_path_depth(32)
-
-    .build()?;
+    .with_max_path_depth(32);
 ```
 
 ### Checking Capacity
@@ -201,18 +198,17 @@ if !remaining.can_write {
 
 ## Links
 
-Symlinks, hard links, and permission mutation are **disabled by default**. Enable only what you need via `ContainerBuilder` (feature whitelist).
+Symlinks, hard links, and permission mutation are **disabled by default**. Enable only what you need via the builder pattern (feature whitelist).
 
 ### Symbolic Links
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .symlinks()                     // disabled by default (least privilege)
-    .max_symlink_resolution(40)     // optional; default: 40
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()                     // disabled by default (least privilege)
+    .with_max_symlink_resolution(40);    // optional; default: 40
 
 // Create a symlink
 container.create_dir_all("/deep/nested/dir")?;
@@ -229,11 +225,10 @@ container.read_dir("/shortcut")?;  // lists /deep/nested/dir
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(MemoryBackend::new())
-    .hard_links()                   // disabled by default (least privilege)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_hard_links();              // disabled by default (least privilege)
 
 // Create a file
 container.write("/original.txt", b"content")?;
@@ -246,12 +241,6 @@ container.hard_link("/original.txt", "/link.txt")?;
 container.remove_file("/original.txt")?;
 let content = container.read("/link.txt")?;  // Still works
 ```
-
----
-
-## Import and Export (Future)
-
-Import/export helpers (copying between a host filesystem path and a container path) are planned, but are not part of the current core API.
 
 ---
 
@@ -301,7 +290,12 @@ match container.write("/file.txt", &large_data) {
 
 ## Testing
 
-### Use In-Memory Backend for Tests
+### Use In-Memory Backend
+
+The in-memory backend is fast and isolated. It's useful for:
+- Unit and integration tests
+- Caching or temporary storage
+- Speed-critical applications where persistence isn't needed
 
 ```rust
 #[cfg(test)]
@@ -340,14 +334,12 @@ mod tests {
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 #[test]
 fn test_storage_limit() {
-    let mut container = ContainerBuilder::new(MemoryBackend::new())
-        .max_total_size(1024)  // 1 KB limit
-        .build()
-        .unwrap();
+    let mut container = FilesContainer::new(MemoryBackend::new())
+        .with_max_total_size(1024);  // 1 KB limit
 
     let big_data = vec![0u8; 2048];  // 2 KB
 
@@ -364,8 +356,8 @@ fn test_storage_limit() {
 ### 1. Handle Errors Gracefully
 
 ```rust
-use anyfs::VfsBackend;
-use anyfs_container::FilesContainer;
+use anyfs_backend::VfsBackend;
+use anyfs_container::{FilesContainer, ContainerError};
 
 fn ensure_parent_exists<B: VfsBackend>(
     container: &mut FilesContainer<B>,
@@ -394,16 +386,15 @@ fn ensure_parent_exists<B: VfsBackend>(
 
 ```rust
 use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
 // Production defaults suggestion
-let container = ContainerBuilder::new(SqliteBackend::create("data.db")?)
-    .max_total_size(1024 * 1024 * 1024)  // 1 GB
-    .max_file_size(100 * 1024 * 1024)    // 100 MB
-    .max_node_count(1_000_000)            // 1M nodes
-    .max_dir_entries(10_000)              // 10K per dir
-    .max_path_depth(64)
-    .build()?;
+let container = FilesContainer::new(SqliteBackend::create("data.db")?)
+    .with_max_total_size(1024 * 1024 * 1024)  // 1 GB
+    .with_max_file_size(100 * 1024 * 1024)    // 100 MB
+    .with_max_node_count(1_000_000)            // 1M nodes
+    .with_max_dir_entries(10_000)              // 10K per dir
+    .with_max_path_depth(64);
 ```
 
 ---

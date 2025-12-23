@@ -8,7 +8,7 @@
 
 `FilesContainer<B: VfsBackend>` wraps a backend and provides:
 - ergonomic path inputs (`impl AsRef<Path>`)
-- centralized validation into `VirtualPath`
+- centralized path normalization
 - quota enforcement (limits)
 - deny-by-default feature whitelisting for advanced behavior
 
@@ -18,17 +18,16 @@
 
 ```rust
 use anyfs::SqliteBackend;
-use anyfs_container::ContainerBuilder;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(SqliteBackend::open_or_create("data.db")?)
-    .max_total_size(100 * 1024 * 1024)
-    .max_file_size(10 * 1024 * 1024)
+let mut container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
+    .with_max_total_size(100 * 1024 * 1024)
+    .with_max_file_size(10 * 1024 * 1024)
     // advanced features are opt-in
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .build()?;
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions();
 ```
 
 ---

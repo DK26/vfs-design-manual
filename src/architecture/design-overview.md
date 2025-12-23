@@ -1,21 +1,28 @@
 # AnyFS - Design Overview
 
-**Status:** Current  
+**Status:** Current
 **Last updated:** 2025-12-23
 
 ---
 
 ## What This Project Is
 
-AnyFS is a small Rust ecosystem for **virtual filesystem backends** with an optional **policy/container layer**.
+AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust. Anyone can implement a custom backend for their own storage needs—whether that's a database, object store, network filesystem, or any other medium.
+
+The ecosystem provides:
+- **A minimal backend trait** that any storage implementer can satisfy
+- **Built-in backends** for common cases (memory, SQLite, real filesystem)
+- **An optional policy layer** (`FilesContainer`) for quotas, limits, and feature whitelisting
 
 It is designed for:
 - portable application storage (SQLite backend = single `.db` file)
 - tenant isolation (one container per tenant)
 - quotas/limits (enforced in the container layer)
-- containment and safe path handling (`strict-path`)
+- high-performance use cases (in-memory backend for speed-critical applications)
 
 It is not a POSIX emulator and does not try to expose OS-specific behavior.
+
+> **Note on strict-path:** The `strict-path` crate (providing `VirtualPath` and `VirtualRoot`) is **only relevant for the `VRootFsBackend`**—a backend that wraps a real host filesystem directory. Other backends (SQLite, memory, custom) do not use or require strict-path.
 
 ---
 
@@ -23,67 +30,77 @@ It is not a POSIX emulator and does not try to expose OS-specific behavior.
 
 | Crate | Purpose | Who uses it |
 |------|---------|-------------|
-| `anyfs-traits` | Minimal contract: `VfsBackend` + core types + `VirtualPath` re-export | Backend implementers |
-| `anyfs` | Re-exports `anyfs-traits` + built-in backends (feature-gated) | Most users |
+| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types | Backend implementers |
+| `anyfs` | Low-level execution layer for calling any `VfsBackend`. Also provides built-in backends (feature-gated). | Direct backend manipulation |
 | `anyfs-container` | `FilesContainer<B: VfsBackend>` + limits + feature whitelist (least privilege) | Application code |
 
 ### Dependency Graph
 
 ```
-strict-path
-   -> anyfs-traits
-        -> anyfs (built-in backends)
-        -> anyfs-container (policy/quotas)
+anyfs-backend (trait + types)
+    <- anyfs (calls any VfsBackend, provides built-in backends)
+    <- anyfs-container (wraps backends with policy)
+
+strict-path (VirtualPath, VirtualRoot)
+    <- anyfs [vrootfs feature only]
 ```
 
+**Key point:** `anyfs-backend` defines the contract. `anyfs` is the execution layer that can call any backend—built-in or custom. `strict-path` is only used by the `vrootfs` feature.
+
 ---
 
-## Two-Layer Path Handling
+## Path Handling
 
-AnyFS uses two path types on purpose:
+AnyFS uses `impl AsRef<Path>` throughout, aligned with `std::fs`:
 
 1. **User-facing API (`FilesContainer`)** accepts `impl AsRef<Path>` for ergonomics.
-2. **Backend API (`VfsBackend`)** uses `&VirtualPath` (from `strict-path`) for type safety.
+2. **Backend API (`VfsBackend`)** accepts `impl AsRef<Path>` (same as std::fs).
 
-The container validates and normalizes the user path once, then passes a `VirtualPath` to the backend.
+This keeps the API familiar and works correctly across all platforms (Windows UTF-16, Unix arbitrary bytes, etc.).
+
+**VRootFsBackend** — This backend (which wraps a real host filesystem directory) internally uses `strict-path::VirtualPath` to ensure path containment. This is an implementation detail of that backend, not part of the core trait.
 
 ---
 
-## Core Trait: `VfsBackend` (in `anyfs-traits`)
+## Core Trait: `VfsBackend` (in `anyfs-backend`)
 
-`VfsBackend` is a path-based trait aligned with `std::fs` naming.
+`VfsBackend` is a path-based trait aligned with `std::fs` naming and signatures.
 
 ```rust
-use strict_path::VirtualPath;
+use std::path::Path;
 
 pub trait VfsBackend: Send {
     // Read
-    fn read(&self, path: &VirtualPath) -> Result<Vec<u8>, VfsError>;
-    fn read_to_string(&self, path: &VirtualPath) -> Result<String, VfsError>;
-    fn read_range(&self, path: &VirtualPath, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
-    fn exists(&self, path: &VirtualPath) -> Result<bool, VfsError>;
-    fn metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn symlink_metadata(&self, path: &VirtualPath) -> Result<Metadata, VfsError>;
-    fn read_dir(&self, path: &VirtualPath) -> Result<Vec<DirEntry>, VfsError>;
-    fn read_link(&self, path: &VirtualPath) -> Result<VirtualPath, VfsError>;
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
+    fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, VfsError>;
+    fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+    fn exists(&self, path: impl AsRef<Path>) -> Result<bool, VfsError>;
+    fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
+    fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
+    fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, VfsError>;
 
     // Write
-    fn write(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn append(&mut self, path: &VirtualPath, data: &[u8]) -> Result<(), VfsError>;
-    fn create_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn create_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_file(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn remove_dir_all(&mut self, path: &VirtualPath) -> Result<(), VfsError>;
-    fn rename(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
-    fn copy(&mut self, from: &VirtualPath, to: &VirtualPath) -> Result<(), VfsError>;
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
+    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
+    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
 
     // Links
-    fn symlink(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
-    fn hard_link(&mut self, original: &VirtualPath, link: &VirtualPath) -> Result<(), VfsError>;
+    fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
 
     // Permissions
-    fn set_permissions(&mut self, path: &VirtualPath, perm: Permissions) -> Result<(), VfsError>;
+    fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), VfsError>;
+
+    // Streaming I/O (for large files)
+    fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
+    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
 }
 ```
 
@@ -91,6 +108,7 @@ pub trait VfsBackend: Send {
 - `read`/`write`/`metadata`/`exists`/`copy` follow symlinks.
 - `symlink_metadata` and `read_link` do not follow.
 - `remove_file` removes the symlink itself, not the target.
+- Streaming methods (`open_read`, `open_write`) enable efficient handling of large files.
 
 ---
 
@@ -120,15 +138,15 @@ Advanced features are **disabled by default**. Enable only what you need:
 - `permissions` gates permission mutation via `set_permissions`
 
 ```rust
-use anyfs_container::ContainerBuilder;
+use anyfs::MemoryBackend;
+use anyfs_container::FilesContainer;
 
-let mut container = ContainerBuilder::new(backend)
-    .symlinks()
-    .max_symlink_resolution(40)
-    .hard_links()
-    .permissions()
-    .max_total_size(100 * 1024 * 1024)
-    .build()?;
+let mut container = FilesContainer::new(MemoryBackend::new())
+    .with_symlinks()
+    .with_max_symlink_resolution(40)
+    .with_hard_links()
+    .with_permissions()
+    .with_max_total_size(100 * 1024 * 1024);
 ```
 
 When a feature is disabled, operations that require it return `ContainerError::FeatureNotEnabled("...")`.
@@ -146,8 +164,17 @@ Limits are enforced by the container layer (not by backends):
 
 ## Security Model (Summary)
 
-- **Containment:** `VirtualPath` ensures validated paths cannot escape the virtual root.
+Security and isolation are achieved differently depending on the backend:
+
+| Backend | Isolation Mechanism |
+|---------|---------------------|
+| `MemoryBackend` | Each instance is isolated by OS process memory |
+| `SqliteBackend` | Each container is a separate `.db` file |
+| `VRootFsBackend` | Uses `strict-path::VirtualRoot` to clamp all paths to a root directory |
+
+**Common guarantees:**
 - **Least privilege:** the container disables advanced features by default and requires explicit opt-in.
-- **No host paths:** application code interacts only with virtual paths; backends decide storage.
+- **Path normalization:** all user paths are normalized before reaching the backend.
+- **No host paths in API:** application code interacts only with virtual paths; backends decide actual storage.
 
 For more detail, see `book/src/comparisons/security.md`.

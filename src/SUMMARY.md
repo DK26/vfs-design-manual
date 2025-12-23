@@ -28,7 +28,7 @@
 
 # Traits & APIs
 
-- [VfsBackend Trait (anyfs-traits)](./traits/vfs-trait.md)
+- [VfsBackend Trait (anyfs-backend)](./traits/vfs-trait.md)
 - [FilesContainer (anyfs-container)](./traits/files-container.md)
 
 ---
@@ -60,6 +60,7 @@
 - [Full Architecture Review](./review/full-review.md)
 - [SQLite vs Binary Addendum](./review/sqlite-addendum.md)
 - [Review Response & Decisions](./review/decisions.md)
+- [Open Questions & Future](./review/open-questions.md)
 
 ---
 
