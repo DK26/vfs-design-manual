@@ -23,6 +23,12 @@ This file captures the decisions for the current AnyFS design.
 | ADR-013 | VfsBackendExt for extension methods | Accepted |
 | ADR-014 | Optional Bytes support | Accepted |
 | ADR-015 | Contextual VfsError | Accepted |
+| ADR-016 | PathFilter for path-based access control | Accepted |
+| ADR-017 | ReadOnly for preventing writes | Accepted |
+| ADR-018 | RateLimit for operation throttling | Accepted |
+| ADR-019 | DryRun for testing and debugging | Accepted |
+| ADR-020 | Cache for read performance | Accepted |
+| ADR-021 | Overlay for union filesystem | Accepted |
 
 ---
 
@@ -318,3 +324,147 @@ VfsError::QuotaExceeded {
 - No need for separate error context crate (like anyhow) for basic usage.
 - Operation field helps distinguish "file not found during read" vs "during metadata".
 - Quota errors include all relevant numbers for debugging.
+
+---
+
+## ADR-016: PathFilter for path-based access control
+
+**Decision:** Provide `PathFilter<B>` middleware for glob-based path access control.
+
+**Configuration:**
+```rust
+PathFilter::new(backend)
+    .allow("/workspace/**")    // Allow workspace access
+    .deny("**/.env")           // Deny .env files anywhere
+    .deny("**/secrets/**")     // Deny secrets directories
+```
+
+**Semantics:**
+- Rules are evaluated in order; first match wins.
+- If no rules match, access is denied (deny by default).
+- Uses glob patterns (e.g., `**` for recursive, `*` for single segment).
+- Returns `VfsError::AccessDenied` for denied paths.
+
+**Why:**
+- Essential for AI agent sandboxing - restrict to specific directories.
+- Prevents access to sensitive files (.env, secrets, credentials).
+- Separate from backend - works with any backend.
+- Inspired by AgentFS and similar AI sandbox patterns.
+
+---
+
+## ADR-017: ReadOnly for preventing writes
+
+**Decision:** Provide `ReadOnly<B>` middleware that blocks all write operations.
+
+**Usage:**
+```rust
+let readonly_fs = ReadOnly::new(backend);
+```
+
+**Semantics:**
+- All read operations pass through to inner backend.
+- All write operations return `VfsError::ReadOnly`.
+- Simple, no configuration needed.
+
+**Why:**
+- Safe browsing of container contents without modification risk.
+- Useful for debugging, inspection, auditing.
+- Simpler than configuring FeatureGuard for read-only use case.
+
+---
+
+## ADR-018: RateLimit for operation throttling
+
+**Decision:** Provide `RateLimit<B>` middleware to limit operations per time window.
+
+**Configuration:**
+```rust
+RateLimit::new(backend)
+    .max_ops(1000)
+    .per_second()
+```
+
+**Semantics:**
+- Tracks operation count in sliding time window.
+- Returns `VfsError::RateLimitExceeded` when limit exceeded.
+- Counter resets after window expires.
+
+**Why:**
+- Protects against runaway processes consuming resources.
+- Essential for multi-tenant environments.
+- Prevents denial-of-service from misbehaving code.
+
+---
+
+## ADR-019: DryRun for testing and debugging
+
+**Decision:** Provide `DryRun<B>` middleware that logs write operations without executing them.
+
+**Usage:**
+```rust
+let mut dry_run = DryRun::new(backend);
+dry_run.write("/test.txt", b"hello")?;  // Logged but not written
+let ops = dry_run.operations();         // ["write /test.txt (5 bytes)"]
+```
+
+**Semantics:**
+- Read operations execute normally against inner backend.
+- Write operations are logged but return `Ok(())` without executing.
+- Operations log can be inspected for verification.
+
+**Why:**
+- Test code paths without side effects.
+- Debug complex operation sequences.
+- Audit what would happen before committing.
+
+---
+
+## ADR-020: Cache for read performance
+
+**Decision:** Provide `Cache<B>` middleware with LRU caching for read operations.
+
+**Configuration:**
+```rust
+Cache::new(backend)
+    .max_entries(1000)
+    .max_entry_size(1024 * 1024)  // 1MB max per entry
+    .ttl(Duration::from_secs(60))
+```
+
+**Semantics:**
+- Read operations check cache first, populate on miss.
+- Write operations invalidate relevant cache entries.
+- LRU eviction when max entries exceeded.
+- TTL-based expiration for freshness.
+
+**Why:**
+- Improves performance for repeated reads.
+- Reduces load on underlying backend (especially for SQLite/network).
+- Configurable to balance memory vs performance.
+
+---
+
+## ADR-021: Overlay for union filesystem
+
+**Decision:** Provide `Overlay<B1, B2>` middleware for copy-on-write layered filesystems.
+
+**Usage:**
+```rust
+let base = SqliteBackend::open("base.db")?;  // Read-only base
+let upper = MemoryBackend::new();             // Writable upper layer
+
+let overlay = Overlay::new(base, upper);
+```
+
+**Semantics:**
+- Read: check upper layer first, fall back to base if not found.
+- Write: always to upper layer (copy-on-write).
+- Delete: create whiteout marker in upper layer (file appears deleted but base unchanged).
+- Directory listing: merge results from both layers.
+
+**Why:**
+- Docker-like layered filesystem for containers.
+- Base image with per-instance modifications.
+- Testing with isolated changes over shared baseline.
+- Inspired by OverlayFS and VFS crate patterns.

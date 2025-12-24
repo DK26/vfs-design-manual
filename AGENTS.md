@@ -21,9 +21,16 @@ AnyFS is an open standard for pluggable virtual filesystem backends in Rust. It 
 │  FilesContainer<B>                      │  ← Ergonomics only (std::fs API)
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
-│    Quota<B>                    │  ← Quota enforcement
-│    Tracing<B>                    │  ← Instrumentation (tracing ecosystem)
-│    FeatureGuard<B>               │  ← Symlink/hardlink whitelist
+│                                         │
+│  Policy:        Quota, FeatureGuard,    │
+│                 PathFilter, ReadOnly,   │
+│                 RateLimit               │
+│                                         │
+│  Observability: Tracing, DryRun         │
+│                                         │
+│  Performance:   Cache                   │
+│                                         │
+│  Composition:   Overlay                 │
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Pure storage + fs semantics
 │  (Memory, SQLite, VRootFs, custom...)   │
@@ -35,10 +42,16 @@ Each layer has **exactly one responsibility**:
 | Layer | Responsibility |
 |-------|----------------|
 | `VfsBackend` | Storage + filesystem semantics |
-| `Quota<B>` | Quota enforcement |
-| `Tracing<B>` | Instrumentation / audit trail (tracing ecosystem) |
-| `FeatureGuard<B>` | Feature whitelist (symlinks, hard links, permissions) |
-| `FilesContainer<B>` | Ergonomic std::fs-aligned API (thin wrapper) |
+| `Quota<B>` | Resource limits (size, count, depth) |
+| `FeatureGuard<B>` | Feature whitelist (symlinks, hard links) |
+| `PathFilter<B>` | Path-based access control (sandbox) |
+| `ReadOnly<B>` | Prevent all write operations |
+| `RateLimit<B>` | Limit operations per second |
+| `Tracing<B>` | Instrumentation / audit trail |
+| `DryRun<B>` | Log operations without executing |
+| `Cache<B>` | LRU cache for reads |
+| `Overlay<B1,B2>` | Union filesystem (base + upper) |
+| `FilesContainer<B>` | Ergonomic std::fs-aligned API |
 
 ---
 
@@ -67,6 +80,12 @@ anyfs/                      # Crate 2: backends + middleware
       quota.rs              # Quota<B> + QuotaLayer
       tracing.rs            # Tracing<B> + TracingLayer
       feature_guard.rs      # FeatureGuard<B> + FeatureGuardLayer
+      path_filter.rs        # PathFilter<B> + PathFilterLayer
+      read_only.rs          # ReadOnly<B> + ReadOnlyLayer
+      rate_limit.rs         # RateLimit<B> + RateLimitLayer
+      dry_run.rs            # DryRun<B> + DryRunLayer
+      cache.rs              # Cache<B> + CacheLayer
+      overlay.rs            # Overlay<B1, B2> + OverlayLayer
 
 anyfs-container/            # Crate 3: ergonomic wrapper
   Cargo.toml
@@ -177,6 +196,12 @@ Each middleware provides a corresponding Layer:
 - `QuotaLayer` → `Quota<B>`
 - `TracingLayer` → `Tracing<B>`
 - `FeatureGuardLayer` → `FeatureGuard<B>`
+- `PathFilterLayer` → `PathFilter<B>`
+- `ReadOnlyLayer` → `ReadOnly<B>`
+- `RateLimitLayer` → `RateLimit<B>`
+- `DryRunLayer` → `DryRun<B>`
+- `CacheLayer` → `Cache<B>`
+- `OverlayLayer` → `Overlay<B1, B2>`
 
 ---
 
@@ -283,6 +308,137 @@ impl<B: VfsBackend> VfsBackend for FeatureGuard<B> {
 }
 ```
 
+### PathFilter<B>
+
+Path-based access control using glob patterns. Essential for AI agent sandboxing.
+
+```rust
+pub struct PathFilter<B: VfsBackend> {
+    inner: B,
+    rules: Vec<PathRule>,
+}
+
+impl<B: VfsBackend> PathFilter<B> {
+    pub fn new(inner: B) -> Self;
+    pub fn allow(self, pattern: &str) -> Self;  // e.g., "/workspace/**"
+    pub fn deny(self, pattern: &str) -> Self;   // e.g., "**/.env"
+}
+
+impl<B: VfsBackend> VfsBackend for PathFilter<B> {
+    // Delegates to inner, checking path against rules first
+    // Returns VfsError::AccessDenied if path is denied
+}
+```
+
+### ReadOnly<B>
+
+Prevents all write operations. Useful for safe browsing of container contents.
+
+```rust
+pub struct ReadOnly<B: VfsBackend> {
+    inner: B,
+}
+
+impl<B: VfsBackend> ReadOnly<B> {
+    pub fn new(inner: B) -> Self;
+}
+
+impl<B: VfsBackend> VfsBackend for ReadOnly<B> {
+    // Read operations: delegate to inner
+    // Write operations: return VfsError::ReadOnly
+}
+```
+
+### RateLimit<B>
+
+Limits operations per second. Protects against runaway processes.
+
+```rust
+pub struct RateLimit<B: VfsBackend> {
+    inner: B,
+    max_ops: u32,
+    window: Duration,
+    counter: AtomicU32,
+}
+
+impl<B: VfsBackend> RateLimit<B> {
+    pub fn new(inner: B) -> Self;
+    pub fn max_ops(self, ops: u32) -> Self;
+    pub fn per_second(self) -> Self;
+    pub fn per_minute(self) -> Self;
+}
+
+impl<B: VfsBackend> VfsBackend for RateLimit<B> {
+    // Increments counter, returns VfsError::RateLimitExceeded if over limit
+}
+```
+
+### DryRun<B>
+
+Logs operations without executing writes. Perfect for testing and debugging.
+
+```rust
+pub struct DryRun<B: VfsBackend> {
+    inner: B,
+    log: Vec<Operation>,
+}
+
+impl<B: VfsBackend> DryRun<B> {
+    pub fn new(inner: B) -> Self;
+    pub fn operations(&self) -> &[Operation];
+    pub fn clear(&mut self);
+}
+
+impl<B: VfsBackend> VfsBackend for DryRun<B> {
+    // Read operations: delegate to inner
+    // Write operations: log and return Ok(()) without executing
+}
+```
+
+### Cache<B>
+
+LRU cache for read operations. Improves performance for repeated reads.
+
+```rust
+pub struct Cache<B: VfsBackend> {
+    inner: B,
+    cache: LruCache<PathBuf, CachedEntry>,
+}
+
+impl<B: VfsBackend> Cache<B> {
+    pub fn new(inner: B) -> Self;
+    pub fn max_entries(self, count: usize) -> Self;
+    pub fn max_entry_size(self, bytes: usize) -> Self;
+    pub fn ttl(self, duration: Duration) -> Self;
+}
+
+impl<B: VfsBackend> VfsBackend for Cache<B> {
+    // Read operations: check cache first, populate on miss
+    // Write operations: invalidate cache entries, delegate to inner
+}
+```
+
+### Overlay<B1, B2>
+
+Union filesystem with copy-on-write semantics (like Docker layers).
+
+```rust
+pub struct Overlay<B1: VfsBackend, B2: VfsBackend> {
+    base: B1,    // Read-only lower layer
+    upper: B2,   // Writable upper layer
+}
+
+impl<B1: VfsBackend, B2: VfsBackend> Overlay<B1, B2> {
+    pub fn new(base: B1, upper: B2) -> Self;
+}
+
+impl<B1: VfsBackend, B2: VfsBackend> VfsBackend for Overlay<B1, B2> {
+    // Read: check upper first, fall back to base
+    // Write: always to upper layer
+    // Delete: create whiteout marker in upper
+}
+```
+
 ---
 
 ## FilesContainer (in anyfs-container)
@@ -373,6 +529,39 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .into_container();
 ```
 
+### AI Agent Sandbox
+
+```rust
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, FeatureGuardLayer, RateLimitLayer, TracingLayer};
+use anyfs_backend::Layer;
+
+let sandbox = MemoryBackend::new()
+    .layer(QuotaLayer::new()
+        .max_total_size(50 * 1024 * 1024)
+        .max_file_size(5 * 1024 * 1024))
+    .layer(PathFilterLayer::new()
+        .allow("/workspace/**")
+        .deny("**/.env")
+        .deny("**/secrets/**"))
+    .layer(FeatureGuardLayer::new())  // No symlinks/hard links
+    .layer(RateLimitLayer::new()
+        .max_ops(1000)
+        .per_second())
+    .layer(TracingLayer::new());  // Audit trail
+```
+
+### Overlay filesystem (Docker-like layers)
+
+```rust
+use anyfs::{SqliteBackend, MemoryBackend, Overlay};
+
+let base = SqliteBackend::open("base-image.db")?;  // Read-only base
+let upper = MemoryBackend::new();                   // Writable layer
+
+let fs = Overlay::new(base, upper);
+// Reads check upper first, writes go to upper only
+```
+
 ---
 
 ## Built-in Backends
@@ -414,9 +603,12 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 - Do NOT put quota/limit logic in FilesContainer - use Quota
 - Do NOT put feature gates in FilesContainer - use FeatureGuard
 - Do NOT implement custom logging - use Tracing with tracing ecosystem
+- Do NOT implement path filtering in backends - use PathFilter
+- Do NOT implement read-only mode in backends - use ReadOnly
 - FilesContainer is a thin wrapper only - no policy logic
 - Middleware order matters: innermost applies first
 - Use `VfsBackendExt` for convenience methods, don't add them to VfsBackend
+- Use appropriate middleware for the job (see table below)
 
 ---
 
@@ -440,13 +632,21 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 
 ## When in Doubt
 
-1. **Where do limits go?** `Quota<B>` middleware
-2. **Where do feature gates go?** `FeatureGuard<B>` middleware
-3. **Where does logging go?** `Tracing<B>` middleware (uses tracing crate)
-4. **What does FilesContainer do?** Thin std::fs-aligned wrapper only
-5. **Path type everywhere?** `impl AsRef<Path>` (std::fs aligned)
-6. **Is strict-path used?** Only internally by VRootFsBackend
-7. **Sync or async?** Sync for v1, async-ready for future
-8. **How to compose middleware?** Use `Layer` trait or `BackendStack` builder
-9. **Where do convenience methods go?** `VfsBackendExt` (extension trait)
-10. **Zero-copy bytes?** Enable `bytes` feature for `Bytes` instead of `Vec<u8>`
+| Question | Answer |
+|----------|--------|
+| Where do limits go? | `Quota<B>` middleware |
+| Where do feature gates go? | `FeatureGuard<B>` middleware |
+| Where does logging go? | `Tracing<B>` middleware (uses tracing crate) |
+| Where does path filtering go? | `PathFilter<B>` middleware |
+| How to make read-only? | `ReadOnly<B>` middleware |
+| How to rate limit? | `RateLimit<B>` middleware |
+| How to test without side effects? | `DryRun<B>` middleware |
+| How to cache reads? | `Cache<B>` middleware |
+| How to layer filesystems? | `Overlay<B1, B2>` middleware |
+| What does FilesContainer do? | Thin std::fs-aligned wrapper only |
+| Path type everywhere? | `impl AsRef<Path>` (std::fs aligned) |
+| Is strict-path used? | Only internally by VRootFsBackend |
+| Sync or async? | Sync for v1, async-ready for future |
+| How to compose middleware? | Use `Layer` trait or `BackendStack` builder |
+| Where do convenience methods go? | `VfsBackendExt` (extension trait) |
+| Zero-copy bytes? | Enable `bytes` feature for `Bytes` instead of `Vec<u8>` |

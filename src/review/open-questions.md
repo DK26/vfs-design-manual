@@ -229,3 +229,9 @@ These questions inform future development but don't block v1:
 | Zero-copy bytes | ✅ Optional `bytes` feature (ADR-014) |
 | Error context | ✅ Contextual VfsError (ADR-015) |
 | BackendStack builder | ✅ Fluent API in anyfs-container |
+| Path-based access control | ✅ PathFilter middleware (ADR-016) |
+| Read-only mode | ✅ ReadOnly middleware (ADR-017) |
+| Rate limiting | ✅ RateLimit middleware (ADR-018) |
+| Dry-run testing | ✅ DryRun middleware (ADR-019) |
+| Read caching | ✅ Cache middleware (ADR-020) |
+| Union filesystem | ✅ Overlay middleware (ADR-021) |

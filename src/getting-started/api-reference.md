@@ -108,6 +108,87 @@ Tracing::new(backend)
 
 ---
 
+## PathFilter Methods
+
+```rust
+PathFilter::new(backend)
+    .allow("/workspace/**")    // Allow glob pattern
+    .deny("**/.env")           // Deny glob pattern
+    .deny("**/secrets/**")
+
+// Rules evaluated in order; first match wins
+// No match = denied (deny by default)
+```
+
+---
+
+## ReadOnly Methods
+
+```rust
+ReadOnly::new(backend)
+
+// All read operations pass through
+// All write operations return VfsError::ReadOnly
+```
+
+---
+
+## RateLimit Methods
+
+```rust
+RateLimit::new(backend)
+    .max_ops(1000)           // Operation limit
+    .per_second()            // Window: 1 second
+    // or
+    .per_minute()            // Window: 60 seconds
+```
+
+---
+
+## DryRun Methods
+
+```rust
+let mut dry_run = DryRun::new(backend);
+
+// Read operations execute normally
+// Write operations are logged but not executed
+dry_run.write("/file.txt", b"data")?;  // Logged, returns Ok
+
+// Inspect logged operations
+let ops = dry_run.operations();        // -> &[Operation]
+dry_run.clear();                       // Clear the log
+```
+
+---
+
+## Cache Methods
+
+```rust
+Cache::new(backend)
+    .max_entries(1000)                     // LRU cache size
+    .max_entry_size(1024 * 1024)          // 1MB max per entry
+    .ttl(std::time::Duration::from_secs(60))  // Expiration
+```
+
+---
+
+## Overlay Methods
+
+```rust
+use anyfs::{SqliteBackend, MemoryBackend, Overlay};
+
+let base = SqliteBackend::open("base.db")?;  // Read-only base
+let upper = MemoryBackend::new();             // Writable upper
+
+let overlay = Overlay::new(base, upper);
+
+// Read: check upper first, fall back to base
+// Write: always to upper layer
+// Delete: whiteout marker in upper
+```
+
+---
+
 ## VfsBackendExt Methods
 
 Extension methods available on all backends:
@@ -189,6 +270,7 @@ fs.fsync("/path")?;                      // Flush writes for one file
 use anyfs_backend::VfsError;
 
 match result {
+    // Path errors
     Err(VfsError::NotFound { path, operation }) => {
         // e.g., path="/file.txt", operation="read"
     }
@@ -196,11 +278,27 @@ match result {
     Err(VfsError::NotADirectory { path }) => ...
     Err(VfsError::NotAFile { path }) => ...
     Err(VfsError::DirectoryNotEmpty { path }) => ...
+
+    // Quota middleware errors
     Err(VfsError::QuotaExceeded { limit, requested, usage }) => ...
     Err(VfsError::FileSizeExceeded { path, size, limit }) => ...
+
+    // FeatureGuard middleware errors
     Err(VfsError::FeatureNotEnabled { feature, operation }) => ...
-    Err(VfsError::Serialization(msg)) => ...   // from VfsBackendExt
-    Err(VfsError::Deserialization(msg)) => ... // from VfsBackendExt
+
+    // PathFilter middleware errors
+    Err(VfsError::AccessDenied { path, reason }) => ...
+
+    // ReadOnly middleware errors
+    Err(VfsError::ReadOnly { operation }) => ...
+
+    // RateLimit middleware errors
+    Err(VfsError::RateLimitExceeded { limit, window_secs }) => ...
+
+    // VfsBackendExt errors
+    Err(VfsError::Serialization(msg)) => ...
+    Err(VfsError::Deserialization(msg)) => ...
+
     Err(e) => ...
 }
 ```
@@ -223,7 +321,13 @@ match result {
 |------|---------|
 | `Quota<B>` | Quota enforcement |
 | `FeatureGuard<B>` | Least privilege |
+| `PathFilter<B>` | Path-based access control |
+| `ReadOnly<B>` | Prevent write operations |
+| `RateLimit<B>` | Operation throttling |
 | `Tracing<B>` | Instrumentation (tracing ecosystem) |
+| `DryRun<B>` | Log without executing |
+| `Cache<B>` | LRU read caching |
+| `Overlay<B1,B2>` | Union filesystem |
 
 ---
 
@@ -233,7 +337,13 @@ match result {
 |-------|---------|
 | `QuotaLayer` | `Quota<B>` |
 | `FeatureGuardLayer` | `FeatureGuard<B>` |
+| `PathFilterLayer` | `PathFilter<B>` |
+| `ReadOnlyLayer` | `ReadOnly<B>` |
+| `RateLimitLayer` | `RateLimit<B>` |
 | `TracingLayer` | `Tracing<B>` |
+| `DryRunLayer` | `DryRun<B>` |
+| `CacheLayer` | `Cache<B>` |
+| `OverlayLayer` | `Overlay<B1,B2>` |
 
 ---
 
@@ -262,10 +372,22 @@ match result {
 | `VRootFsBackend` | Host FS backend |
 | `Quota<B>` | Quota middleware |
 | `FeatureGuard<B>` | Feature gate middleware |
+| `PathFilter<B>` | Path access control middleware |
+| `ReadOnly<B>` | Read-only middleware |
+| `RateLimit<B>` | Rate limiting middleware |
 | `Tracing<B>` | Tracing middleware |
+| `DryRun<B>` | Dry-run middleware |
+| `Cache<B>` | Caching middleware |
+| `Overlay<B1,B2>` | Union filesystem middleware |
 | `QuotaLayer` | Layer for Quota |
 | `FeatureGuardLayer` | Layer for FeatureGuard |
+| `PathFilterLayer` | Layer for PathFilter |
+| `ReadOnlyLayer` | Layer for ReadOnly |
+| `RateLimitLayer` | Layer for RateLimit |
 | `TracingLayer` | Layer for Tracing |
+| `DryRunLayer` | Layer for DryRun |
+| `CacheLayer` | Layer for Cache |
+| `OverlayLayer` | Layer for Overlay |
 
 ### From `anyfs-container`
 
