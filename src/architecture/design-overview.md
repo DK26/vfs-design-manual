@@ -23,9 +23,24 @@ Anyone can:
 │  FilesContainer<B>                      │  ← Ergonomics only (std::fs API)
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
-│    Quota<B>                    │  ← Quota enforcement
-│    Tracing<B>                    │  ← Instrumentation (tracing ecosystem)
-│    FeatureGuard<B>               │  ← Symlink/hardlink whitelist
+│                                         │
+│  Policy:                                │
+│    Quota<B>         - Resource limits   │
+│    FeatureGuard<B>  - Least privilege   │
+│    PathFilter<B>    - Sandbox paths     │
+│    ReadOnly<B>      - Prevent writes    │
+│    RateLimit<B>     - Ops/sec limit     │
+│                                         │
+│  Observability:                         │
+│    Tracing<B>       - Instrumentation   │
+│    DryRun<B>        - Test mode         │
+│                                         │
+│  Performance:                           │
+│    Cache<B>         - LRU caching       │
+│                                         │
+│  Composition:                           │
+│    Overlay<B1,B2>   - Layered FS        │
+│                                         │
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Pure storage + fs semantics
 │  (Memory, SQLite, VRootFs, custom...)   │
@@ -37,9 +52,15 @@ Anyone can:
 | Layer | Responsibility |
 |-------|----------------|
 | `VfsBackend` | Storage + filesystem semantics |
-| `Quota<B>` | Quota enforcement |
+| `Quota<B>` | Resource limits (size, count, depth) |
+| `FeatureGuard<B>` | Feature whitelist (symlinks, hardlinks) |
+| `PathFilter<B>` | Path-based access control |
+| `ReadOnly<B>` | Prevent all write operations |
+| `RateLimit<B>` | Limit operations per second |
 | `Tracing<B>` | Instrumentation / audit trail |
-| `FeatureGuard<B>` | Feature whitelist |
+| `DryRun<B>` | Log operations without executing |
+| `Cache<B>` | LRU cache for reads |
+| `Overlay<B1,B2>` | Union filesystem (base + upper) |
 | `FilesContainer<B>` | Ergonomic std::fs-aligned API |
 
 ---
@@ -49,7 +70,7 @@ Anyone can:
 | Crate | Purpose | Contains |
 |-------|---------|----------|
 | `anyfs-backend` | Minimal contract | `VfsBackend` trait, `Layer` trait, types, `VfsBackendExt` |
-| `anyfs` | Backends + middleware | Built-in backends, `Quota`, `Tracing`, `FeatureGuard` |
+| `anyfs` | Backends + middleware | Built-in backends, all middleware layers |
 | `anyfs-container` | Ergonomic wrapper | `FilesContainer<B>`, `BackendStack` builder |
 
 ### Dependency Graph
@@ -179,6 +200,113 @@ tracing_subscriber::fmt::init();
 - Structured logging with spans
 - Compatible with OpenTelemetry, Jaeger, etc.
 - Users choose their subscriber (console, file, distributed tracing)
+
+### PathFilter<B>
+
+Restricts access to specific paths. Essential for sandboxing.
+
+```rust
+use anyfs::{MemoryBackend, PathFilter};
+
+let backend = PathFilter::new(MemoryBackend::new())
+    .allow("/workspace/**")           // Allow all under /workspace
+    .allow("/tmp/**")                  // Allow temp files
+    .deny("/workspace/.env")           // But deny .env files
+    .deny("**/.git/**");               // Deny all .git directories
+```
+
+When a path is denied, operations return `VfsError::AccessDenied`.
+
+### ReadOnly<B>
+
+Prevents all write operations. Useful for publishing immutable data.
+
+```rust
+use anyfs::{SqliteBackend, ReadOnly};
+
+// Wrap any backend to make it read-only
+let backend = ReadOnly::new(SqliteBackend::open("published.db")?);
+
+backend.read("/doc.txt")?;     // OK
+backend.write("/doc.txt", b"x"); // Error: VfsError::ReadOnly
+```
+
+### RateLimit<B>
+
+Limits operations per second. Prevents runaway agents.
+
+```rust
+use anyfs::{MemoryBackend, RateLimit};
+use std::time::Duration;
+
+let backend = RateLimit::new(MemoryBackend::new())
+    .with_max_ops(100)                        // 100 ops per window
+    .with_window(Duration::from_secs(1))      // 1 second window
+    .with_max_burst(10);                      // Allow bursts up to 10
+
+// When rate exceeded: VfsError::RateLimitExceeded
+```
+
+### DryRun<B>
+
+Logs operations without executing writes. Great for testing and debugging.
+
+```rust
+use anyfs::{MemoryBackend, DryRun};
+
+let mut backend = DryRun::new(MemoryBackend::new());
+
+backend.write("/test.txt", b"hello")?;  // Logged but not written
+backend.read("/test.txt");               // Error: file doesn't exist
+
+// Get recorded operations
+let ops = backend.operations();
+// [Operation::Write { path: "/test.txt", size: 5 }]
+```
+
+### Cache<B>
+
+LRU cache for read operations. Essential for slow backends (S3, network).
+
+```rust
+use anyfs::{SqliteBackend, Cache};
+
+let backend = Cache::new(SqliteBackend::open("data.db")?)
+    .with_max_size(100 * 1024 * 1024)  // 100 MB cache
+    .with_max_entries(10_000)           // Max 10K entries
+    .with_ttl(Duration::from_secs(300)); // 5 min TTL
+
+// First read: hits backend, caches result
+let data = backend.read("/file.txt")?;
+
+// Second read: served from cache (fast!)
+let data = backend.read("/file.txt")?;
+```
+
+### Overlay<Base, Upper>
+
+Union filesystem with a read-only base and writable upper layer. Like Docker.
+
+```rust
+use anyfs::{SqliteBackend, MemoryBackend, Overlay};
+
+// Base: read-only template
+let base = SqliteBackend::open("template.db")?;
+
+// Upper: writable layer for changes
+let upper = MemoryBackend::new();
+
+let backend = Overlay::new(base, upper);
+
+// Reads check upper first, then base
+// Writes always go to upper
+// Deletes in upper "shadow" base files
+```
+
+**Use cases:**
+- Container images (base image + writable layer)
+- Template filesystems with per-user modifications
+- Testing with rollback capability
 
 ---
 
@@ -314,13 +442,37 @@ Security is achieved through composition:
 
 | Concern | Solution |
 |---------|----------|
-| Path containment | Backend-specific (VRootFsBackend uses strict-path) |
+| Path containment | `PathFilter` + VRootFsBackend |
 | Resource exhaustion | `Quota` enforces quotas |
+| Rate limiting | `RateLimit` prevents abuse |
 | Feature restriction | `FeatureGuard` disables dangerous features |
+| Read-only access | `ReadOnly` prevents writes |
 | Audit trail | `Tracing` instruments operations |
 | Tenant isolation | Separate backend instances |
+| Testing | `DryRun` logs without executing |
 
 **Defense in depth:** Compose multiple middleware layers for comprehensive security.
+
+### AI Agent Sandbox Example
+
+```rust
+use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, FeatureGuard, Tracing};
+
+// Build a secure sandbox for an AI agent
+let sandbox = MemoryBackend::new()
+    .layer(QuotaLayer::new()
+        .max_total_size(50 * 1024 * 1024)  // 50 MB
+        .max_file_size(5 * 1024 * 1024))   // 5 MB per file
+    .layer(PathFilterLayer::new()
+        .allow("/workspace/**")
+        .deny("**/.env")
+        .deny("**/secrets/**"))
+    .layer(FeatureGuardLayer::new())        // No symlinks, no hardlinks
+    .layer(RateLimitLayer::new()
+        .max_ops(1000)
+        .per_second())
+    .layer(TracingLayer::new());
+```
 
 ---
 
@@ -436,6 +588,23 @@ pub enum VfsError {
     FeatureNotEnabled {
         feature: &'static str,  // "symlinks", "hard_links", "permissions"
         operation: &'static str,
+    },
+
+    /// Access denied (from PathFilter).
+    AccessDenied {
+        path: PathBuf,
+        reason: &'static str,  // "path_denied", "pattern_blocked"
+    },
+
+    /// Read-only filesystem (from ReadOnly).
+    ReadOnly {
+        operation: &'static str,
+    },
+
+    /// Rate limit exceeded (from RateLimit).
+    RateLimitExceeded {
+        limit: u32,
+        window_secs: u64,
     },
 
     /// Serialization error (from VfsBackendExt).
