@@ -92,6 +92,19 @@ Unlike logging-only solutions, AnyFS middleware can **transform and control**:
 | `DryRun` | Log what would happen without executing |
 | Custom | Implement encryption, compression, deduplication... |
 
+### Security by Design
+
+AnyFS treats security as a first-class concern, not an afterthought:
+
+**Path Containment**: The `VRootFsBackend` uses [`strict-path`](https://github.com/DK26/strict-path-rs) for real filesystem containment. Unlike simple path-prefix approaches, `strict-path` performs full canonicalization with symlink resolution, preventing escape via:
+- Symlink traversal attacks (`/allowed/link` → `../../../etc/passwd`)
+- TOCTOU (time-of-check-to-use) race conditions
+- Windows edge cases (8.3 short names, NTFS alternate data streams, junctions)
+
+**Virtual Backends Are Inherently Safe**: `MemoryBackend` and `SqliteBackend` treat paths as keys, not OS paths. There's no underlying filesystem to exploit - path traversal attacks are structurally impossible.
+
+**Least Privilege by Default**: Dangerous features (symlinks, hard links, permission changes) are disabled unless explicitly enabled via `FeatureGuard`.
+
 ### Data Portability
 
 Same data, different backends:
@@ -163,23 +176,54 @@ anyfs-container = "0.1"
 
 ## Comparison with Alternatives
 
+| Feature | AnyFS | `vfs` crate | AgentFS | `std::fs` |
+|---------|:-----:|:-----------:|:-------:|:---------:|
+| Composable middleware | Yes | No | No | No |
+| Multiple backends | Yes | Yes | No (SQLite) | No |
+| SQLite backend | Yes | No | Yes | No |
+| Quota enforcement | Yes | No | No | No |
+| Path sandboxing | Yes | Partial | No | No |
+| Symlink-safe containment | Yes | No | N/A | N/A |
+| Rate limiting | Yes | No | No | No |
+
+### vs `vfs` Crate
+
+The [vfs](https://crates.io/crates/vfs) crate is a solid VFS abstraction. AnyFS builds on similar concepts with additional capabilities:
+
+| Aspect | `vfs` | AnyFS |
+|--------|-------|-------|
+| **Design pattern** | Path wrapper (`VfsPath`) | Backend trait + middleware |
+| **Middleware** | Not supported | Tower-style composable layers |
+| **Policy enforcement** | Application responsibility | Built-in (Quota, PathFilter, etc.) |
+| **Path containment** | Prefix-based (AltrootFS) | Canonicalization-based (`strict-path`) |
+| **Path type** | Custom `VfsPath` | `impl AsRef<Path>` (std-compatible) |
+
+**When to use `vfs`:** Simple VFS abstraction without policy requirements.
+
+**When to use AnyFS:** You need middleware (quotas, sandboxing, rate limiting) or security-hardened path containment.
+
 ### vs AgentFS
 
-[AgentFS](https://github.com/tursodatabase/agentfs) is an **agent runtime** (filesystem + KV store + tool auditing). AnyFS is a **filesystem abstraction**. They solve different problems and can complement each other.
+[AgentFS](https://github.com/tursodatabase/agentfs) is an **agent runtime** (filesystem + KV store + tool auditing). AnyFS is a **filesystem abstraction**. They solve different problems:
 
-### vs vfs crate
+| Aspect | AgentFS | AnyFS |
+|--------|---------|-------|
+| **Scope** | Complete agent runtime | Filesystem abstraction only |
+| **Backend choice** | SQLite only | Memory, SQLite, RealFS, custom |
+| **Middleware** | Fixed capabilities | Composable, extensible |
+| **KV store** | Included | Not included (different concern) |
 
-The [vfs](https://docs.rs/vfs/) crate provides filesystem abstractions but lacks:
-- Composable middleware pattern
-- Quota/policy enforcement
-- SQLite as first-class backend
+**When to use AgentFS:** You need a complete AI agent runtime with built-in KV and auditing.
 
-### vs Direct std::fs
+**When to use AnyFS:** You need just filesystem with backend flexibility and composable policies.
+
+### vs Direct `std::fs`
 
 `std::fs` is great for simple cases. AnyFS adds:
 - Backend swapping without code changes
 - Policy enforcement via middleware
 - Consistent API across storage types
+- Isolated/sandboxed storage
 
 ---
 

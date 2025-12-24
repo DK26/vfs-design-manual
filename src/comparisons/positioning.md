@@ -30,11 +30,25 @@ AnyFS is a **filesystem abstraction with composable middleware**. It separates s
 | Path sandboxing | Backend-dependent | Yes (PathFilter middleware) |
 | Feature gating | No | Yes (FeatureGuard middleware) |
 | SQLite backend | No | Yes (built-in) |
+| Path containment | Prefix-based (AltrootFS) | Canonicalization-based (`strict-path`) |
 | Third-party extensibility | Implement trait | Implement trait + Layer |
+| Path type | Custom `VfsPath` | `impl AsRef<Path>` (std-compatible) |
 
-**Use `vfs` when:** You need simple VFS abstraction without policies.
+**Path containment difference:**
 
-**Use AnyFS when:** You need composable middleware (quotas, sandboxing, logging).
+The `vfs` crate's `AltrootFS` uses path prefix translation - it prepends a root path before delegating to the underlying filesystem. This is vulnerable to symlink-based escapes:
+
+```
+AltrootFS root: /data/tenant1/
+Symlink: /data/tenant1/link → ../tenant2/secrets.txt
+Access: /link → escapes to /data/tenant2/secrets.txt
+```
+
+AnyFS's `VRootFsBackend` uses `strict-path` for full canonicalization. Symlinks are resolved and validated *before* any filesystem operation, preventing escapes.
+
+**Use `vfs` when:** You need simple VFS abstraction without policies or security-sensitive containment.
+
+**Use AnyFS when:** You need composable middleware (quotas, sandboxing, logging) or hardened path containment.
 
 ---
 
@@ -108,7 +122,8 @@ AnyFS is a **filesystem abstraction with composable middleware**. It separates s
 | Memory backend | Yes | Yes | No | Yes |
 | Real FS backend | Yes | Yes | No | No |
 | Quota enforcement | Yes | No | No | No |
-| Path sandboxing | Yes | No | No | No |
+| Path sandboxing | Yes | Partial | No | No |
+| Symlink-safe containment | Yes | No | N/A | N/A |
 | Rate limiting | Yes | No | No | No |
 | Streaming I/O | Yes | Yes | Yes | Yes |
 | Async API | Planned | Partial | No | Yes |
