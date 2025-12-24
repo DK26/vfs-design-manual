@@ -126,7 +126,15 @@ anyfs-backend (trait + types)
      |     ^-- vrootfs feature may use strict-path
      |
      +-- anyfs-container (ergonomic wrapper)
+     |
+     +-- third-party backends (only need anyfs-backend)
+     |
+     +-- third-party middleware (only need anyfs-backend)
 ```
+
+**Third-party crates only need `anyfs-backend`** to implement:
+- Custom backends (implement `VfsBackend`)
+- Custom middleware (implement `VfsBackend` + `Layer`)
 
 ---
 

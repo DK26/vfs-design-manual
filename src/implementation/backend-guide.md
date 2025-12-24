@@ -327,6 +327,114 @@ impl<B: VfsBackend> VfsBackend for Quota<B> {
 
 ---
 
+## Creating Custom Middleware
+
+Custom middleware only requires `anyfs-backend` as a dependency - same as backends.
+
+### Dependency
+
+```toml
+[dependencies]
+anyfs-backend = "0.1"
+```
+
+### Complete Example: Encryption Middleware
+
+```rust
+use anyfs_backend::{VfsBackend, Layer, VfsError, Metadata, DirEntry, Permissions, StatFs};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+
+/// Middleware that encrypts/decrypts file contents transparently.
+pub struct Encrypted<B: VfsBackend> {
+    inner: B,
+    key: [u8; 32],
+}
+
+impl<B: VfsBackend> Encrypted<B> {
+    pub fn new(inner: B, key: [u8; 32]) -> Self {
+        Self { inner, key }
+    }
+
+    fn encrypt(&self, data: &[u8]) -> Vec<u8> {
+        // Your encryption logic here
+        data.iter().map(|b| b ^ self.key[0]).collect()
+    }
+
+    fn decrypt(&self, data: &[u8]) -> Vec<u8> {
+        // Your decryption logic here (symmetric for XOR)
+        self.encrypt(data)
+    }
+}
+
+impl<B: VfsBackend> VfsBackend for Encrypted<B> {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> {
+        let encrypted = self.inner.read(path)?;
+        Ok(self.decrypt(&encrypted))
+    }
+
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError> {
+        let encrypted = self.encrypt(data);
+        self.inner.write(path, &encrypted)
+    }
+
+    // Most methods just delegate:
+    fn exists(&self, path: impl AsRef<Path>) -> Result<bool, VfsError> {
+        self.inner.exists(path)
+    }
+
+    fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError> {
+        self.inner.metadata(path)
+    }
+
+    // ... implement all 25 methods
+}
+
+/// Layer for creating Encrypted middleware.
+pub struct EncryptedLayer {
+    key: [u8; 32],
+}
+
+impl EncryptedLayer {
+    pub fn new(key: [u8; 32]) -> Self {
+        Self { key }
+    }
+}
+
+impl<B: VfsBackend> Layer<B> for EncryptedLayer {
+    type Backend = Encrypted<B>;
+
+    fn layer(self, backend: B) -> Self::Backend {
+        Encrypted::new(backend, self.key)
+    }
+}
+```
+
+### Usage
+
+```rust
+use anyfs::MemoryBackend;
+use my_middleware::{EncryptedLayer, Encrypted};
+
+// Direct construction
+let fs = Encrypted::new(MemoryBackend::new(), key);
+
+// Or via Layer trait
+let fs = MemoryBackend::new()
+    .layer(EncryptedLayer::new(key));
+```
+
+### Middleware Checklist
+
+- [ ] Depends only on `anyfs-backend`
+- [ ] Implements `VfsBackend` for `MyMiddleware<B: VfsBackend>`
+- [ ] Implements `Layer<B>` for `MyMiddlewareLayer`
+- [ ] Delegates unmodified operations to inner backend
+- [ ] Handles streaming I/O appropriately (wrap, pass-through, or block)
+- [ ] Documents which operations are intercepted vs delegated
+
+---
+
 ## Checklist
 
 - [ ] Depends only on `anyfs-backend`
