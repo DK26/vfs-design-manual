@@ -342,6 +342,24 @@ let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
 
 ---
 
+## Async Support
+
+**Decision:** Sync-first, async-ready (ADR-010).
+
+- `VfsBackend` is **synchronous** for v1
+- All built-in backends are naturally sync (rusqlite, std::fs, memory)
+- API is designed to allow `AsyncVfsBackend` trait later without breaking changes
+
+**Async-ready principles:**
+- Trait requires `Send` - works with async executors
+- Return types are `Result<T, VfsError>` - compatible with async
+- No hidden blocking state
+- Users can wrap in `spawn_blocking` if needed
+
+**Future:** When async is needed, add parallel `AsyncVfsBackend` trait with blanket impl for sync backends.
+
+---
+
 ## When in Doubt
 
 1. **Where do limits go?** `LimitedBackend<B>` middleware
@@ -349,3 +367,4 @@ let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
 3. **What does FilesContainer do?** Thin std::fs-aligned wrapper only
 4. **Path type everywhere?** `impl AsRef<Path>` (std::fs aligned)
 5. **Is strict-path used?** Only internally by VRootFsBackend
+6. **Sync or async?** Sync for v1, async-ready for future

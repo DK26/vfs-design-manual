@@ -17,6 +17,7 @@ This file captures the decisions for the current AnyFS design.
 | ADR-007 | FeatureGatedBackend for least-privilege | Accepted |
 | ADR-008 | FilesContainer as thin ergonomic wrapper | Accepted |
 | ADR-009 | Built-in backends are feature-gated | Accepted |
+| ADR-010 | Sync-first, async-ready design | Accepted |
 
 ---
 
@@ -154,3 +155,50 @@ When disabled, operations return `VfsError::FeatureNotEnabled`.
 - `vrootfs` (optional)
 
 **Why:** Minimizes binary size and compile time for users who don't need all backends.
+
+---
+
+## ADR-010: Sync-first, async-ready design
+
+**Decision:** VfsBackend is synchronous for v1. The API is designed to allow adding `AsyncVfsBackend` later without breaking changes.
+
+**Rationale:**
+- All built-in backends are naturally synchronous:
+  - `MemoryBackend` - in-memory, instant
+  - `SqliteBackend` - rusqlite is sync
+  - `VRootFsBackend` - std::fs is sync
+- Sync is simpler - no runtime dependency (tokio/async-std)
+- Users can wrap sync backends in `spawn_blocking` if needed
+
+**Async-ready design principles:**
+- Trait requires `Send` - compatible with async executors
+- Return types are `Result<T, VfsError>` - works with async
+- No internal blocking assumptions
+- Methods are stateless per-call - no hidden blocking state
+
+**Future async path (Option 2):**
+When async is needed (e.g., network-backed storage), add a parallel trait:
+
+```rust
+// In anyfs-backend
+pub trait AsyncVfsBackend: Send + Sync {
+    async fn read(&self, path: impl AsRef<Path> + Send) -> Result<Vec<u8>, VfsError>;
+    async fn write(&mut self, path: impl AsRef<Path> + Send, data: &[u8]) -> Result<(), VfsError>;
+    // ... mirrors VfsBackend with async
+
+    // Streaming uses AsyncRead/AsyncWrite
+    async fn open_read(&self, path: impl AsRef<Path> + Send)
+        -> Result<Box<dyn AsyncRead + Send + Unpin>, VfsError>;
+}
+```
+
+**Migration notes:**
+- `AsyncVfsBackend` would be a separate trait, not replacing `VfsBackend`
+- Blanket impl possible: `impl<T: VfsBackend> AsyncVfsBackend for T` using `spawn_blocking`
+- Middleware would need async variants: `AsyncLimitedBackend<B>`, etc.
+- No breaking changes to existing sync API
+
+**Why not async now:**
+- Complexity without benefit - all current backends are sync
+- Rust 1.75 makes async traits easy, so adding later is low-cost
+- Better to wait for real async backend requirements

@@ -183,6 +183,30 @@ Based on review feedback, the following naming concerns were raised:
 
 ---
 
+## Async Support
+
+**Question:** Should VfsBackend be async?
+
+**Decision:** Sync-first, async-ready (see ADR-010).
+
+**Rationale:**
+- All built-in backends are naturally synchronous (rusqlite, std::fs, memory)
+- No runtime dependency (tokio/async-std) required
+- Rust 1.75+ has native async traits, so adding later is low-cost
+
+**Async-ready design:**
+- Trait requires `Send` - compatible with async executors
+- Return types are `Result<T, VfsError>` - works with async
+- No hidden blocking state
+- Methods are stateless per-call
+
+**Future path:** When needed (e.g., S3/network backends), add parallel `AsyncVfsBackend` trait:
+- Separate trait, not replacing `VfsBackend`
+- Blanket impl possible via `spawn_blocking`
+- No breaking changes to existing sync API
+
+---
+
 ## Summary
 
 These questions inform future development but don't block v1:
@@ -198,3 +222,4 @@ These questions inform future development but don't block v1:
 | POSIX compatibility | Not a goal |
 | `truncate` | ✅ Added to VfsBackend |
 | `sync` / `fsync` | ✅ Added to VfsBackend |
+| Async support | ✅ Sync-first, async-ready (ADR-010) |
