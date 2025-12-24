@@ -135,6 +135,27 @@ Different backends achieve containment differently:
 | `SqliteBackend` | Each container is a separate `.db` file |
 | `VRootFsBackend` | Uses `strict-path::VirtualRoot` to contain paths |
 
+### 7. Why Virtual Backends Are Inherently Safe
+
+For `MemoryBackend` and `SqliteBackend`, paths are **just keys** (strings or normalized path components). There is no underlying OS filesystem to exploit.
+
+**Lexical path resolution**: Unlike POSIX filesystems, virtual backends resolve paths **lexically** without consulting any filesystem:
+
+```
+POSIX behavior (dangerous):
+  /foo/bar/..  where bar → /etc  resolves to /etc/../ → /
+
+AnyFS virtual backend behavior (safe):
+  /foo/bar/..  always resolves to /foo (pure string manipulation)
+```
+
+This means:
+- **No symlink-based escapes** - symlinks are data, not OS-resolved references
+- **No TOCTOU via filesystem state** - resolution is deterministic
+- **No host path leakage** - paths never touch the OS path resolver
+
+For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equivalent guarantees by validating and containing all paths before they reach the OS.
+
 ---
 
 ## Secure Usage Patterns
