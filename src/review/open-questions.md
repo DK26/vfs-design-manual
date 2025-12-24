@@ -193,6 +193,8 @@ These questions inform future development but don't block v1:
 | Path resolution | Virtual = lexical; VRootFs = OS |
 | Compression/encryption | Backend responsibility |
 | Hooks/callbacks | Defer to v2 |
-| FUSE mount | Not in v1, consider v2 |
+| FUSE mount | Possible with current trait (has truncate, fsync, statfs) |
 | Type-system protection | Defer |
 | POSIX compatibility | Not a goal |
+| `truncate` | ✅ Added to VfsBackend |
+| `sync` / `fsync` | ✅ Added to VfsBackend |

@@ -11,21 +11,20 @@ Add to your `Cargo.toml`:
 ```toml
 [dependencies]
 anyfs = "0.1"
-anyfs-container = "0.1"
+anyfs-container = "0.1"  # Optional: for ergonomic wrapper
 ```
 
-By default, `anyfs` includes only the in-memory backend. For additional backends:
+For additional backends:
 
 ```toml
 [dependencies]
 anyfs = { version = "0.1", features = ["sqlite", "vrootfs"] }
-anyfs-container = "0.1"
 ```
 
-Available features for `anyfs`:
-- `memory` — In-memory storage (default). Fast and isolated—useful for testing, caching, or any speed-critical application.
-- `sqlite` — SQLite-backed persistent storage. Portable single-file storage.
-- `vrootfs` — Host filesystem backend (uses `strict-path` internally for path containment).
+Available features:
+- `memory` — In-memory storage (default)
+- `sqlite` — SQLite-backed persistent storage
+- `vrootfs` — Host filesystem backend
 
 ---
 
@@ -38,312 +37,236 @@ use anyfs::MemoryBackend;
 use anyfs_container::FilesContainer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create an in-memory container
-    let mut container = FilesContainer::new(MemoryBackend::new());
+    let mut fs = FilesContainer::new(MemoryBackend::new());
 
-    // Write a file (accepts any path-like type)
-    container.write("/hello.txt", b"Hello, AnyFS!")?;
-
-    // Read it back
-    let content = container.read("/hello.txt")?;
+    fs.write("/hello.txt", b"Hello, AnyFS!")?;
+    let content = fs.read("/hello.txt")?;
     println!("{}", String::from_utf8_lossy(&content));
-    // Output: Hello, AnyFS!
 
     Ok(())
 }
 ```
 
-### Persistent Storage with SQLite
+### With Limits (LimitedBackend)
 
 ```rust
-use anyfs::SqliteBackend;
+use anyfs::{SqliteBackend, LimitedBackend};
 use anyfs_container::FilesContainer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create or open a SQLite-backed container
-    let mut container = FilesContainer::new(
-        SqliteBackend::open_or_create("my_data.db")?
-    );
+    let backend = LimitedBackend::new(SqliteBackend::open_or_create("data.db")?)
+        .with_max_total_size(100 * 1024 * 1024)  // 100 MB
+        .with_max_file_size(10 * 1024 * 1024);   // 10 MB per file
 
-    // Create a directory structure
-    container.create_dir_all("/documents/work")?;
+    let mut fs = FilesContainer::new(backend);
 
-    // Write some files
-    container.write("/documents/work/notes.txt", b"Meeting notes for Monday")?;
+    fs.create_dir_all("/documents")?;
+    fs.write("/documents/notes.txt", b"Meeting notes")?;
 
-    // Data persists across program runs
+    Ok(())
+}
+```
+
+### With Feature Gates (FeatureGatedBackend)
+
+```rust
+use anyfs::{MemoryBackend, FeatureGatedBackend};
+use anyfs_container::FilesContainer;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let backend = FeatureGatedBackend::new(MemoryBackend::new())
+        .with_symlinks()      // Enable symlinks
+        .with_hard_links();   // Enable hard links
+
+    let mut fs = FilesContainer::new(backend);
+
+    fs.write("/original.txt", b"content")?;
+    fs.symlink("/original.txt", "/shortcut")?;
+
+    Ok(())
+}
+```
+
+### Full Stack (Limits + Feature Gates)
+
+```rust
+use anyfs::{SqliteBackend, LimitedBackend, FeatureGatedBackend};
+use anyfs_container::FilesContainer;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Compose: storage -> limits -> feature gates
+    let backend = FeatureGatedBackend::new(
+        LimitedBackend::new(SqliteBackend::open_or_create("data.db")?)
+            .with_max_total_size(100 * 1024 * 1024)
+    )
+    .with_symlinks();
+
+    let mut fs = FilesContainer::new(backend);
+
+    fs.create_dir_all("/data")?;
+    fs.write("/data/file.txt", b"hello")?;
+
     Ok(())
 }
 ```
 
 ---
 
-## Common Tasks
+## Common Operations
 
 ### Creating Directories
 
 ```rust
-// Single directory (parent must exist)
-container.create_dir("/documents")?;
-
-// Recursive (creates parents as needed)
-container.create_dir_all("/documents/projects/2024/q1")?;
+fs.create_dir("/documents")?;              // Single level
+fs.create_dir_all("/documents/2024/q1")?;  // Recursive
 ```
 
 ### Reading and Writing Files
 
 ```rust
-// Write (creates or overwrites)
-container.write("/data.txt", b"line 1\n")?;
+fs.write("/data.txt", b"line 1\n")?;       // Create or overwrite
+fs.append("/data.txt", b"line 2\n")?;      // Append
 
-// Append
-container.append("/data.txt", b"line 2\n")?;
-
-// Read entire file
-let content = container.read("/data.txt")?;
-
-// Read partial (offset 0, length 6)
-let partial = container.read_range("/data.txt", 0, 6)?;
+let content = fs.read("/data.txt")?;                    // Read all
+let partial = fs.read_range("/data.txt", 0, 6)?;        // Read range
+let text = fs.read_to_string("/data.txt")?;             // Read as String
 ```
 
 ### Listing Directories
 
 ```rust
-for entry in container.read_dir("/documents")? {
-    match entry.file_type {
-        FileType::File => {
-            println!("  {} (file)", entry.name);
-        }
-        FileType::Directory => {
-            println!("  {}/", entry.name);
-        }
-        FileType::Symlink => {
-            println!("  {} -> ...", entry.name);
-        }
-    }
+for entry in fs.read_dir("/documents")? {
+    println!("{}: {:?}", entry.name, entry.file_type);
 }
 ```
 
 ### Checking Existence and Metadata
 
 ```rust
-if container.exists("/maybe-exists.txt")? {
-    let meta = container.metadata("/maybe-exists.txt")?;
+if fs.exists("/file.txt")? {
+    let meta = fs.metadata("/file.txt")?;
     println!("Size: {} bytes", meta.size);
-    println!("Created: {:?}", meta.created);
-    println!("Modified: {:?}", meta.modified);
 }
 ```
 
 ### Copying and Moving
 
 ```rust
-// Copy a file
-container.copy("/original.txt", "/copy.txt")?;
-
-// Move (rename)
-container.rename("/original.txt", "/renamed.txt")?;
+fs.copy("/original.txt", "/copy.txt")?;
+fs.rename("/original.txt", "/renamed.txt")?;
 ```
 
 ### Deleting
 
 ```rust
-// Delete a file
-container.remove_file("/old-file.txt")?;
-
-// Delete an empty directory
-container.remove_dir("/empty-folder")?;
-
-// Delete directory and all contents
-container.remove_dir_all("/old-folder")?;
+fs.remove_file("/old-file.txt")?;
+fs.remove_dir("/empty-folder")?;
+fs.remove_dir_all("/old-folder")?;
 ```
 
 ---
 
-## Configuration
+## Middleware
 
-### Builder Pattern
+### LimitedBackend — Quota Enforcement
 
 ```rust
-use anyfs::SqliteBackend;
-use anyfs_container::FilesContainer;
+use anyfs::{MemoryBackend, LimitedBackend};
 
-let container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
-    // Set capacity limits
+let backend = LimitedBackend::new(MemoryBackend::new())
     .with_max_total_size(500 * 1024 * 1024)  // 500 MB total
     .with_max_file_size(50 * 1024 * 1024)    // 50 MB per file
     .with_max_node_count(100_000)             // 100K files/dirs
-    .with_max_dir_entries(5_000)              // 5K entries per directory
-    // Set depth limits
-    .with_max_path_depth(32);
-```
+    .with_max_dir_entries(5_000)              // 5K per directory
+    .with_max_path_depth(32);                 // Max nesting
 
-### Checking Capacity
-
-```rust
-// Current usage
-let usage = container.usage()?;
+// Check usage
+let usage = backend.usage();
 println!("Using {} bytes", usage.total_size);
-println!("Files: {}", usage.file_count);
-println!("Directories: {}", usage.directory_count);
 
-// Remaining capacity
-let remaining = container.remaining()?;
+// Check remaining
+let remaining = backend.remaining();
 if !remaining.can_write {
-    println!("Storage is full!");
+    println!("Storage full!");
 }
 ```
 
----
-
-## Links
-
-Symlinks, hard links, and permission mutation are **disabled by default**. Enable only what you need via the builder pattern (feature whitelist).
-
-### Symbolic Links
+### FeatureGatedBackend — Least Privilege
 
 ```rust
-use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs::{MemoryBackend, FeatureGatedBackend};
 
-let mut container = FilesContainer::new(MemoryBackend::new())
-    .with_symlinks()                     // disabled by default (least privilege)
-    .with_max_symlink_resolution(40);    // optional; default: 40
+// All features disabled by default
+let backend = FeatureGatedBackend::new(MemoryBackend::new())
+    .with_symlinks()                  // Enable symlink operations
+    .with_max_symlink_resolution(40)  // Max hops (default: 40)
+    .with_hard_links()                // Enable hard links
+    .with_permissions();              // Enable set_permissions
 
-// Create a symlink
-container.create_dir_all("/deep/nested/dir")?;
-container.symlink("/deep/nested/dir", "/shortcut")?;
-
-// Read the target (without following)
-let target = container.read_link("/shortcut")?;
-
-// Regular operations follow symlinks when enabled
-container.read_dir("/shortcut")?;  // lists /deep/nested/dir
+// Disabled operations return VfsError::FeatureNotEnabled
 ```
 
-### Hard Links
+### LoggingBackend — Audit Trail
 
 ```rust
-use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs::{MemoryBackend, LoggingBackend};
 
-let mut container = FilesContainer::new(MemoryBackend::new())
-    .with_hard_links();              // disabled by default (least privilege)
-
-// Create a file
-container.write("/original.txt", b"content")?;
-
-// Create a hard link (same file, different path)
-container.hard_link("/original.txt", "/link.txt")?;
-
-// Both paths refer to the same content
-// Deleting one doesn't affect the other
-container.remove_file("/original.txt")?;
-let content = container.read("/link.txt")?;  // Still works
+let backend = LoggingBackend::new(MemoryBackend::new())
+    .with_logger(MyLogger::new());
 ```
 
 ---
 
 ## Error Handling
 
-### Pattern Matching on Errors
-
 ```rust
-use anyfs_container::ContainerError;
+use anyfs_backend::VfsError;
 
-match container.write("/file.txt", &large_data) {
-    Ok(()) => println!("Written successfully"),
+match fs.write("/file.txt", &large_data) {
+    Ok(()) => println!("Written"),
 
-    Err(ContainerError::NotFound(p)) => {
-        println!("Parent directory doesn't exist: {}", p);
-    }
+    Err(VfsError::NotFound(p)) => println!("Not found: {}", p),
+    Err(VfsError::AlreadyExists(p)) => println!("Exists: {}", p),
+    Err(VfsError::QuotaExceeded) => println!("Quota exceeded"),
+    Err(VfsError::FeatureNotEnabled(f)) => println!("Feature disabled: {}", f),
 
-    Err(ContainerError::FileSizeExceeded { size, limit }) => {
-        println!("File too large: {} bytes (limit: {})", size, limit);
-    }
-
-    Err(ContainerError::TotalSizeExceeded { used, limit }) => {
-        println!("Storage full: {} / {} bytes", used, limit);
-    }
-
-    Err(ContainerError::FeatureNotEnabled(name)) => {
-        println!("Feature is disabled by default: {}", name);
-    }
-
-    Err(e) => println!("Other error: {}", e),
+    Err(e) => println!("Error: {}", e),
 }
 ```
-
-### Common Error Scenarios
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `NotFound` | Path doesn't exist | Check with `exists()` first, or use `create_dir_all` |
-| `AlreadyExists` | Creating over existing | Remove first, or check existence |
-| `NotADirectory` | Operating on file as dir | Check `metadata().file_type` |
-| `DirectoryNotEmpty` | Removing non-empty dir | Use `remove_dir_all()` instead |
-| `FileSizeExceeded` | File too large | Increase limit or split file |
-| `TotalSizeExceeded` | Storage full | Delete files or increase quota |
-| `FeatureNotEnabled` | Feature is disabled by policy | Enable via `ContainerBuilder` (whitelist) |
 
 ---
 
 ## Testing
-
-### Use In-Memory Backend
-
-The in-memory backend is fast and isolated. It's useful for:
-- Unit and integration tests
-- Caching or temporary storage
-- Speed-critical applications where persistence isn't needed
-
-```rust
-#[cfg(test)]
-mod tests {
-    use anyfs::MemoryBackend;
-    use anyfs_container::FilesContainer;
-
-    fn test_container() -> FilesContainer<MemoryBackend> {
-        FilesContainer::new(MemoryBackend::new())
-    }
-
-    #[test]
-    fn test_write_and_read() {
-        let mut container = test_container();
-
-        container.write("/test.txt", b"test data").unwrap();
-        let content = container.read("/test.txt").unwrap();
-
-        assert_eq!(content, b"test data");
-    }
-
-    #[test]
-    fn test_directory_operations() {
-        let mut container = test_container();
-
-        container.create_dir_all("/a/b/c").unwrap();
-
-        assert!(container.exists("/a").unwrap());
-        assert!(container.exists("/a/b").unwrap());
-        assert!(container.exists("/a/b/c").unwrap());
-    }
-}
-```
-
-### Test with Capacity Limits
 
 ```rust
 use anyfs::MemoryBackend;
 use anyfs_container::FilesContainer;
 
 #[test]
-fn test_storage_limit() {
-    let mut container = FilesContainer::new(MemoryBackend::new())
-        .with_max_total_size(1024);  // 1 KB limit
+fn test_write_and_read() {
+    let mut fs = FilesContainer::new(MemoryBackend::new());
+
+    fs.write("/test.txt", b"test data").unwrap();
+    let content = fs.read("/test.txt").unwrap();
+
+    assert_eq!(content, b"test data");
+}
+```
+
+With limits:
+
+```rust
+use anyfs::{MemoryBackend, LimitedBackend};
+use anyfs_container::FilesContainer;
+
+#[test]
+fn test_quota_exceeded() {
+    let backend = LimitedBackend::new(MemoryBackend::new())
+        .with_max_total_size(1024);  // 1 KB
+    let mut fs = FilesContainer::new(backend);
 
     let big_data = vec![0u8; 2048];  // 2 KB
-
-    let result = container.write("/big.bin", &big_data);
+    let result = fs.write("/big.bin", &big_data);
 
     assert!(result.is_err());
 }
@@ -353,58 +276,43 @@ fn test_storage_limit() {
 
 ## Best Practices
 
-### 1. Handle Errors Gracefully
+### 1. Use Appropriate Backend
 
-```rust
-use anyfs_backend::VfsBackend;
-use anyfs_container::{FilesContainer, ContainerError};
-
-fn ensure_parent_exists<B: VfsBackend>(
-    container: &mut FilesContainer<B>,
-    path: &str,
-) -> Result<(), ContainerError> {
-    // FilesContainer handles path parsing internally
-    if let Some(parent) = std::path::Path::new(path).parent() {
-        if !container.exists(parent)? {
-            container.create_dir_all(parent)?;
-        }
-    }
-    Ok(())
-}
-```
-
-### 2. Use Appropriate Backend for Use Case
-
-| Use Case | Recommended Backend |
-|----------|---------------------|
-| Unit tests | `MemoryBackend` |
-| Integration tests | `MemoryBackend` or temp `SqliteBackend` |
+| Use Case | Backend |
+|----------|---------|
+| Testing | `MemoryBackend` |
 | Production | `SqliteBackend` |
-| Host filesystem access | `VRootFsBackend` |
+| Host filesystem | `VRootFsBackend` |
 
-### 3. Set Reasonable Limits
+### 2. Compose Middleware for Your Needs
 
 ```rust
-use anyfs::SqliteBackend;
-use anyfs_container::FilesContainer;
+// Minimal: just storage
+let fs = FilesContainer::new(MemoryBackend::new());
 
-// Production defaults suggestion
-let container = FilesContainer::new(SqliteBackend::create("data.db")?)
-    .with_max_total_size(1024 * 1024 * 1024)  // 1 GB
-    .with_max_file_size(100 * 1024 * 1024)    // 100 MB
-    .with_max_node_count(1_000_000)            // 1M nodes
-    .with_max_dir_entries(10_000)              // 10K per dir
-    .with_max_path_depth(64);
+// With limits
+let fs = FilesContainer::new(
+    LimitedBackend::new(MemoryBackend::new())
+        .with_max_total_size(100 * 1024 * 1024)
+);
+
+// Full security
+let fs = FilesContainer::new(
+    FeatureGatedBackend::new(
+        LimitedBackend::new(SqliteBackend::open("data.db")?)
+    )
+    .with_symlinks()
+);
 ```
+
+### 3. Handle Errors Gracefully
+
+Always check for quota exceeded, feature not enabled, and other errors.
 
 ---
 
 ## Next Steps
 
-- [API Quick Reference](./api-reference.md) — Condensed API overview
-- [Backend Implementer's Guide](../implementation/backend-guide.md) — Create custom backends
-- [Design Overview](../architecture/design-overview.md) — Technical architecture
-
----
-
-*Happy coding!*
+- [API Quick Reference](./api-reference.md)
+- [Design Overview](../architecture/design-overview.md)
+- [Backend Implementer's Guide](../implementation/backend-guide.md)

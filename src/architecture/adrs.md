@@ -11,11 +11,12 @@ This file captures the decisions for the current AnyFS design.
 | ADR-001 | Path-based `VfsBackend` trait | Accepted |
 | ADR-002 | Three-crate structure | Accepted |
 | ADR-003 | `impl AsRef<Path>` for all path parameters | Accepted |
-| ADR-004 | `strict-path` only for VRootFsBackend | Accepted |
+| ADR-004 | Tower-style middleware pattern | Accepted |
 | ADR-005 | `std::fs`-aligned method names | Accepted |
-| ADR-006 | Least-privilege feature whitelist | Accepted |
-| ADR-007 | Limits enforced in container (not backend) | Accepted |
-| ADR-008 | Built-in backends are feature-gated | Accepted |
+| ADR-006 | LimitedBackend for quota enforcement | Accepted |
+| ADR-007 | FeatureGatedBackend for least-privilege | Accepted |
+| ADR-008 | FilesContainer as thin ergonomic wrapper | Accepted |
+| ADR-009 | Built-in backends are feature-gated | Accepted |
 
 ---
 
@@ -33,14 +34,14 @@ This file captures the decisions for the current AnyFS design.
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types. Backend implementers depend on this. |
-| `anyfs` | Execution layer that calls any `VfsBackend`. Provides built-in backends (feature-gated). |
-| `anyfs-container` | Policy layer: `FilesContainer<B>` with limits + feature whitelist. |
+| `anyfs-backend` | Minimal contract: `VfsBackend` trait + types |
+| `anyfs` | Backends + middleware (LimitedBackend, FeatureGatedBackend, LoggingBackend) |
+| `anyfs-container` | Thin ergonomic wrapper: `FilesContainer<B>` |
 
 **Why:**
 - Backend authors only need `anyfs-backend` (no heavy dependencies).
-- `anyfs` can execute operations on any backend (built-in or custom).
-- Policy concerns (quotas, feature whitelist) are separated from storage concerns.
+- Middleware is composable and lives with backends in `anyfs`.
+- `FilesContainer` is purely ergonomic - no policy logic.
 
 ---
 
@@ -55,14 +56,25 @@ This file captures the decisions for the current AnyFS design.
 
 ---
 
-## ADR-004: `strict-path` only for VRootFsBackend
+## ADR-004: Tower-style middleware pattern
 
-**Decision:** The `strict-path` crate is only used internally by `VRootFsBackend` for path containment. It is not part of the core AnyFS API.
+**Decision:** Use composable middleware (decorator pattern) for cross-cutting concerns like limits, logging, and feature gates. Each middleware implements `VfsBackend` by wrapping another `VfsBackend`.
 
 **Why:**
-- Virtual backends (memory, SQLite) handle containment differently (they're inherently isolated).
-- Only the filesystem backend needs to clamp paths to a root directory.
-- Keeps the core API simple and dependency-light.
+- Complete separation of concerns - each layer has one job.
+- Composable - use only what you need.
+- Familiar pattern (Axum/Tower use the same approach).
+- No code duplication - middleware written once, works with any backend.
+- Testable - each layer can be tested in isolation.
+
+**Example:**
+```rust
+let backend = LoggingBackend::new(
+    FeatureGatedBackend::new(
+        LimitedBackend::new(SqliteBackend::open("data.db")?)
+    )
+);
+```
 
 ---
 
@@ -74,29 +86,66 @@ This file captures the decisions for the current AnyFS design.
 
 ---
 
-## ADR-006: Least-privilege feature whitelist in `FilesContainer`
+## ADR-006: LimitedBackend for quota enforcement
 
-**Decision:** Advanced behavior is disabled by default and explicitly enabled per container instance.
+**Decision:** Quota/limit enforcement is handled by `LimitedBackend<B>` middleware, not by backends or FilesContainer.
 
-- `.with_symlinks()` enables symlink creation and following (bounded by `max_symlink_resolution`, default 40)
-- `.with_hard_links()` enables hard link creation
-- `.with_permissions()` enables permission mutation via `set_permissions`
+**Configuration:**
+- `with_max_total_size(bytes)` - total storage limit
+- `with_max_file_size(bytes)` - per-file limit
+- `with_max_node_count(count)` - max files/directories
+- `with_max_dir_entries(count)` - max entries per directory
+- `with_max_path_depth(depth)` - max directory nesting
 
-When disabled, the relevant operations return `ContainerError::FeatureNotEnabled("...")`.
-
-**Why:** Reduces attack surface by default. Applications opt into only what they need.
-
----
-
-## ADR-007: Limits enforced in container (not backend)
-
-**Decision:** Capacity limits are enforced at the `anyfs-container` layer.
-
-**Why:** Limits are a policy decision and should be consistent across all backends.
+**Why:**
+- Limits are policy, not storage semantics.
+- Written once, works with any backend.
+- Optional - users who don't need limits skip this middleware.
 
 ---
 
-## ADR-008: Built-in backends are feature-gated
+## ADR-007: FeatureGatedBackend for least-privilege
+
+**Decision:** Dangerous features (symlinks, hard links, permission mutation) are disabled by default via `FeatureGatedBackend<B>` middleware.
+
+**Configuration:**
+- `.with_symlinks()` - enable symlink creation/following
+- `.with_hard_links()` - enable hard link creation
+- `.with_permissions()` - enable `set_permissions`
+- `.with_max_symlink_resolution(n)` - limit symlink hops (default: 40)
+
+When disabled, operations return `VfsError::FeatureNotEnabled`.
+
+**Why:**
+- Reduces attack surface by default.
+- Explicit opt-in for dangerous features.
+- Separate from backend - works with any backend.
+
+---
+
+## ADR-008: FilesContainer as thin ergonomic wrapper
+
+**Decision:** `FilesContainer<B>` is a thin wrapper that provides std::fs-aligned ergonomics only. It contains NO policy logic.
+
+**What it does:**
+- Provides familiar method names
+- Accepts `impl AsRef<Path>` for convenience
+- Delegates all operations to the wrapped backend
+
+**What it does NOT do:**
+- Quota enforcement (use LimitedBackend)
+- Feature gating (use FeatureGatedBackend)
+- Logging (use LoggingBackend)
+- Any other policy
+
+**Why:**
+- Single responsibility - ergonomics only.
+- Users who don't need ergonomics can use backends directly.
+- Policy is composable via middleware, not hardcoded.
+
+---
+
+## ADR-009: Built-in backends are feature-gated
 
 **Decision:** `anyfs` uses Cargo features so users only pull the dependencies they need.
 

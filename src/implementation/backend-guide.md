@@ -2,25 +2,39 @@
 
 This guide walks you through implementing a custom AnyFS backend.
 
-If you are writing a backend for other people to consume, depend only on `anyfs-backend`.
+---
+
+## Overview
+
+A backend implements `VfsBackend`: a path-based trait aligned with `std::fs`.
+
+Key properties:
+- Backends accept `impl AsRef<Path>` for all path parameters
+- Backends handle **storage + filesystem semantics only**
+- Policy (limits, feature gates) is handled by middleware, not backends
 
 ---
 
-## What you are implementing
+## Dependency
 
-A backend implements `VfsBackend`: a path-based trait aligned with `std::fs` naming and signatures.
+Depend only on `anyfs-backend`:
 
-Key properties:
-- Backends accept `impl AsRef<Path>` for all path parameters (same as std::fs).
-- The policy layer (`anyfs-container`) handles quotas/limits and feature whitelisting.
+```toml
+[dependencies]
+anyfs-backend = "0.1"
+```
+
+---
+
+## Trait to Implement
 
 ```rust
-use anyfs_backend::{DirEntry, Metadata, Permissions, VfsBackend, VfsError};
+use anyfs_backend::{VfsBackend, VfsError, Metadata, DirEntry, Permissions, StatFs};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct MyBackend {
-    // storage fields...
+    // Your storage fields
 }
 
 impl VfsBackend for MyBackend {
@@ -50,123 +64,195 @@ impl VfsBackend for MyBackend {
 
 ---
 
-## Step 1: Pick a data model
+## Implementation Steps
 
-A practical internal model is a small "virtual inode" representation:
+### Step 1: Pick a Data Model
 
-- **Directory**: owns a mapping `name -> child` (or can be derived from a global path index).
-- **File**: points to bytes (inline, blob table, object store key, etc.).
-- **Symlink**: stores a *target* path (as a string).
-- **Hard links**: multiple paths refer to the same underlying file content.
+Your backend needs internal storage. Options:
 
-You do not need to expose any of this publicly; it is an implementation detail.
+- **HashMap-based**: `HashMap<PathBuf, Entry>` for simple cases
+- **Tree-based**: Explicit directory tree structure
+- **Database-backed**: SQLite, key-value store, etc.
 
-### Recommended minimum metadata
+Minimum metadata per entry:
+- File type (file/directory/symlink)
+- Size (for files)
+- Content (for files)
+- Timestamps (optional)
+- Permissions (optional)
 
-Your backend needs enough metadata to populate `Metadata` and return correct errors:
-- file type (file/dir/symlink)
-- size
-- link count (`nlink`) for hard links
-- timestamps (optional)
-- permissions (even if simplified)
+### Step 2: Implement Read Operations
+
+Start with these (easiest):
+
+```rust
+fn exists(&self, path: impl AsRef<Path>) -> Result<bool, VfsError>;
+fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
+fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, VfsError>;
+fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
+fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
+fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
+fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
+fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, VfsError>;
+```
+
+### Step 3: Implement Write Operations
+
+```rust
+fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
+fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
+fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
+fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
+```
+
+### Step 4: Implement Links
+
+```rust
+fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
+fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
+```
+
+- Symlinks store a target path as a string
+- Hard links share content with the original (update link count)
+
+### Step 5: Implement Permissions and Streaming
+
+```rust
+fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), VfsError>;
+fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
+fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
+```
+
+### Step 6: Implement truncate
+
+```rust
+fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), VfsError>;
+```
+
+- If `size < current`: discard trailing bytes
+- If `size > current`: extend with zero bytes
+- Required for FUSE support and editor save operations
+
+### Step 7: Implement sync/fsync
+
+```rust
+fn sync(&mut self) -> Result<(), VfsError>;
+fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+```
+
+- `sync()`: Flush all pending writes to durable storage
+- `fsync(path)`: Flush pending writes for a specific file
+- `MemoryBackend` can no-op these (volatile by design)
+- `SqliteBackend`: `PRAGMA wal_checkpoint` or connection flush
+- `VRootFsBackend`: `std::fs::File::sync_all()`
+
+### Step 8: Implement statfs
+
+```rust
+fn statfs(&self) -> Result<StatFs, VfsError>;
+```
+
+Return filesystem capacity information:
+
+```rust
+StatFs {
+    total_bytes: 0,      // 0 = unlimited
+    used_bytes: ...,
+    available_bytes: ...,
+    total_inodes: 0,
+    used_inodes: ...,
+    available_inodes: ...,
+    block_size: 4096,
+    max_name_len: 255,
+}
+```
 
 ---
 
-## Step 2: Implement the "easy" surface first
+## Error Handling
 
-Start with these operations:
+Return appropriate `VfsError` variants:
 
-- `exists`
-- `create_dir` / `create_dir_all`
-- `read_dir`
-- `write` / `read` / `append` / `read_range`
-- `open_read` / `open_write` (streaming I/O)
-- `remove_file` / `remove_dir` / `remove_dir_all`
-- `rename` / `copy`
-
-Guidelines:
-
-- You receive `impl AsRef<Path>` - call `.as_ref()` to get `&Path`.
-- Match `std::fs`-like error expectations:
-  - creating an existing directory should return `AlreadyExists`
-  - `remove_dir` should fail on non-empty directories
-  - `remove_file` should fail on directories
+| Situation | Error |
+|-----------|-------|
+| Path doesn't exist | `VfsError::NotFound(path)` |
+| Path already exists | `VfsError::AlreadyExists(path)` |
+| Expected file, got dir | `VfsError::NotAFile(path)` |
+| Expected dir, got file | `VfsError::NotADirectory(path)` |
+| Remove non-empty dir | `VfsError::DirectoryNotEmpty(path)` |
+| Internal error | `VfsError::Backend(message)` |
 
 ---
 
-## Step 3: Links (symlinks + hard links)
+## What Backends Do NOT Do
 
-AnyFS includes link methods in the core trait.
+| Concern | Where It Lives |
+|---------|----------------|
+| Quota enforcement | `LimitedBackend<B>` middleware |
+| Feature gating | `FeatureGatedBackend<B>` middleware |
+| Logging | `LoggingBackend<B>` middleware |
+| Ergonomic API | `FilesContainer<B>` wrapper |
 
-### Symlinks
-
-- `symlink(original, link)` creates a symlink at `link` whose target is `original`.
-- `read_link(path)` returns the stored target.
-- `symlink_metadata(path)` returns metadata about the symlink itself (not the target).
-
-Note: `anyfs-container` may deny symlink operations unless explicitly enabled (least privilege).
-
-### Hard links
-
-- `hard_link(original, link)` creates a second directory entry pointing at the same underlying file.
-- Update `nlink` and any reference-counting you maintain.
-- `remove_file` decrements link count and only deletes the underlying content when it reaches zero.
+**Backends focus on storage.** Keep them simple.
 
 ---
 
-## Step 4: Permissions
+## Testing Your Backend
 
-AnyFS models permissions as a minimal type (`Permissions`) to keep the cross-platform story simple.
+Use the conformance test suite:
 
-- `set_permissions` should mutate the stored permissions.
-- Backends may implement stricter semantics internally, but the API stays small.
+```rust
+#[cfg(test)]
+mod tests {
+    use super::MyBackend;
+    use anyfs_backend::VfsBackend;
 
-As with links, `anyfs-container` may deny permission mutation unless enabled.
+    fn create_backend() -> MyBackend {
+        MyBackend::new()
+    }
+
+    #[test]
+    fn test_write_read() {
+        let mut backend = create_backend();
+        backend.write("/test.txt", b"hello").unwrap();
+        let content = backend.read("/test.txt").unwrap();
+        assert_eq!(content, b"hello");
+    }
+
+    #[test]
+    fn test_create_dir() {
+        let mut backend = create_backend();
+        backend.create_dir("/foo").unwrap();
+        assert!(backend.exists("/foo").unwrap());
+    }
+
+    // ... more tests
+}
+```
 
 ---
 
-## Step 5: Error mapping
+## Note on VRootFsBackend
 
-Backends should return `VfsError` variants that are meaningful to callers.
+If you are implementing a backend that wraps a **real host filesystem directory**, consider using `strict-path::VirtualPath` and `strict-path::VirtualRoot` internally for path containment. This ensures paths cannot escape the designated root directory.
 
-Recommended principles:
-- Prefer structured variants like `NotFound(String)` over generic errors.
-- Keep backend-specific errors available (e.g., `VfsError::Backend(String)`) but do not leak host paths when possible.
-
----
-
-## Step 6: Validate with a conformance suite
-
-Backends drift without tests.
-
-A useful conformance suite includes:
-- directory creation/removal edge cases
-- `rename` semantics for files vs directories
-- symlink metadata vs metadata-following behavior
-- hard link link-count accounting
-- copy semantics (copy follows symlinks)
-
-See `book/src/implementation/plan.md` for the recommended test breakdown.
+This is an implementation choice for filesystem-based backends, not a requirement of the `VfsBackend` trait.
 
 ---
 
 ## Checklist
 
 - [ ] Depends only on `anyfs-backend`
-- [ ] Implements all `VfsBackend` methods (including streaming I/O)
-- [ ] Returns correct `std::fs`-like errors
-- [ ] Symlinks store target paths as strings
-- [ ] Hard links update `nlink` and share content
-- [ ] Conformance suite passes
-
----
-
-For the trait definition, see `book/src/traits/vfs-trait.md`.
-
----
-
-## Note on VRootFsBackend
-
-If you are implementing a backend that wraps a **real host filesystem directory**, consider using `strict-path::VirtualPath` and `strict-path::VirtualRoot` internally for path containment. This is what `VRootFsBackend` does—it ensures paths cannot escape the designated root directory.
-
-This is an implementation choice for filesystem-based backends, not a requirement of the `VfsBackend` trait.
+- [ ] Implements all `VfsBackend` methods (25 methods)
+- [ ] Accepts `impl AsRef<Path>` for all paths
+- [ ] Returns correct `VfsError` variants
+- [ ] Handles symlinks correctly (stores target path)
+- [ ] Handles hard links correctly (shares content)
+- [ ] Implements `truncate` (shrink/extend files)
+- [ ] Implements `sync`/`fsync` (durability)
+- [ ] Passes conformance tests

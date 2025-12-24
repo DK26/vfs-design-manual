@@ -8,22 +8,24 @@
 
 `VfsBackend` is the minimal interface a storage backend implements.
 
-- It is **path-based** and aligned with `std::fs` naming and signatures.
+- It is **path-based** and aligned with `std::fs` naming.
 - It uses `impl AsRef<Path>` for paths (same as `std::fs`).
-- It does not include quotas or application policy; that lives in `anyfs-container`.
+- It handles **storage + filesystem semantics only** - no policy, no limits.
 
-If you are implementing a custom backend, depend only on `anyfs-backend`.
+Policy (limits, feature gates, logging) is handled by middleware.
 
 ---
 
-## Trait Surface
+## Trait Definition
 
 ```rust
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 pub trait VfsBackend: Send {
-    // Read
+    // ═══════════════════════════════════════════════════════════════════════
+    // READ OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════════
     fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
     fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, VfsError>;
     fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
@@ -33,7 +35,9 @@ pub trait VfsBackend: Send {
     fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
     fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, VfsError>;
 
-    // Write
+    // ═══════════════════════════════════════════════════════════════════════
+    // WRITE OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════════
     fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
     fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
     fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
@@ -44,37 +48,73 @@ pub trait VfsBackend: Send {
     fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
     fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
 
-    // Links
+    // ═══════════════════════════════════════════════════════════════════════
+    // LINKS
+    // ═══════════════════════════════════════════════════════════════════════
     fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
     fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
 
-    // Permissions
+    // ═══════════════════════════════════════════════════════════════════════
+    // PERMISSIONS
+    // ═══════════════════════════════════════════════════════════════════════
     fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), VfsError>;
 
-    // Streaming I/O (for large files)
+    // ═══════════════════════════════════════════════════════════════════════
+    // STREAMING I/O
+    // ═══════════════════════════════════════════════════════════════════════
     fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
     fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILE SIZE
+    // ═══════════════════════════════════════════════════════════════════════
+    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), VfsError>;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DURABILITY
+    // ═══════════════════════════════════════════════════════════════════════
+    fn sync(&mut self) -> Result<(), VfsError>;
+    fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FILESYSTEM INFO
+    // ═══════════════════════════════════════════════════════════════════════
+    fn statfs(&self) -> Result<StatFs, VfsError>;
 }
 ```
 
 ---
 
-## Notes on Semantics
+## Semantics
 
 - `read`/`write`/`metadata`/`exists`/`copy` follow symlinks.
 - `symlink_metadata` and `read_link` do not follow.
 - `remove_file` removes the symlink itself, not the target.
-- Streaming methods (`open_read`, `open_write`) enable efficient handling of large files.
+- Streaming methods (`open_read`, `open_write`) enable large file handling.
+- `truncate` resizes a file: shrinks by discarding bytes, extends with zeros.
+- `sync` flushes all pending writes to durable storage.
+- `fsync` flushes pending writes for a specific file.
+- `statfs` returns filesystem capacity information.
 
-The container layer may still deny certain operations via feature whitelisting.
+---
+
+## What VfsBackend Does NOT Do
+
+| Concern | Where It Lives |
+|---------|----------------|
+| Quota enforcement | `LimitedBackend<B>` middleware |
+| Feature gating | `FeatureGatedBackend<B>` middleware |
+| Audit logging | `LoggingBackend<B>` middleware |
+| Ergonomic API | `FilesContainer<B>` wrapper |
+
+Backends focus on storage. Policy is middleware.
 
 ---
 
 ## Implementing a Backend
 
 - Depend on `anyfs-backend` only.
-- Accept `impl AsRef<Path>` for all path parameters (aligned with std::fs).
-- Implement the semantics consistently across backends (a shared conformance suite is recommended).
+- Accept `impl AsRef<Path>` for all path parameters.
+- Return `std::fs`-like errors.
 
 See `book/src/implementation/backend-guide.md` for a step-by-step guide.
-

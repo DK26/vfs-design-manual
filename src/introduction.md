@@ -6,47 +6,67 @@
 
 ## Overview
 
-AnyFS is an **open standard** that allows anyone to create custom storage backends. Whether you need to store files in a database, object store, network filesystem, or any other medium—AnyFS provides the contract and tools to make it happen.
+AnyFS is an **open standard** for virtual filesystem backends using a **Tower-style middleware pattern** for composable functionality.
 
-The ecosystem is a three-crate design:
+You get:
+- A familiar `std::fs`-aligned API
+- Composable middleware (limits, logging, security)
+- Choice of storage: memory, SQLite, host filesystem, or custom
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  FilesContainer<B>                      │  ← Ergonomics (std::fs API)
+├─────────────────────────────────────────┤
+│  Middleware (composable):               │
+│    LimitedBackend<B>                    │  ← Quotas
+│    FeatureGatedBackend<B>               │  ← Security
+│    LoggingBackend<B>                    │  ← Audit
+├─────────────────────────────────────────┤
+│  VfsBackend                             │  ← Storage
+│  (Memory, SQLite, VRootFs, custom...)   │
+└─────────────────────────────────────────┘
+```
+
+**Each layer has one job.** Compose only what you need.
+
+---
+
+## Three-Crate Structure
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types. Backend implementers depend on this. |
-| `anyfs` | Low-level execution layer for calling any `VfsBackend`. Also provides built-in backends (MemoryBackend, SqliteBackend, VRootFsBackend). |
-| `anyfs-container` | `FilesContainer<B: VfsBackend>` policy layer (limits + least-privilege feature whitelist) |
-
-High-level data flow:
-
-```text
-Your application
-  -> anyfs-container (FilesContainer: ergonomic paths + policy)
-      -> anyfs (executes operations on any VfsBackend)
-          -> any backend (built-in or custom)
-```
-
+| `anyfs-backend` | Minimal contract: `VfsBackend` trait + types |
+| `anyfs` | Backends + middleware |
+| `anyfs-container` | Ergonomic `FilesContainer<B>` wrapper |
 
 ---
 
-## Quick example
+## Quick Example
 
 ```rust
-use anyfs::MemoryBackend;
+use anyfs::{SqliteBackend, LimitedBackend, FeatureGatedBackend};
 use anyfs_container::FilesContainer;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut container = FilesContainer::new(MemoryBackend::new());
+// Compose: storage -> limits -> security
+let backend = FeatureGatedBackend::new(
+    LimitedBackend::new(SqliteBackend::open("data.db")?)
+        .with_max_total_size(100 * 1024 * 1024)
+)
+.with_symlinks();
 
-    container.create_dir_all("/data")?;
-    container.write("/data/file.txt", b"hello")?;
+let mut fs = FilesContainer::new(backend);
 
-    Ok(())
-}
+fs.create_dir_all("/data")?;
+fs.write("/data/file.txt", b"hello")?;
 ```
 
 ---
 
-## How to use this manual
+## How to Use This Manual
 
 | Section | Audience | Purpose |
 |---------|----------|---------|
@@ -55,7 +75,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Design & Architecture | Contributors | Detailed design |
 | Traits & APIs | Backend authors | Contract and types |
 | Implementation | Implementers | Plan + backend guide |
-| Review | Contributors | Historical review record |
 
 ---
 
@@ -68,9 +87,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-## Authoritative documents
+## Authoritative Documents
 
-1. `book/src/architecture/design-overview.md`
-2. `book/src/architecture/adrs.md`
-
-If something conflicts with `AGENTS.md`, treat `AGENTS.md` as authoritative.
+1. `AGENTS.md` (for AI assistants)
+2. `book/src/architecture/design-overview.md`
+3. `book/src/architecture/adrs.md`

@@ -1,37 +1,39 @@
 # AnyFS - Project Structure
 
 **Status:** Current
-**Last updated:** 2025-12-23
+**Last updated:** 2025-12-24
 
 ---
 
 ## Repository Layout
 
 ```
-anyfs-backend/             # Crate 1: core trait + types
+anyfs-backend/              # Crate 1: trait + types
   Cargo.toml
   src/
     lib.rs
-    backend.rs
-    types.rs
-    error.rs
+    backend.rs              # VfsBackend trait
+    types.rs                # Metadata, DirEntry, Permissions, StatFs
+    error.rs                # VfsError
 
-anyfs/                     # Crate 2: built-in backends (feature-gated)
-  Cargo.toml
-  src/
-    lib.rs                 # backend implementations
-    memory/                # [feature: memory] (default)
-    vrootfs/               # [feature: vrootfs]
-    sqlite/                # [feature: sqlite]
-
-anyfs-container/           # Crate 3: policy layer (quotas + isolation)
+anyfs/                      # Crate 2: backends + middleware
   Cargo.toml
   src/
     lib.rs
-    container.rs           # FilesContainer<B: VfsBackend>
-    limits.rs              # CapacityLimits
-    usage.rs               # CapacityUsage, CapacityRemaining
-    error.rs               # ContainerError
+    backends/
+      memory.rs             # MemoryBackend [feature: memory, default]
+      sqlite.rs             # SqliteBackend [feature: sqlite]
+      vrootfs.rs            # VRootFsBackend [feature: vrootfs]
+    middleware/
+      limited.rs            # LimitedBackend<B>
+      logging.rs            # LoggingBackend<B>
+      feature_gated.rs      # FeatureGatedBackend<B>
+
+anyfs-container/            # Crate 3: ergonomic wrapper
+  Cargo.toml
+  src/
+    lib.rs
+    container.rs            # FilesContainer<B>
 ```
 
 ---
@@ -40,38 +42,43 @@ anyfs-container/           # Crate 3: policy layer (quotas + isolation)
 
 ```
 anyfs-backend (trait + types)
-    <- anyfs (execution layer, calls any VfsBackend)
-    <- anyfs-container (wraps backends with policy)
-
-strict-path (VirtualPath, VirtualRoot)
-    <- anyfs [vrootfs feature only]
+     ^
+     |-- anyfs (backends + middleware)
+     |     ^-- vrootfs feature uses strict-path
+     |
+     +-- anyfs-container (ergonomic wrapper)
 ```
 
-**Key point:** Custom backends depend only on `anyfs-backend`. The `anyfs` crate is the execution layer that can call any backend—built-in or custom.
+**Key points:**
+- Custom backends depend only on `anyfs-backend`
+- `anyfs` provides built-in backends and middleware
+- `anyfs-container` provides the ergonomic `FilesContainer` wrapper
 
 ---
 
-## Path Flow
+## Middleware Pattern
 
 ```
-User code:  container.read("/a/b.txt")
-   -> FilesContainer (policy checks, normalization)
-   -> backend.read(path)  # receives impl AsRef<Path>
+FilesContainer<B>
+    wraps -> LoggingBackend<B>
+        wraps -> FeatureGatedBackend<B>
+            wraps -> LimitedBackend<B>
+                wraps -> SqliteBackend (or any VfsBackend)
 ```
 
-Both layers use `impl AsRef<Path>` for std::fs alignment.
+Each layer implements `VfsBackend`, enabling composition.
 
 ---
 
 ## Cargo Features
 
-Cargo features in `anyfs` select which built-in backends to include:
+Features in `anyfs` select which backends to include:
 
 - `memory` — In-memory storage (default)
 - `sqlite` — SQLite-backed persistent storage
-- `vrootfs` — Host filesystem backend (uses `strict-path` internally)
+- `vrootfs` — Host filesystem backend (uses `strict-path`)
 
-The runtime feature whitelist (symlinks, hard_links, permissions) is configured per `FilesContainer` instance, not at compile time.
+Middleware is always available (no feature flags).
 
 ---
 
@@ -79,4 +86,5 @@ The runtime feature whitelist (symlinks, hard_links, permissions) is configured 
 
 - Application usage: `book/src/getting-started/guide.md`
 - Trait details: `book/src/traits/vfs-trait.md`
-- Decisions and rationale: `book/src/architecture/adrs.md`
+- Middleware: `book/src/architecture/design-overview.md`
+- Decisions: `book/src/architecture/adrs.md`

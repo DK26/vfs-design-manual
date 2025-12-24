@@ -1,47 +1,56 @@
 # FilesContainer (anyfs-container)
 
-**The user-facing API: ergonomic paths + policy (limits + feature whitelist)**
+**Thin ergonomic wrapper for std::fs-aligned API**
 
 ---
 
 ## Overview
 
-`FilesContainer<B: VfsBackend>` wraps a backend and provides:
-- ergonomic path inputs (`impl AsRef<Path>`)
-- centralized path normalization
-- quota enforcement (limits)
-- deny-by-default feature whitelisting for advanced behavior
+`FilesContainer<B: VfsBackend>` is a **thin wrapper** that provides a familiar std::fs-aligned API.
+
+**It does ONE thing:** Ergonomics. Nothing else.
+
+All policy (limits, feature gates, logging) is handled by middleware, not FilesContainer.
 
 ---
 
 ## Creating a Container
 
 ```rust
-use anyfs::SqliteBackend;
+use anyfs::MemoryBackend;
 use anyfs_container::FilesContainer;
 
-let mut container = FilesContainer::new(SqliteBackend::open_or_create("data.db")?)
-    .with_max_total_size(100 * 1024 * 1024)
-    .with_max_file_size(10 * 1024 * 1024)
-    // advanced features are opt-in
-    .with_symlinks()
-    .with_max_symlink_resolution(40)
-    .with_hard_links()
-    .with_permissions();
+// Simple: just ergonomics
+let mut fs = FilesContainer::new(MemoryBackend::new());
+```
+
+With middleware:
+
+```rust
+use anyfs::{SqliteBackend, LimitedBackend, FeatureGatedBackend};
+use anyfs_container::FilesContainer;
+
+// Compose middleware, then wrap in FilesContainer
+let backend = FeatureGatedBackend::new(
+    LimitedBackend::new(SqliteBackend::open("data.db")?)
+        .with_max_total_size(100 * 1024 * 1024)
+)
+.with_symlinks();
+
+let mut fs = FilesContainer::new(backend);
 ```
 
 ---
 
 ## std::fs-aligned Methods
 
-Most methods map directly to `std::fs` naming:
+FilesContainer mirrors std::fs naming:
 
 | FilesContainer | std::fs |
 |---------------|---------|
 | `read()` | `std::fs::read` |
 | `read_to_string()` | `std::fs::read_to_string` |
 | `write()` | `std::fs::write` |
-| `append()` | `OpenOptions::append` |
 | `read_dir()` | `std::fs::read_dir` |
 | `create_dir()` | `std::fs::create_dir` |
 | `create_dir_all()` | `std::fs::create_dir_all` |
@@ -57,25 +66,42 @@ Most methods map directly to `std::fs` naming:
 
 ---
 
-## Feature Whitelist (Least Privilege)
+## What FilesContainer Does NOT Do
 
-Advanced capabilities are disabled by default and must be explicitly enabled:
+| Concern | Use Instead |
+|---------|-------------|
+| Quota enforcement | `LimitedBackend<B>` |
+| Feature gating | `FeatureGatedBackend<B>` |
+| Audit logging | `LoggingBackend<B>` |
+| Path containment | Backend-specific (VRootFsBackend) |
 
-- `symlinks()` enables symlink operations and symlink following
-- `hard_links()` enables hard-link creation
-- `permissions()` enables `set_permissions`
-
-If disabled, the operation returns `ContainerError::FeatureNotEnabled("...")`.
+FilesContainer is **purely ergonomic**. If you need policy, compose middleware.
 
 ---
 
-## Limits (Quotas)
+## Layer Helper
 
-Limits are enforced by the container, consistently across backends:
-- total bytes
-- max file size
-- max nodes
-- max directory entries
-- max path depth
+For Axum-style composition:
 
-See `book/src/getting-started/guide.md` for usage examples.
+```rust
+let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
+    .layer(LimitedLayer::new().max_total_size(100 * 1024 * 1024))
+    .layer(FeatureGateLayer::new().allow_symlinks());
+```
+
+---
+
+## Direct Backend Access
+
+If you don't need ergonomics, use backends directly:
+
+```rust
+use anyfs::{MemoryBackend, LimitedBackend};
+use anyfs_backend::VfsBackend;
+
+let mut backend = LimitedBackend::new(MemoryBackend::new())
+    .with_max_total_size(100 * 1024 * 1024);
+
+// Use VfsBackend methods directly
+backend.write("/file.txt", b"data")?;
+```

@@ -1,69 +1,77 @@
 # AnyFS - Design Overview
 
 **Status:** Current
-**Last updated:** 2025-12-23
+**Last updated:** 2025-12-24
 
 ---
 
 ## What This Project Is
 
-AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust. Anyone can implement a custom backend for their own storage needs—whether that's a database, object store, network filesystem, or any other medium.
+AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust. It uses a **middleware/decorator pattern** (like Axum/Tower) for composable functionality with complete separation of concerns.
 
-The ecosystem provides:
-- **A minimal backend trait** that any storage implementer can satisfy
-- **Built-in backends** for common cases (memory, SQLite, real filesystem)
-- **An optional policy layer** (`FilesContainer`) for quotas, limits, and feature whitelisting
+Anyone can:
+- Implement a custom backend for their storage needs
+- Compose middleware to add limits, logging, feature gates
+- Use the ergonomic `FilesContainer` wrapper
 
-It is designed for:
-- portable application storage (SQLite backend = single `.db` file)
-- tenant isolation (one container per tenant)
-- quotas/limits (enforced in the container layer)
-- high-performance use cases (in-memory backend for speed-critical applications)
+---
 
-It is not a POSIX emulator and does not try to expose OS-specific behavior.
+## Architecture (Tower-style Middleware)
+
+```
+┌─────────────────────────────────────────┐
+│  FilesContainer<B>                      │  ← Ergonomics only (std::fs API)
+├─────────────────────────────────────────┤
+│  Middleware (optional, composable):     │
+│    LimitedBackend<B>                    │  ← Quota enforcement
+│    LoggingBackend<B>                    │  ← Audit logging
+│    FeatureGatedBackend<B>               │  ← Symlink/hardlink whitelist
+├─────────────────────────────────────────┤
+│  VfsBackend                             │  ← Pure storage + fs semantics
+│  (Memory, SQLite, VRootFs, custom...)   │
+└─────────────────────────────────────────┘
+```
+
+**Each layer has exactly one responsibility:**
+
+| Layer | Responsibility |
+|-------|----------------|
+| `VfsBackend` | Storage + filesystem semantics |
+| `LimitedBackend<B>` | Quota enforcement |
+| `LoggingBackend<B>` | Audit trail |
+| `FeatureGatedBackend<B>` | Feature whitelist |
+| `FilesContainer<B>` | Ergonomic std::fs-aligned API |
 
 ---
 
 ## Crates
 
-| Crate | Purpose | Who uses it |
-|------|---------|-------------|
-| `anyfs-backend` | Minimal contract: `VfsBackend` trait + core types | Backend implementers |
-| `anyfs` | Low-level execution layer for calling any `VfsBackend`. Also provides built-in backends (feature-gated). | Direct backend manipulation |
-| `anyfs-container` | `FilesContainer<B: VfsBackend>` + limits + feature whitelist (least privilege) | Application code |
+| Crate | Purpose | Contains |
+|-------|---------|----------|
+| `anyfs-backend` | Minimal contract | `VfsBackend` trait + types |
+| `anyfs` | Backends + middleware | Built-in backends, `LimitedBackend`, `LoggingBackend`, `FeatureGatedBackend` |
+| `anyfs-container` | Ergonomic wrapper | `FilesContainer<B>` (thin std::fs wrapper) |
 
 ### Dependency Graph
 
 ```
 anyfs-backend (trait + types)
-    <- anyfs (calls any VfsBackend, provides built-in backends)
-    <- anyfs-container (wraps backends with policy)
-
-strict-path (VirtualPath, VirtualRoot)
-    <- anyfs [vrootfs feature only]
+     ^
+     |-- anyfs (backends + middleware)
+     |     ^-- vrootfs feature may use strict-path
+     |
+     +-- anyfs-container (ergonomic wrapper)
 ```
-
-**Key point:** `anyfs-backend` defines the contract. `anyfs` is the execution layer that can call any backend—built-in or custom.
-
----
-
-## Path Handling
-
-AnyFS uses `impl AsRef<Path>` throughout, aligned with `std::fs`:
-
-1. **User-facing API (`FilesContainer`)** accepts `impl AsRef<Path>`.
-2. **Backend API (`VfsBackend`)** accepts `impl AsRef<Path>`.
-
-This keeps the API familiar and works correctly across all platforms.
 
 ---
 
 ## Core Trait: `VfsBackend` (in `anyfs-backend`)
 
-`VfsBackend` is a path-based trait aligned with `std::fs` naming and signatures.
+`VfsBackend` is a path-based trait aligned with `std::fs`. It handles **storage + filesystem semantics only**. No policy, no limits.
 
 ```rust
-use std::path::Path;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
 pub trait VfsBackend: Send {
     // Read
@@ -94,83 +102,160 @@ pub trait VfsBackend: Send {
     // Permissions
     fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), VfsError>;
 
-    // Streaming I/O (for large files)
+    // Streaming I/O
     fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
     fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
+
+    // File size
+    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), VfsError>;
+
+    // Durability
+    fn sync(&mut self) -> Result<(), VfsError>;
+    fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+
+    // Filesystem info
+    fn statfs(&self) -> Result<StatFs, VfsError>;
 }
 ```
 
-**Semantics (high-level):**
-- `read`/`write`/`metadata`/`exists`/`copy` follow symlinks.
-- `symlink_metadata` and `read_link` do not follow.
-- `remove_file` removes the symlink itself, not the target.
-- Streaming methods (`open_read`, `open_write`) enable efficient handling of large files.
+---
+
+## Middleware (in `anyfs`)
+
+Each middleware is itself a `VfsBackend` that wraps another backend. This enables composition.
+
+### LimitedBackend<B>
+
+Enforces quota limits. Tracks usage and rejects operations that would exceed limits.
+
+```rust
+use anyfs::{SqliteBackend, LimitedBackend};
+
+let backend = LimitedBackend::new(SqliteBackend::open("data.db")?)
+    .with_max_total_size(100 * 1024 * 1024)   // 100 MB
+    .with_max_file_size(10 * 1024 * 1024)     // 10 MB per file
+    .with_max_node_count(10_000)               // 10K files/dirs
+    .with_max_dir_entries(1_000)               // 1K entries per dir
+    .with_max_path_depth(64);
+
+// Check usage
+let usage = backend.usage();
+let remaining = backend.remaining();
+```
+
+### FeatureGatedBackend<B>
+
+Enforces least-privilege by disabling features by default.
+
+```rust
+use anyfs::{MemoryBackend, FeatureGatedBackend};
+
+let backend = FeatureGatedBackend::new(MemoryBackend::new())
+    .with_symlinks()                          // Enable symlink operations
+    .with_max_symlink_resolution(40)          // Max symlink hops
+    .with_hard_links()                        // Enable hard links
+    .with_permissions();                      // Enable set_permissions
+```
+
+When a feature is disabled, operations return `VfsError::FeatureNotEnabled`.
+
+### LoggingBackend<B>
+
+Records all operations for audit trails.
+
+```rust
+use anyfs::{SqliteBackend, LoggingBackend};
+
+let backend = LoggingBackend::new(SqliteBackend::open("data.db")?)
+    .with_logger(MyLogger::new());
+```
 
 ---
 
-## Built-in Backends (in `anyfs`)
+## FilesContainer (in `anyfs-container`)
 
-These are provided by the `anyfs` crate and selected via Cargo features:
-
-- `memory` (default): `MemoryBackend` (test/reference backend)
-- `vrootfs`: `VRootFsBackend` (contained real filesystem via `strict_path::VirtualRoot`)
-- `sqlite`: `SqliteBackend` (single-file portable database backend)
-
----
-
-## `FilesContainer` (in `anyfs-container`)
-
-`FilesContainer<B>` wraps any backend and provides:
-- ergonomic paths (`impl AsRef<Path>`)
-- quota enforcement (limits)
-- a **feature whitelist** for advanced behavior (least privilege)
-
-### Feature Whitelist (Least Privilege)
-
-Advanced features are **disabled by default**. Enable only what you need:
-
-- `symlinks` gates symlink creation and symlink-following behavior
-- `hard_links` gates hard-link creation
-- `permissions` gates permission mutation via `set_permissions`
+`FilesContainer<B>` is a **thin ergonomic wrapper**. It provides a familiar std::fs-aligned API but does nothing else. All policy (limits, feature gates) is handled by middleware.
 
 ```rust
 use anyfs::MemoryBackend;
 use anyfs_container::FilesContainer;
 
-let mut container = FilesContainer::new(MemoryBackend::new())
-    .with_symlinks()
-    .with_max_symlink_resolution(40)
-    .with_hard_links()
-    .with_permissions()
-    .with_max_total_size(100 * 1024 * 1024);
+let mut fs = FilesContainer::new(MemoryBackend::new());
+
+fs.create_dir_all("/documents")?;
+fs.write("/documents/hello.txt", b"Hello!")?;
+let content = fs.read("/documents/hello.txt")?;
 ```
-
-When a feature is disabled, operations that require it return `ContainerError::FeatureNotEnabled("...")`.
-
-### Limits
-
-Limits are enforced by the container layer (not by backends):
-- `max_total_size`
-- `max_file_size`
-- `max_node_count`
-- `max_dir_entries`
-- `max_path_depth`
 
 ---
 
-## Security Model (Summary)
+## Composing Middleware
 
-Security and isolation are achieved differently depending on the backend:
+Middleware composes by wrapping. Order matters - innermost applies first.
 
-| Backend | Isolation Mechanism |
-|---------|---------------------|
-| `MemoryBackend` | Each instance is isolated by OS process memory |
-| `SqliteBackend` | Each container is a separate `.db` file |
-| `VRootFsBackend` | Uses `strict-path::VirtualRoot` to clamp all paths to a root directory |
+```rust
+use anyfs::{SqliteBackend, LimitedBackend, FeatureGatedBackend, LoggingBackend};
+use anyfs_container::FilesContainer;
 
-**Common guarantees:**
-- **Least privilege:** the container disables advanced features by default and requires explicit opt-in.
-- **Path normalization:** all user paths are normalized before reaching the backend.
-- **No host paths in API:** application code interacts only with virtual paths; backends decide actual storage.
+// Build from inside out:
+let backend = SqliteBackend::open("data.db")?;
 
-For more detail, see `book/src/comparisons/security.md`.
+let limited = LimitedBackend::new(backend)
+    .with_max_total_size(100 * 1024 * 1024);
+
+let gated = FeatureGatedBackend::new(limited)
+    .with_symlinks();
+
+let logged = LoggingBackend::new(gated);
+
+let mut fs = FilesContainer::new(logged);
+```
+
+Or use the layer helper for Axum-style composition:
+
+```rust
+let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
+    .layer(LimitedLayer::new().max_total_size(100 * 1024 * 1024))
+    .layer(FeatureGateLayer::new().allow_symlinks())
+    .layer(LoggingLayer::new());
+```
+
+---
+
+## Built-in Backends
+
+| Backend | Feature | Description |
+|---------|---------|-------------|
+| `MemoryBackend` | `memory` (default) | In-memory storage |
+| `SqliteBackend` | `sqlite` | Single-file portable database |
+| `VRootFsBackend` | `vrootfs` | Host filesystem via strict-path |
+
+---
+
+## Path Handling
+
+All layers use `impl AsRef<Path>`, aligned with `std::fs`:
+
+```rust
+// All of these work
+fs.write("/file.txt", data)?;
+fs.write(String::from("/file.txt"), data)?;
+fs.write(Path::new("/file.txt"), data)?;
+fs.write(PathBuf::from("/file.txt"), data)?;
+```
+
+---
+
+## Security Model
+
+Security is achieved through composition:
+
+| Concern | Solution |
+|---------|----------|
+| Path containment | Backend-specific (VRootFsBackend uses strict-path) |
+| Resource exhaustion | `LimitedBackend` enforces quotas |
+| Feature restriction | `FeatureGatedBackend` disables dangerous features |
+| Audit trail | `LoggingBackend` records operations |
+| Tenant isolation | Separate backend instances |
+
+**Defense in depth:** Compose multiple middleware layers for comprehensive security.
