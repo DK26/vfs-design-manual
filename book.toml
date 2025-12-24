@@ -9,7 +9,7 @@ build-dir = "docs"
 
 [output.html]
 git-repository-url = "https://github.com/DK26/vfs-design-manual"
-edit-url-template = "https://github.com/DK26/vfs-design-manual/edit/main/book/{path}"
+edit-url-template = "https://github.com/DK26/vfs-design-manual/edit/main/{path}"
 site-url = "/vfs-design-manual/"
 default-theme = "rust"
 preferred-dark-theme = "coal"
