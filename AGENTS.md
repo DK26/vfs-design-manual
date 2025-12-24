@@ -441,6 +441,93 @@ impl<B1: VfsBackend, B2: VfsBackend> VfsBackend for Overlay<B1, B2> {
 
 ---
 
+## Middleware Implementation Notes
+
+### Streaming I/O
+
+Middleware must handle `open_read`/`open_write` which return `Box<dyn Read/Write + Send>`. Options:
+
+```rust
+// Option 1: Wrap the stream (full interception)
+fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError> {
+    let inner = self.inner.open_write(&path)?;
+    Ok(Box::new(CountingWriter::new(inner, self.usage.clone())))
+}
+
+// Option 2: Intercept at open, pass stream through (partial)
+fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError> {
+    self.check_path(&path)?;  // PathFilter checks here
+    self.inner.open_write(path)
+}
+
+// Option 3: Discard stream content (DryRun)
+fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError> {
+    self.log.push(Operation::OpenWrite { path: path.as_ref().to_owned() });
+    Ok(Box::new(std::io::sink()))
+}
+```
+
+### Per-Middleware Streaming Behavior
+
+| Middleware | `open_read` | `open_write` |
+|------------|-------------|--------------|
+| Quota | Wrap with `CountingReader` | Wrap with `CountingWriter` |
+| FeatureGuard | Pass through | Pass through |
+| PathFilter | Check path, then delegate | Check path, then delegate |
+| ReadOnly | Pass through | Return `VfsError::ReadOnly` |
+| RateLimit | Count open call | Count open call |
+| Tracing | Log and delegate | Log and delegate |
+| DryRun | Delegate to inner | Return `sink()` (discard) |
+| Cache | Delegate (don't cache streams) | Delegate and invalidate |
+| Overlay | Check upper, fall back to base | Delegate to upper |
+
+### Quota Initialization
+
+When wrapping an existing backend with data, `Quota` must scan to determine current usage:
+
+```rust
+impl<B: VfsBackend> Quota<B> {
+    pub fn new(inner: B) -> Self {
+        let usage = Self::scan_usage(&inner, "/");
+        Self { inner, limits: Limits::default(), usage }
+    }
+
+    fn scan_usage(backend: &B, path: &str) -> Usage {
+        // Recursively scan to count files and bytes
+    }
+}
+```
+
+### Cache Scope
+
+`Cache` caches bulk operations only:
+- **Cached:** `read()`, `read_to_string()`, `read_range()`, `metadata()`, `exists()`
+- **Not cached:** `open_read()` (streams are for large files that shouldn't be cached)
+- **Invalidates:** Any write operation to the path
+
+### Overlay Whiteouts
+
+Deleted files are marked with whiteout files in the upper layer:
+
+```rust
+// When deleting "/foo/bar.txt" that exists in base:
+// Create "/foo/.wh.bar.txt" in upper layer
+
+fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError> {
+    let path = path.as_ref();
+    if self.upper.exists(path)? {
+        self.upper.remove_file(path)
+    } else if self.base.exists(path)? {
+        let whiteout = whiteout_path(path);
+        self.upper.write(&whiteout, b"")
+    } else {
+        Err(VfsError::NotFound { path: path.to_owned(), operation: "remove_file" })
+    }
+}
+```
+
+---
+
 ## FilesContainer (in anyfs-container)
 
 **Thin ergonomic wrapper only.** No policy, no limits - just std::fs-aligned API.
@@ -595,6 +682,20 @@ let fs = Overlay::new(base, upper);
 | `sqlite` | `anyfs` | SqliteBackend |
 | `vrootfs` | `anyfs` | VRootFsBackend |
 | `bytes` | `anyfs` | Use `Bytes` instead of `Vec<u8>` for zero-copy |
+
+### FileContent Type Alias
+
+The `bytes` feature uses a type alias for seamless switching:
+
+```rust
+#[cfg(feature = "bytes")]
+pub type FileContent = bytes::Bytes;
+
+#[cfg(not(feature = "bytes"))]
+pub type FileContent = Vec<u8>;
+```
+
+Middleware passes `FileContent` through unchanged - no special handling needed.
 
 ---
 

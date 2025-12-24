@@ -128,6 +128,26 @@ fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsE
 fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
 ```
 
+**Streaming implementation options:**
+
+For `MemoryBackend` or similar, you can use `std::io::Cursor`:
+
+```rust
+fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError> {
+    let data = self.read(path)?;
+    Ok(Box::new(std::io::Cursor::new(data)))
+}
+```
+
+For `VRootFsBackend`, return the actual file handle:
+
+```rust
+fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError> {
+    let file = std::fs::File::open(self.resolve(path)?)?;
+    Ok(Box::new(file))
+}
+```
+
 ### Step 6: Implement truncate
 
 ```rust
@@ -242,6 +262,68 @@ mod tests {
 If you are implementing a backend that wraps a **real host filesystem directory**, consider using `strict-path::VirtualPath` and `strict-path::VirtualRoot` internally for path containment. This ensures paths cannot escape the designated root directory.
 
 This is an implementation choice for filesystem-based backends, not a requirement of the `VfsBackend` trait.
+
+---
+
+## For Middleware Authors: Wrapping Streams
+
+Middleware that needs to intercept streaming I/O must wrap the returned `Box<dyn Read/Write>`.
+
+### CountingWriter Example
+
+```rust
+use std::io::{self, Write};
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+
+pub struct CountingWriter<W: Write> {
+    inner: W,
+    bytes_written: Arc<AtomicU64>,
+}
+
+impl<W: Write> CountingWriter<W> {
+    pub fn new(inner: W, counter: Arc<AtomicU64>) -> Self {
+        Self { inner, bytes_written: counter }
+    }
+}
+
+impl<W: Write + Send> Write for CountingWriter<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let n = self.inner.write(buf)?;
+        self.bytes_written.fetch_add(n as u64, Ordering::Relaxed);
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+```
+
+### Using in Quota Middleware
+
+```rust
+impl<B: VfsBackend> VfsBackend for Quota<B> {
+    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError> {
+        // Check if we're at quota before opening
+        if self.usage.total_bytes >= self.limits.max_total_size {
+            return Err(VfsError::QuotaExceeded { ... });
+        }
+
+        let inner = self.inner.open_write(path)?;
+        Ok(Box::new(CountingWriter::new(inner, self.usage.bytes_counter.clone())))
+    }
+}
+```
+
+### Alternatives to Wrapping
+
+| Middleware | Alternative to wrapping |
+|------------|------------------------|
+| PathFilter | Check path at open time, pass stream through |
+| ReadOnly | Block `open_write` entirely |
+| RateLimit | Count the open call, not stream bytes |
+| Tracing | Log the open call, pass stream through |
+| DryRun | Return `std::io::sink()` instead of real writer |
 
 ---
 

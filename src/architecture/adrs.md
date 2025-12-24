@@ -114,6 +114,11 @@ let backend = Tracing::new(
 - Written once, works with any backend.
 - Optional - users who don't need limits skip this middleware.
 
+**Implementation notes:**
+- On construction, scan existing backend to initialize usage counters.
+- Wrap `open_write` streams with `CountingWriter` to track streamed bytes.
+- Check limits before operations, update usage after successful operations.
+
 ---
 
 ## ADR-007: FeatureGuard for least-privilege
@@ -298,7 +303,25 @@ anyfs = { version = "0.1", features = ["bytes"] }
 - Optional - users who don't need it avoid the dependency.
 - Default remains `Vec<u8>` for simplicity.
 
-**Trade-off:** With `bytes` feature, `read` returns `Bytes` instead of `Vec<u8>`. This is a compile-time choice.
+**Implementation:** Use a type alias to avoid breaking API:
+
+```rust
+// In anyfs-backend/src/types.rs
+
+#[cfg(feature = "bytes")]
+pub type FileContent = bytes::Bytes;
+
+#[cfg(not(feature = "bytes"))]
+pub type FileContent = Vec<u8>;
+
+// In trait definition
+pub trait VfsBackend: Send {
+    fn read(&self, path: impl AsRef<Path>) -> Result<FileContent, VfsError>;
+    // ...
+}
+```
+
+**Middleware compatibility:** Middleware passes `FileContent` through unchanged. No special handling needed - both `Vec<u8>` and `Bytes` implement `AsRef<[u8]>` and `Deref<Target=[u8]>`.
 
 ---
 
@@ -351,6 +374,11 @@ PathFilter::new(backend)
 - Separate from backend - works with any backend.
 - Inspired by AgentFS and similar AI sandbox patterns.
 
+**Implementation notes:**
+- Use `globset` crate for efficient glob pattern matching.
+- `read_dir` filters out denied entries from results (don't expose existence of denied files).
+- Check path at operation start, then delegate to inner backend.
+
 ---
 
 ## ADR-017: ReadOnly for preventing writes
@@ -395,6 +423,12 @@ RateLimit::new(backend)
 - Essential for multi-tenant environments.
 - Prevents denial-of-service from misbehaving code.
 
+**Implementation notes:**
+- Use `std::time::Instant` for timing.
+- Store window start time and counter; reset when window expires.
+- Count operation calls (including `open_read`/`open_write`), not bytes transferred.
+- Return error immediately when limit exceeded (no blocking/waiting).
+
 ---
 
 ## ADR-019: DryRun for testing and debugging
@@ -417,6 +451,12 @@ let ops = dry_run.operations();         // ["write /test.txt (5 bytes)"]
 - Test code paths without side effects.
 - Debug complex operation sequences.
 - Audit what would happen before committing.
+
+**Implementation notes:**
+- Read operations delegate to inner backend (test against real state).
+- Write operations log and return `Ok(())` without executing.
+- `open_write` returns `std::io::sink()` - writes are discarded.
+- Useful for: "What would this code do?" not "Run this in isolation."
 
 ---
 
@@ -443,6 +483,13 @@ Cache::new(backend)
 - Reduces load on underlying backend (especially for SQLite/network).
 - Configurable to balance memory vs performance.
 
+**Implementation notes:**
+- Cache bulk reads only: `read()`, `read_to_string()`, `read_range()`, `metadata()`, `exists()`.
+- Do NOT cache `open_read()` - streams are for large files that shouldn't be cached.
+- Invalidate cache entry on any write to that path.
+- Use `lru` crate or similar for LRU eviction.
+- Check TTL on cache hits; evict expired entries.
+
 ---
 
 ## ADR-021: Overlay for union filesystem
@@ -468,3 +515,10 @@ let overlay = Overlay::new(base, upper);
 - Base image with per-instance modifications.
 - Testing with isolated changes over shared baseline.
 - Inspired by OverlayFS and VFS crate patterns.
+
+**Implementation notes:**
+- Whiteout convention: `.wh.<filename>` marks deleted files from base layer.
+- `read_dir` must merge results from both layers, excluding whiteouts and whited-out files.
+- `exists` checks upper first, then base (respecting whiteouts).
+- All writes go to upper layer; base is never modified.
+- Consider `opaque` directories (`.wh..wh..opq`) to hide entire base directories.
