@@ -92,8 +92,15 @@ Every backend and middleware must document:
 
 **Goal:** Define the stable backend interface and composition traits.
 
-- Define `VfsBackend` trait (25 `std::fs`-aligned methods)
+- Define `VfsBackend` trait (29 methods)
+  - 25 `std::fs`-aligned path-based methods (required)
+  - 4 inode methods with sensible defaults (override for hardlinks/FUSE):
+    - `path_to_inode(path)` - default: hash path
+    - `inode_to_path(inode)` - default: NotSupported
+    - `lookup(parent_inode, name)` - default: path-based fallback
+    - `metadata_by_inode(inode)` - default: path-based fallback
   - Include `const NEEDS_PATH_RESOLUTION: bool = true` (opt-out for real FS backends)
+  - Define `ROOT_INODE = 1` constant
 - Define `Layer` trait (Tower-style middleware composition)
 - Define `VfsBackendExt` trait (extension methods)
 - Define core types (`Metadata`, `Permissions`, `FileType`, `DirEntry`, `StatFs`)
@@ -120,12 +127,15 @@ Every backend and middleware must document:
 
 - `memory` (default): `MemoryBackend`
   - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
+  - Inode source: internal node IDs (incrementing counter)
   - `set_follow_symlinks(bool)` - control symlink resolution
 - `sqlite` (optional): `SqliteBackend`
   - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
+  - Inode source: SQLite row IDs (`INTEGER PRIMARY KEY`)
   - `set_follow_symlinks(bool)` - control symlink resolution
 - `vrootfs` (optional): `VRootFsBackend` using `strict-path` for containment
   - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)
+  - Inode source: OS inode numbers (`std::fs::Metadata::ino()`)
   - `strict-path` prevents symlink escapes
 
 ### Middleware
@@ -310,11 +320,146 @@ Required CI checks:
 
 - Async API (`AsyncVfsBackend` trait)
 - Import/export helpers (host path <-> container)
-- Extended attributes
 - Encryption middleware
 - Compression middleware
 - `no_std` support (learned from `vfs` #38)
 - Batch operations for performance (learned from `agentfs` #130)
+
+### `VfsBackendPosixExt` - Optional POSIX Semantics
+
+Optional trait extension for backends that can support POSIX-like semantics.
+
+**Why optional?** The core `VfsBackend` is path-based (25 methods), covering 90% of use cases. Full POSIX (41+ methods) adds complexity not all backends can support.
+
+**What it adds:**
+
+```rust
+pub trait VfsBackendPosixExt: VfsBackend {
+    // File handle operations (stateful)
+    fn open(&mut self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, VfsError>;
+    fn read_handle(&self, handle: Handle, buf: &mut [u8]) -> Result<usize, VfsError>;
+    fn write_handle(&mut self, handle: Handle, data: &[u8]) -> Result<usize, VfsError>;
+    fn seek(&mut self, handle: Handle, pos: SeekFrom) -> Result<u64, VfsError>;
+    fn close(&mut self, handle: Handle) -> Result<(), VfsError>;
+
+    // File locking
+    fn lock(&mut self, handle: Handle, lock: LockType) -> Result<(), VfsError>;
+    fn try_lock(&mut self, handle: Handle, lock: LockType) -> Result<bool, VfsError>;
+    fn unlock(&mut self, handle: Handle) -> Result<(), VfsError>;
+
+    // Extended attributes
+    fn get_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<Vec<u8>, VfsError>;
+    fn set_xattr(&mut self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), VfsError>;
+    fn remove_xattr(&mut self, path: impl AsRef<Path>, name: &str) -> Result<(), VfsError>;
+    fn list_xattr(&self, path: impl AsRef<Path>) -> Result<Vec<String>, VfsError>;
+}
+```
+
+**Use cases:**
+- Applications requiring file handles (seek, partial read/write)
+- Concurrent access with file locking
+- Storing metadata in extended attributes
+
+### `anyfs-fuse` - Mount as Real Filesystem
+
+Adapter to expose any `VfsBackend` as a FUSE mount point.
+
+```rust
+use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// RAM drive with 1GB quota
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
+
+let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
+
+// Now it's a real mount point:
+// $ df -h /mnt/ramdisk
+// $ cp large_file.bin /mnt/ramdisk/  # fast!
+// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
+```
+
+**Cross-Platform Support:**
+
+| Platform | FUSE Provider | Rust Crate | User Must Install |
+|----------|---------------|------------|-------------------|
+| Linux | Native kernel | `fuser` | `fuse3` package |
+| macOS | macFUSE | `fuser` | [macFUSE](https://osxfuse.github.io/) |
+| FreeBSD | Native | `fuser` | (built-in) |
+| Windows | WinFsp | `winfsp-rs` | [WinFsp](https://winfsp.dev/) |
+
+`anyfs-fuse` provides a unified API across platforms:
+
+```rust
+impl<B: VfsBackend> FuseMount<B> {
+    #[cfg(unix)]
+    pub fn mount(backend: B, path: &Path) -> Result<Self, ...> {
+        // Uses fuser crate
+    }
+
+    #[cfg(windows)]
+    pub fn mount(backend: B, path: &Path) -> Result<Self, ...> {
+        // Uses winfsp-rs crate
+    }
+}
+```
+
+**Creative Use Cases:**
+
+| Backend Stack | What You Get |
+|---------------|--------------|
+| `MemoryBackend` | RAM drive |
+| `MemoryBackend` + `Quota` | RAM drive with size limit |
+| `SqliteBackend` | Single-file portable drive |
+| `Overlay<SqliteBackend, MemoryBackend>` | Persistent base + RAM scratch layer |
+| `Cache<SqliteBackend>` | SQLite with RAM read cache |
+| `Tracing<MemoryBackend>` | RAM drive with full audit log |
+| `ReadOnly<SqliteBackend>` | Immutable snapshot mount |
+| `Encryption<SqliteBackend>` | Encrypted portable drive |
+
+**Example: AI Agent Sandbox**
+
+```rust
+// Sandboxed workspace mounted as real filesystem
+let sandbox = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/**")
+            .deny("**/..*"))           // No hidden files
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks())           // No symlink escapes
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)),
+    "/mnt/agent-workspace"
+)?;
+
+// Agent's tools can now use standard filesystem APIs
+// All operations are sandboxed, logged, and quota-limited
+```
+
+**Architecture:**
+
+```
+┌────────────────────────────────────────────────┐
+│  /mnt/myfs (FUSE mount point)                  │
+├────────────────────────────────────────────────┤
+│  anyfs-fuse                                    │
+│    - Linux/macOS/BSD: fuser                    │
+│    - Windows: winfsp-rs                        │
+├────────────────────────────────────────────────┤
+│  VfsBackendPosixExt (optional, for locks/xattr)│
+├────────────────────────────────────────────────┤
+│  Middleware stack (Quota, PathFilter, etc.)    │
+├────────────────────────────────────────────────┤
+│  VfsBackend (Memory, SQLite, etc.)             │
+└────────────────────────────────────────────────┘
+```
+
+**Requirements:**
+- Backend should implement `VfsBackendPosixExt` for full functionality
+- Falls back gracefully for backends without POSIX extension
+- Platform-specific FUSE provider must be installed
 
 ### `anyfs-vfs-compat` - Interop with `vfs` crate
 

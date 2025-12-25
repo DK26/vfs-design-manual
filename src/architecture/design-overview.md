@@ -178,6 +178,242 @@ pub trait VfsBackend: Send {
 
     // Filesystem info
     fn statfs(&self) -> Result<StatFs, VfsError>;
+
+    // --- Inode operations (with sensible defaults) ---
+    // Backends can override for hardlink support and FUSE efficiency.
+    // Default implementations work but are less efficient.
+
+    /// Get the inode number for a path.
+    /// Default: hashes the path (works, but hardlinks won't share inodes).
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        path.as_ref().hash(&mut hasher);
+        Ok(hasher.finish())
+    }
+
+    /// Get the path for an inode number.
+    /// Default: not supported (override for FUSE efficiency).
+    fn inode_to_path(&self, _inode: u64) -> Result<PathBuf, VfsError> {
+        Err(VfsError::NotSupported { operation: "inode_to_path" })
+    }
+
+    /// Lookup a child by name within a parent directory (by inode).
+    /// Default: uses path-based lookup (override for FUSE efficiency).
+    fn lookup(&self, parent_inode: u64, name: &std::ffi::OsStr) -> Result<u64, VfsError> {
+        let parent_path = self.inode_to_path(parent_inode)?;
+        self.path_to_inode(parent_path.join(name))
+    }
+
+    /// Get metadata by inode (avoids path resolution).
+    /// Default: uses path-based metadata (override for FUSE efficiency).
+    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
+        let path = self.inode_to_path(inode)?;
+        self.metadata(path)
+    }
+}
+```
+
+### Inode Support
+
+Inode methods have **sensible defaults** that work out of the box. Override them for:
+- **Hardlink support**: Two paths must share the same inode
+- **FUSE efficiency**: Native inode operations avoid path lookups
+
+**Three levels of implementation:**
+
+| Level | Override | Use Case |
+|-------|----------|----------|
+| **Basic** | Nothing | Simple backends, no hardlinks, no FUSE |
+| **Hardlinks** | `path_to_inode` | Backends that support `hard_link()` |
+| **Full FUSE** | All 4 methods | Maximum FUSE performance |
+
+**Level 1: Basic (use defaults)**
+
+```rust
+impl VfsBackend for SimpleBackend {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> { ... }
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError> { ... }
+    // ... implement 25 path-based methods
+
+    // Inode methods: use defaults (no override needed!)
+    // - path_to_inode: hashes path
+    // - inode_to_path: returns NotSupported
+    // - lookup/metadata_by_inode: fall back to path-based
+}
+```
+
+**Level 2: Hardlink support**
+
+For `hard_link()` to work correctly, two paths must return the same inode:
+
+```rust
+impl VfsBackend for MemoryBackend {
+    // ... path-based methods ...
+
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        // Look up the node ID in our internal HashMap
+        let node = self.nodes.get(path.as_ref())
+            .ok_or(VfsError::NotFound { path: path.as_ref().into() })?;
+        Ok(node.id)  // Same ID for hardlinked paths!
+    }
+
+    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError> {
+        // Both paths point to the same node
+        let node_id = self.path_to_inode(&original)?;
+        self.paths.insert(link.as_ref().to_path_buf(), node_id);
+        self.nodes.get_mut(&node_id).unwrap().nlink += 1;
+        Ok(())
+    }
+}
+```
+
+**Level 3: Full FUSE efficiency**
+
+Override all 4 methods for O(1) inode operations:
+
+```rust
+impl VfsBackend for SqliteBackend {
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM nodes WHERE path = ?",
+            [path.as_ref().to_string_lossy()],
+            |row| row.get(0),
+        )?;
+        Ok(id as u64)
+    }
+
+    fn inode_to_path(&self, inode: u64) -> Result<PathBuf, VfsError> {
+        let path: String = self.conn.query_row(
+            "SELECT path FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| row.get(0),
+        )?;
+        Ok(PathBuf::from(path))
+    }
+
+    fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError> {
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
+            params![parent_inode as i64, name.to_string_lossy()],
+            |row| row.get(0),
+        )?;
+        Ok(id as u64)
+    }
+
+    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
+        self.conn.query_row(
+            "SELECT type, size, created, modified, nlink FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(Metadata { ... }),
+        )
+    }
+}
+
+---
+
+## Core Types (in `anyfs-backend`)
+
+### Constants
+
+```rust
+/// Root directory inode. FUSE convention.
+pub const ROOT_INODE: u64 = 1;
+```
+
+### Metadata
+
+```rust
+/// File or directory metadata.
+pub struct Metadata {
+    /// Inode number (unique identifier for this file/directory).
+    pub inode: u64,
+
+    /// Number of hard links pointing to this inode.
+    pub nlink: u64,
+
+    /// Type: File, Directory, or Symlink.
+    pub file_type: FileType,
+
+    /// Size in bytes (0 for directories).
+    pub size: u64,
+
+    /// Permission bits.
+    pub permissions: Permissions,
+
+    /// Creation time (if supported by backend).
+    pub created: Option<SystemTime>,
+
+    /// Last modification time.
+    pub modified: Option<SystemTime>,
+
+    /// Last access time (if supported by backend).
+    pub accessed: Option<SystemTime>,
+}
+```
+
+### FileType
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileType {
+    File,
+    Directory,
+    Symlink,
+}
+```
+
+### DirEntry
+
+```rust
+/// Entry in a directory listing.
+pub struct DirEntry {
+    /// File or directory name (not full path).
+    pub name: OsString,
+
+    /// Inode number (avoids extra stat calls).
+    pub inode: u64,
+
+    /// Type: File, Directory, or Symlink.
+    pub file_type: FileType,
+}
+```
+
+### Permissions
+
+```rust
+/// Unix-style permission bits.
+pub struct Permissions {
+    /// Permission mode (e.g., 0o755).
+    pub mode: u32,
+}
+
+impl Permissions {
+    pub fn readonly() -> Self { Permissions { mode: 0o444 } }
+    pub fn default_file() -> Self { Permissions { mode: 0o644 } }
+    pub fn default_dir() -> Self { Permissions { mode: 0o755 } }
+}
+```
+
+### StatFs
+
+```rust
+/// Filesystem statistics.
+pub struct StatFs {
+    /// Total size in bytes.
+    pub total_bytes: u64,
+
+    /// Available bytes.
+    pub available_bytes: u64,
+
+    /// Total number of inodes.
+    pub total_inodes: u64,
+
+    /// Available inodes.
+    pub available_inodes: u64,
+
+    /// Filesystem block size.
+    pub block_size: u64,
 }
 ```
 

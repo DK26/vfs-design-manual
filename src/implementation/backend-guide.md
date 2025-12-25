@@ -192,6 +192,122 @@ StatFs {
 }
 ```
 
+### Step 9: Inode Operations (optional overrides)
+
+Inode methods have **sensible defaults**. You only need to override them for:
+- **Hardlink support**: Two paths must share the same inode
+- **FUSE efficiency**: Direct inode operations without path lookup
+
+```rust
+// Default implementations (you get these for free):
+fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+    Ok(hash(path.as_ref()))  // Hashes the path
+}
+
+fn inode_to_path(&self, _inode: u64) -> Result<PathBuf, VfsError> {
+    Err(VfsError::NotSupported { operation: "inode_to_path" })
+}
+
+fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError> {
+    let parent = self.inode_to_path(parent_inode)?;
+    self.path_to_inode(parent.join(name))
+}
+
+fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
+    self.metadata(self.inode_to_path(inode)?)
+}
+```
+
+**Level 1: Simple backend (use defaults)**
+
+Don't override anything. Hardlinks won't work correctly, but basic operations will.
+
+**Level 2: Hardlink support**
+
+Override `path_to_inode` so hardlinked paths return the same inode:
+
+```rust
+struct Node {
+    id: u64,          // Unique node ID (the inode)
+    nlink: u64,       // Hard link count
+    content: Vec<u8>,
+    // ...
+}
+
+struct MemoryBackend {
+    next_id: u64,
+    nodes: HashMap<u64, Node>,           // inode -> Node
+    paths: HashMap<PathBuf, u64>,        // path -> inode
+}
+
+impl VfsBackend for MemoryBackend {
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        self.paths.get(path.as_ref())
+            .copied()
+            .ok_or_else(|| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError> {
+        let inode = self.path_to_inode(&original)?;
+        self.paths.insert(link.as_ref().to_path_buf(), inode);
+        self.nodes.get_mut(&inode).unwrap().nlink += 1;
+        Ok(())
+    }
+}
+```
+
+**Level 3: Full FUSE efficiency**
+
+Override all 4 methods for O(1) inode operations:
+
+```rust
+impl VfsBackend for SqliteBackend {
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE path = ?",
+            [path.as_ref().to_string_lossy()],
+            |row| Ok(row.get::<_, i64>(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn inode_to_path(&self, inode: u64) -> Result<PathBuf, VfsError> {
+        self.conn.query_row(
+            "SELECT path FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(PathBuf::from(row.get::<_, String>(0)?)),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+
+    fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError> {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
+            params![parent_inode as i64, name.to_string_lossy()],
+            |row| Ok(row.get::<_, i64>(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: name.into() })
+    }
+
+    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
+        self.conn.query_row(
+            "SELECT type, size, nlink, created, modified FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(Metadata {
+                inode,
+                nlink: row.get(2)?,
+                // ...
+            }),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+}
+```
+
+**Summary:**
+
+| Your Backend | Override | Result |
+|--------------|----------|--------|
+| Simple (no hardlinks) | Nothing | Works with defaults |
+| With hardlinks | `path_to_inode` | Hardlinks work correctly |
+| FUSE-optimized | All 4 methods | Maximum performance |
+
 ---
 
 ## Error Handling

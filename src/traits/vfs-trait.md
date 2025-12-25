@@ -80,6 +80,23 @@ pub trait VfsBackend: Send {
     // FILESYSTEM INFO
     // ═══════════════════════════════════════════════════════════════════════
     fn statfs(&self) -> Result<StatFs, VfsError>;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INODE OPERATIONS (with sensible defaults - override for hardlinks/FUSE)
+    // ═══════════════════════════════════════════════════════════════════════
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
+        Ok(hash(path.as_ref()))  // Default: hash the path
+    }
+    fn inode_to_path(&self, _inode: u64) -> Result<PathBuf, VfsError> {
+        Err(VfsError::NotSupported { operation: "inode_to_path" })
+    }
+    fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError> {
+        let parent = self.inode_to_path(parent_inode)?;
+        self.path_to_inode(parent.join(name))
+    }
+    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
+        self.metadata(self.inode_to_path(inode)?)
+    }
 }
 ```
 
@@ -87,6 +104,7 @@ pub trait VfsBackend: Send {
 
 ## Semantics
 
+### Path-based Operations
 - `read`/`write`/`metadata`/`exists`/`copy` follow symlinks.
 - `symlink_metadata` and `read_link` do not follow.
 - `remove_file` removes the symlink itself, not the target.
@@ -95,6 +113,21 @@ pub trait VfsBackend: Send {
 - `sync` flushes all pending writes to durable storage.
 - `fsync` flushes pending writes for a specific file.
 - `statfs` returns filesystem capacity information.
+
+### Inode Operations (defaults provided)
+
+All inode methods have **sensible defaults**. Override for:
+- **Hardlinks**: `path_to_inode` must return same inode for hardlinked paths
+- **FUSE efficiency**: All 4 methods for O(1) operations
+
+| Method | Default Behavior | Override When |
+|--------|------------------|---------------|
+| `path_to_inode` | Hashes path | Hardlink support |
+| `inode_to_path` | Returns `NotSupported` | FUSE efficiency |
+| `lookup` | Falls back to path-based | FUSE efficiency |
+| `metadata_by_inode` | Falls back to path-based | FUSE efficiency |
+
+**Convention:** Root directory should return `ROOT_INODE` (= 1) from `path_to_inode("/")`.
 
 ---
 

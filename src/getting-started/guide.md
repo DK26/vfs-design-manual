@@ -317,6 +317,140 @@ Always check for quota exceeded, feature not enabled, and other errors.
 
 ---
 
+## Advanced Use Cases (Future)
+
+These use cases require `anyfs-fuse` (future crate).
+
+### Database-Backed Drive with Live Monitoring
+
+Mount a database-backed filesystem and query it directly for real-time analytics:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Database (SQLite, PostgreSQL, etc.)                        │
+├─────────────────────────────────────────────────────────────┤
+│                         │                                   │
+│    anyfs-fuse           │         Stats Dashboard           │
+│    (write + read)       │         (direct DB queries)       │
+│         │               │               │                   │
+│         ▼               │               ▼                   │
+│  /mnt/workspace         │    SELECT SUM(size) FROM nodes    │
+│  $ cp file.txt ./       │    SELECT COUNT(*) FROM nodes     │
+│  $ mkdir projects/      │    SELECT * FROM operations_log   │
+│                         │               │                   │
+│                         │               ▼                   │
+│                         │        ┌──────────────┐           │
+│                         │        │ Live Graphs  │           │
+│                         │        │ - Disk usage │           │
+│                         │        │ - File count │           │
+│                         │        │ - Recent ops │           │
+│                         │        └──────────────┘           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**SQLite Example:**
+
+```rust
+use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+// Mount the drive
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(TracingLayer::new())  // Logs operations to DB
+    .layer(QuotaLayer::new().max_total_size(1_000_000_000));
+
+let mount = FuseMount::mount(backend, "/mnt/workspace")?;
+```
+
+```rust
+// Meanwhile, in a monitoring dashboard...
+use rusqlite::{Connection, OpenFlags};
+
+let conn = Connection::open_with_flags(
+    "tenant.db",
+    OpenFlags::SQLITE_OPEN_READ_ONLY,  // Safe concurrent reads
+)?;
+
+loop {
+    let (file_count, total_bytes): (i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM nodes WHERE type = 'file'",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+
+    let recent_ops: Vec<String> = conn
+        .prepare("SELECT operation, path, timestamp FROM audit_log ORDER BY timestamp DESC LIMIT 10")?
+        .query_map([], |row| Ok(format!("{}: {}", row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?
+        .collect::<Result<_, _>>()?;
+
+    render_dashboard(file_count, total_bytes, &recent_ops);
+    std::thread::sleep(Duration::from_secs(1));
+}
+```
+
+**Works with any database backend:**
+
+| Backend | Direct Query Method |
+|---------|---------------------|
+| `SqliteBackend` | `rusqlite` with `SQLITE_OPEN_READ_ONLY` |
+| `PostgresBackend` (future) | Standard `postgres` crate connection |
+| `MySqlBackend` (future) | Standard `mysql` crate connection |
+
+**What you can visualize:**
+- Real-time storage usage (gauges, bar charts)
+- File count over time (line graphs)
+- Operations log (live feed)
+- Most accessed files (heatmaps)
+- Directory tree maps (size visualization)
+- Per-tenant usage (multi-tenant dashboards)
+
+This pattern is powerful because the database is the source of truth — you get filesystem semantics via FUSE and SQL analytics via direct queries, from the same data.
+
+### RAM Drive
+
+```rust
+use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// 4GB RAM drive
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(QuotaLayer::new().max_total_size(4 * 1024 * 1024 * 1024)),
+    "/mnt/ramdisk"
+)?;
+
+// Use for fast compilation, temp files, etc.
+// $ TMPDIR=/mnt/ramdisk cargo build
+```
+
+### Sandboxed AI Agent Workspace
+
+```rust
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/workspace/**")
+            .deny("**/..*")           // No hidden files
+            .deny("**/.*"))           // No dotfiles
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks()          // Prevent symlink attacks
+            .deny_hard_links())
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(TracingLayer::new()),  // Full audit trail
+    "/mnt/agent"
+)?;
+
+// Agent uses standard filesystem APIs
+// All operations are sandboxed, quota-limited, and logged
+```
+
+---
+
 ## Next Steps
 
 - [API Quick Reference](./api-reference.md)

@@ -214,11 +214,14 @@ fs.exists("/path")?                     // -> bool
 
 // Metadata
 let meta = fs.metadata("/path")?;
-meta.size                                // file size
+meta.inode                               // unique identifier
+meta.nlink                               // hard link count
 meta.file_type                           // File | Directory | Symlink
-meta.permissions
+meta.size                                // file size in bytes
+meta.permissions                         // Permissions { mode: u32 }
 meta.created                             // Option<SystemTime>
-meta.modified
+meta.modified                            // Option<SystemTime>
+meta.accessed                            // Option<SystemTime>
 
 // Read
 let bytes = fs.read("/path")?;           // -> Vec<u8>
@@ -227,6 +230,11 @@ let chunk = fs.read_range("/path", 0, 1024)?;
 
 // List directory
 let entries = fs.read_dir("/path")?;     // -> Vec<DirEntry>
+for entry in &entries {
+    entry.name                           // OsString
+    entry.inode                          // u64 (avoids extra stat)
+    entry.file_type                      // File | Directory | Symlink
+}
 
 // Write
 fs.write("/path", b"content")?;          // Create or overwrite
@@ -260,6 +268,39 @@ fs.truncate("/path", 1024)?;             // Resize to 1024 bytes
 fs.sync()?;                              // Flush all writes
 fs.fsync("/path")?;                      // Flush writes for one file
 ```
+
+---
+
+## Inode Operations
+
+Backends track inodes internally for hardlink support. These methods expose that tracking:
+
+```rust
+// Convert between paths and inodes
+let inode: u64 = backend.path_to_inode("/some/path")?;
+let path: PathBuf = backend.inode_to_path(inode)?;
+
+// Lookup child by name within a directory (FUSE-style)
+let root_inode = backend.path_to_inode("/")?;
+let child_inode = backend.lookup(root_inode, "filename.txt")?;
+
+// Get metadata by inode (avoids path resolution)
+let meta = backend.metadata_by_inode(inode)?;
+
+// Hardlinks share the same inode
+backend.hard_link("/original", "/link")?;
+let ino1 = backend.path_to_inode("/original")?;
+let ino2 = backend.path_to_inode("/link")?;
+assert_eq!(ino1, ino2);  // Same inode!
+```
+
+**Inode sources by backend:**
+
+| Backend | Inode Source |
+|---------|--------------|
+| `MemoryBackend` | Internal node IDs (incrementing counter) |
+| `SqliteBackend` | SQLite row IDs (`INTEGER PRIMARY KEY`) |
+| `VRootFsBackend` | OS inode numbers (`Metadata::ino()`) |
 
 ---
 
@@ -297,6 +338,9 @@ match result {
     // VfsBackendExt errors
     Err(VfsError::Serialization(msg)) => ...
     Err(VfsError::Deserialization(msg)) => ...
+
+    // Optional feature not supported
+    Err(VfsError::NotSupported { operation }) => ...
 
     Err(e) => ...
 }
@@ -352,15 +396,16 @@ match result {
 
 | Type | Description |
 |------|-------------|
-| `VfsBackend` | Core trait |
+| `VfsBackend` | Core trait (29 methods) |
 | `Layer` | Middleware composition trait |
 | `VfsBackendExt` | Extension methods trait |
 | `VfsError` | Error type (with context) |
+| `ROOT_INODE` | Constant: root directory inode (= 1) |
 | `FileType` | `File`, `Directory`, `Symlink` |
-| `Metadata` | File/dir metadata |
-| `DirEntry` | Directory entry |
-| `Permissions` | File permissions |
-| `StatFs` | Filesystem stats |
+| `Metadata` | File/dir metadata (inode, nlink, size, times, permissions) |
+| `DirEntry` | Directory entry (name, inode, file_type) |
+| `Permissions` | File permissions (mode: u32) |
+| `StatFs` | Filesystem stats (bytes, inodes, block_size) |
 
 ### From `anyfs`
 

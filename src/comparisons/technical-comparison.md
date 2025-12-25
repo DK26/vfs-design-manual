@@ -110,6 +110,8 @@ let mut fs = FilesContainer::new(backend);
 | **Tracing/logging** | Middleware | Manual | Built-in | Middleware |
 | **Streaming I/O** | Yes | Yes | Yes | Yes |
 | **Async API** | Future | Partial | No | Yes |
+| **POSIX extension** | Future | No | No | No |
+| **FUSE mountable** | Future | No | No | No |
 | **KV store** | No | No | Yes | No |
 
 ---
