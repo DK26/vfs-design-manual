@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-70e84558.js";
+            window.path_to_searchindex_js = "searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-49a6e0ad.js"></script>
+        <script src="toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -194,14 +194,14 @@
 <hr>
 <h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FilesContainer&lt;B&gt;                      │  ← Ergonomics (std::fs API)
+│  FileStorage&lt;M&gt;                         │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                             │  ← Quotas
 │    Restrictions&lt;B&gt;                      │  ← Security
 │    Tracing&lt;B&gt;                           │  ← Audit
 ├─────────────────────────────────────────┤
-│  VfsBackend                             │  ← Storage
+│  Fs                             │  ← Storage
 │  (Memory, SQLite, VRootFs, custom...)   │
 └─────────────────────────────────────────┘
 </code></pre>
@@ -214,9 +214,9 @@
 <tr><th>Crate</th><th>Purpose</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait + types</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait + types</td></tr>
 <tr><td><code>anyfs</code></td><td>Backends + middleware</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Ergonomic <code>FilesContainer&lt;B&gt;</code> wrapper</td></tr>
+<tr><td><code>anyfs-container</code></td><td>Ergonomic <code>FileStorage&lt;M&gt;</code> wrapper</td></tr>
 </tbody>
 </table>
 </div>
@@ -225,7 +225,7 @@
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Layer-based composition
 let backend = SqliteBackend::open("data.db")?
@@ -235,7 +235,7 @@ let backend = SqliteBackend::open("data.db")?
         .deny_hard_links()
         .deny_permissions());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 
 fs.create_dir_all("/data")?;
 fs.write("/data/file.txt", b"hello")?;

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>FilesContainer (anyfs-container) - AnyFS Ecosystem Manual</title>
+        <title>FileStorage (anyfs-container) - AnyFS Ecosystem Manual</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-70e84558.js";
+            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-49a6e0ad.js"></script>
+        <script src="../toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,28 +180,33 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="filescontainer-anyfs-container"><a class="header" href="#filescontainer-anyfs-container">FilesContainer (anyfs-container)</a></h1>
-<p><strong>Thin ergonomic wrapper for std::fs-aligned API</strong></p>
+                        <h1 id="filestorage-anyfs-container"><a class="header" href="#filestorage-anyfs-container">FileStorage<m> (anyfs-container)</m></a></h1>
+<p><strong>Type-safe ergonomic wrapper for std::fs-aligned API</strong></p>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p><code>FilesContainer&lt;B: VfsBackend&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API.</p>
-<p><strong>It does ONE thing:</strong> Ergonomics. Nothing else.</p>
-<p>All policy (limits, feature gates, logging) is handled by middleware, not FilesContainer.</p>
+<p><code>FileStorage&lt;M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with an optional <strong>marker type</strong> for compile-time safety.</p>
+<p>The backend is type-erased (<code>Box&lt;dyn Fs&gt;</code>) for a clean API.</p>
+<p><strong>It does TWO things:</strong></p>
+<ol>
+<li>Ergonomics (std::fs-aligned API)</li>
+<li>Optional type-safety via marker types</li>
+</ol>
+<p>All policy (limits, feature gates, logging) is handled by middleware, not FileStorage.</p>
 <hr>
 <h2 id="creating-a-container"><a class="header" href="#creating-a-container">Creating a Container</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Simple: just ergonomics
-let mut fs = FilesContainer::new(MemoryBackend::new());
+let mut fs = FileStorage::new(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
 <p>With middleware (layer-based):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::new()
@@ -210,15 +215,60 @@ let backend = SqliteBackend::open("data.db")?
         .deny_hard_links()
         .deny_permissions());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="stdfs-aligned-methods"><a class="header" href="#stdfs-aligned-methods">std::fs-aligned Methods</a></h2>
-<p>FilesContainer mirrors std::fs naming:</p>
+<h2 id="marker-types-compile-time-safety"><a class="header" href="#marker-types-compile-time-safety">Marker Types (Compile-Time Safety)</a></h2>
+<p>The type parameter <code>M</code> (default: <code>()</code>) enables compile-time container differentiation:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, SqliteBackend};
+use anyfs_container::FileStorage;
+
+// Define marker types for your domains
+struct Sandbox;
+struct UserData;
+struct TempFiles;
+
+// Create typed containers - backend type is erased!
+let sandbox: FileStorage&lt;Sandbox&gt; = FileStorage::with_marker(MemoryBackend::new());
+let userdata: FileStorage&lt;UserData&gt; = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+
+// Type-safe function signatures prevent mixing containers
+fn process_sandbox(fs: &amp;FileStorage&lt;Sandbox&gt;) {
+    // Can only accept Sandbox-marked containers
+}
+
+fn save_user_file(fs: &amp;mut FileStorage&lt;UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+    // Can only accept UserData-marked containers
+}
+
+// Compile-time safety:
+process_sandbox(&amp;sandbox);   // OK
+process_sandbox(&amp;userdata);  // Compile error! Type mismatch
+<span class="boring">}</span></code></pre>
+<h3 id="when-to-use-markers"><a class="header" href="#when-to-use-markers">When to Use Markers</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>FilesContainer</th><th>std::fs</th></tr>
+<tr><th>Scenario</th><th>Use Markers?</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td>Single container</td><td>No</td><td><code>FileStorage</code> is sufficient</td></tr>
+<tr><td>Multiple containers, same type</td><td><strong>Yes</strong></td><td>Prevent accidental mixing</td></tr>
+<tr><td>Multi-tenant systems</td><td><strong>Yes</strong></td><td>Compile-time tenant isolation</td></tr>
+<tr><td>Sandbox + user data</td><td><strong>Yes</strong></td><td>Never write user data to sandbox</td></tr>
+<tr><td>Testing</td><td>Maybe</td><td>Tag test vs production containers</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="stdfs-aligned-methods"><a class="header" href="#stdfs-aligned-methods">std::fs-aligned Methods</a></h2>
+<p>FileStorage mirrors std::fs naming:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>FileStorage</th><th>std::fs</th></tr>
 </thead>
 <tbody>
 <tr><td><code>read()</code></td><td><code>std::fs::read</code></td></tr>
@@ -240,7 +290,7 @@ let mut fs = FilesContainer::new(backend);
 </table>
 </div>
 <hr>
-<h2 id="what-filescontainer-does-not-do"><a class="header" href="#what-filescontainer-does-not-do">What FilesContainer Does NOT Do</a></h2>
+<h2 id="what-filestorage-does-not-do"><a class="header" href="#what-filestorage-does-not-do">What FileStorage Does NOT Do</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -254,36 +304,68 @@ let mut fs = FilesContainer::new(backend);
 </tbody>
 </table>
 </div>
-<p>FilesContainer is <strong>purely ergonomic</strong>. If you need policy, compose middleware.</p>
+<p>FileStorage is <strong>purely ergonomic</strong>. If you need policy, compose middleware.</p>
 <hr>
-<h2 id="layer-helper"><a class="header" href="#layer-helper">Layer Helper</a></h2>
-<p>For Axum-style composition:</p>
+<h2 id="filestorage-implementation"><a class="header" href="#filestorage-implementation">FileStorage Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new().deny_hard_links());  // Block hard_link() calls
+</span>use std::marker::PhantomData;
+use anyfs_backend::Fs;
+
+/// Ergonomic filesystem wrapper with optional type marker.
+/// Backend is type-erased to `Box&lt;dyn Fs&gt;` for a clean API.
+pub struct FileStorage&lt;M = ()&gt; {
+    backend: Box&lt;dyn Fs&gt;,
+    _marker: PhantomData&lt;M&gt;,
+}
+
+impl&lt;M&gt; FileStorage&lt;M&gt; {
+    /// Create a new FileStorage (no marker).
+    pub fn new(backend: impl Fs + 'static) -&gt; FileStorage {
+        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+    }
+
+    /// Create a new FileStorage with a specific marker type.
+    pub fn with_marker&lt;N&gt;(backend: impl Fs + 'static) -&gt; FileStorage&lt;N&gt; {
+        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+    }
+
+    /// Change the marker type (zero-cost, compile-time only).
+    pub fn retype&lt;N&gt;(self) -&gt; FileStorage&lt;N&gt; {
+        FileStorage { backend: self.backend, _marker: PhantomData }
+    }
+}
 <span class="boring">}</span></code></pre>
+<p><strong>Note:</strong> <code>FileStorage</code> uses <code>Box&lt;dyn Fs&gt;</code> which provides Layer 1 operations (read, write, dirs). If you need <code>FsFull</code>, <code>FsFuse</code>, or <code>FsPosix</code> operations, use the backend directly without type erasure.</p>
 <hr>
 <h2 id="direct-backend-access"><a class="header" href="#direct-backend-access">Direct Backend Access</a></h2>
-<p>If you don’t need ergonomics, use backends directly:</p>
+<p>If you don’t need ergonomics, want zero-cost abstractions, or need higher-level traits (<code>FsFull</code>, <code>FsFuse</code>), use backends directly:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota};
-use anyfs_backend::VfsBackend;
+</span>use anyfs::{MemoryBackend, Quota, Fs};
 
 let mut backend = Quota::new(MemoryBackend::new())
     .with_max_total_size(100 * 1024 * 1024);
 
-// Use VfsBackend methods directly
+// Use Fs trait methods directly
 backend.write("/file.txt", b"data")?;
+<span class="boring">}</span></code></pre>
+<p>For FUSE mounting (requires <code>FsFuse</code>):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{SqliteBackend, FsFuse};
+use anyfs_fuse::FuseMount;
+
+let backend = SqliteBackend::open("data.db")?;
+// backend implements FsFuse, so we can mount it
+FuseMount::mount(backend, "/mnt/myfs")?;
 <span class="boring">}</span></code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../traits/vfs-trait.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../traits/layered-traits.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -297,7 +379,7 @@ backend.write("/file.txt", b"data")?;
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../traits/vfs-trait.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../traits/layered-traits.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

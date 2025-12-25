@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-70e84558.js";
+            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-49a6e0ad.js"></script>
+        <script src="../toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -350,7 +350,7 @@ let backend = Restrictions::new(MemoryBackend::new())
     .deny_hard_links()    // Block hard_link() calls
     .deny_permissions();  // Block set_permissions() calls
 
-// Blocked operations return VfsError::FeatureNotEnabled
+// Blocked operations return FsError::FeatureNotEnabled
 <span class="boring">}</span></code></pre>
 <h3 id="tracing--instrumentation"><a class="header" href="#tracing--instrumentation">Tracing — Instrumentation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -364,15 +364,15 @@ let backend = Tracing::new(MemoryBackend::new())
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_backend::VfsError;
+</span>use anyfs_backend::FsError;
 
 match fs.write("/file.txt", &amp;large_data) {
     Ok(()) =&gt; println!("Written"),
 
-    Err(VfsError::NotFound(p)) =&gt; println!("Not found: {}", p),
-    Err(VfsError::AlreadyExists(p)) =&gt; println!("Exists: {}", p),
-    Err(VfsError::QuotaExceeded) =&gt; println!("Quota exceeded"),
-    Err(VfsError::FeatureNotEnabled(f)) =&gt; println!("Feature disabled: {}", f),
+    Err(FsError::NotFound(p)) =&gt; println!("Not found: {}", p),
+    Err(FsError::AlreadyExists(p)) =&gt; println!("Exists: {}", p),
+    Err(FsError::QuotaExceeded) =&gt; println!("Quota exceeded"),
+    Err(FsError::FeatureNotEnabled(f)) =&gt; println!("Feature disabled: {}", f),
 
     Err(e) =&gt; println!("Error: {}", e),
 }

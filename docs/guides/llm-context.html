@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>API Quick Reference - AnyFS Ecosystem Manual</title>
+        <title>Implementation Patterns (LLM Context) - AnyFS Ecosystem Manual</title>
 
 
         <!-- Custom HTML head -->
@@ -146,7 +146,7 @@
                         <a href="https://github.com/DK26/vfs-design-manual" title="Git repository" aria-label="Git repository">
                             <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/vfs-design-manual/edit/main/src/getting-started/api-reference.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/DK26/vfs-design-manual/edit/main/src/guides/llm-context.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -180,514 +180,371 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="anyfs--api-quick-reference"><a class="header" href="#anyfs--api-quick-reference">AnyFS — API Quick Reference</a></h1>
-<p><strong>Condensed reference for developers</strong></p>
+                        <h1 id="anyfs-implementation-patterns"><a class="header" href="#anyfs-implementation-patterns">AnyFS Implementation Patterns</a></h1>
+<p><strong>Purpose:</strong> Quick reference for implementing backends, middleware, and adapters.</p>
 <hr>
-<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
-<pre><code class="language-toml">[dependencies]
-anyfs = "0.1"
-anyfs-container = "0.1"  # Optional
+<h2 id="trait-hierarchy-pick-your-level"><a class="header" href="#trait-hierarchy-pick-your-level">Trait Hierarchy (Pick Your Level)</a></h2>
+<pre><code>FsPosix  ← Full POSIX (handles, locks, xattr)
+    ↑
+FsFuse   ← FUSE-mountable (+ inodes)
+    ↑
+FsFull   ← std::fs features (+ links, permissions, sync, stats)
+    ↑
+   Fs    ← Basic filesystem (90% of use cases)
+    ↑
+FsRead + FsWrite + FsDir  ← Core traits
 </code></pre>
-<p>With backends and optional features:</p>
-<pre><code class="language-toml">anyfs = { version = "0.1", features = ["sqlite", "vrootfs", "bytes"] }
-</code></pre>
+<p><strong>Rule:</strong> Implement the lowest level you need. Higher levels include all below.</p>
 <hr>
-<h2 id="creating-a-backend-stack"><a class="header" href="#creating-a-backend-stack">Creating a Backend Stack</a></h2>
+<h2 id="pattern-1-implement-a-backend"><a class="header" href="#pattern-1-implement-a-backend">Pattern 1: Implement a Backend</a></h2>
+<h3 id="minimum-implement-fs-3-traits"><a class="header" href="#minimum-implement-fs-3-traits">Minimum: Implement <code>Fs</code> (3 traits)</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing};
-use anyfs_container::FileStorage;
+</span>use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Metadata, DirEntry, FileType, Permissions};
+use std::path::Path;
 
-// Simple
-let fs = FileStorage::new(MemoryBackend::new());
+pub struct MyBackend { /* your storage */ }
 
-// With limits
-let fs = FileStorage::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-        .with_max_file_size(10 * 1024 * 1024)
-);
-
-// Full stack (manual composition)
-let fs = FileStorage::new(
-    Tracing::new(
-        Restrictions::new(
-            Quota::new(SqliteBackend::open("data.db")?)
-                .with_max_total_size(100 * 1024 * 1024)
-        )
-        .deny_permissions()  // Block set_permissions() calls
-    )
-);
-
-// Layer-based composition
-use anyfs::{QuotaLayer, RestrictionsLayer, TracingLayer};
-
-let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new().deny_permissions())
-    .layer(TracingLayer::new());
-
-// BackendStack builder (fluent API)
-use anyfs_container::BackendStack;
-
-let fs = BackendStack::new(SqliteBackend::open("data.db")?)
-    .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .restricted(|g| g.deny_hard_links().deny_permissions())
-    .traced()
-    .into_container();
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="quota-methods"><a class="header" href="#quota-methods">Quota Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>Quota::new(backend)
-    .with_max_total_size(bytes)      // Total storage limit
-    .with_max_file_size(bytes)       // Per-file limit
-    .with_max_node_count(count)      // Max files/dirs
-    .with_max_dir_entries(count)     // Max entries per dir
-    .with_max_path_depth(depth)      // Max nesting
-
-// Query
-backend.usage()        // -&gt; Usage { total_size, file_count, ... }
-backend.limits()       // -&gt; Limits { max_total_size, ... }
-backend.remaining()    // -&gt; Remaining { bytes, can_write, ... }
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="restrictions-methods"><a class="header" href="#restrictions-methods">Restrictions Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// By default, all operations work. Use deny_*() to block specific ones.
-Restrictions::new(backend)
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
-    .deny_permissions()    // Block set_permissions() calls
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="tracing-methods"><a class="header" href="#tracing-methods">Tracing Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>Tracing::new(backend)
-    .with_target("anyfs")             // tracing target
-    .with_level(tracing::Level::DEBUG)
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="pathfilter-methods"><a class="header" href="#pathfilter-methods">PathFilter Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>PathFilter::new(backend)
-    .allow("/workspace/**")    // Allow glob pattern
-    .deny("**/.env")           // Deny glob pattern
-    .deny("**/secrets/**")
-
-// Rules evaluated in order; first match wins
-// No match = denied (deny by default)
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="readonly-methods"><a class="header" href="#readonly-methods">ReadOnly Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>ReadOnly::new(backend)
-
-// All read operations pass through
-// All write operations return FsError::ReadOnly
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="ratelimit-methods"><a class="header" href="#ratelimit-methods">RateLimit Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>RateLimit::new(backend)
-    .max_ops(1000)           // Operation limit
-    .per_second()            // Window: 1 second
-    // or
-    .per_minute()            // Window: 60 seconds
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="dryrun-methods"><a class="header" href="#dryrun-methods">DryRun Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut dry_run = DryRun::new(backend);
-
-// Read operations execute normally
-// Write operations are logged but not executed
-dry_run.write("/file.txt", b"data")?;  // Logged, returns Ok
-
-// Inspect logged operations
-let ops = dry_run.operations();        // -&gt; &amp;[Operation]
-dry_run.clear();                       // Clear the log
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="cache-methods"><a class="header" href="#cache-methods">Cache Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>Cache::new(backend)
-    .max_entries(1000)                     // LRU cache size
-    .max_entry_size(1024 * 1024)          // 1MB max per entry
-    .ttl(std::time::Duration::from_secs(60))  // Expiration
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="overlay-methods"><a class="header" href="#overlay-methods">Overlay Methods</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, MemoryBackend, Overlay};
-
-let base = SqliteBackend::open("base.db")?;  // Read-only base
-let upper = MemoryBackend::new();             // Writable upper
-
-let overlay = Overlay::new(base, upper);
-
-// Read: check upper first, fall back to base
-// Write: always to upper layer
-// Delete: whiteout marker in upper
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="fsext-methods"><a class="header" href="#fsext-methods">FsExt Methods</a></h2>
-<p>Extension methods available on all backends:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs_backend::FsExt;
-
-// JSON support
-let config: Config = fs.read_json("/config.json")?;
-fs.write_json("/config.json", &amp;config)?;
-
-// Type checks
-if fs.is_file("/path")? { ... }
-if fs.is_dir("/path")? { ... }
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="file-operations"><a class="header" href="#file-operations">File Operations</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Check existence
-fs.exists("/path")?                     // -&gt; bool
-
-// Metadata
-let meta = fs.metadata("/path")?;
-meta.inode                               // unique identifier
-meta.nlink                               // hard link count
-meta.file_type                           // File | Directory | Symlink
-meta.size                                // file size in bytes
-meta.permissions                         // Permissions { mode: u32 }
-meta.created                             // Option&lt;SystemTime&gt;
-meta.modified                            // Option&lt;SystemTime&gt;
-meta.accessed                            // Option&lt;SystemTime&gt;
-
-// Read
-let bytes = fs.read("/path")?;           // -&gt; Vec&lt;u8&gt;
-let text = fs.read_to_string("/path")?;  // -&gt; String
-let chunk = fs.read_range("/path", 0, 1024)?;
-
-// List directory
-let entries = fs.read_dir("/path")?;     // -&gt; Vec&lt;DirEntry&gt;
-for entry in &amp;entries {
-    entry.name                           // OsString
-    entry.inode                          // u64 (avoids extra stat)
-    entry.file_type                      // File | Directory | Symlink
+impl FsRead for MyBackend {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        todo!("return file contents")
+    }
+    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, FsError&gt; {
+        String::from_utf8(self.read(path)?).map_err(|e| FsError::Backend(e.to_string()))
+    }
+    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        todo!("return slice of file")
+    }
+    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+        todo!("check if path exists")
+    }
+    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+        todo!("return Metadata { inode, nlink, file_type, size, permissions, created, modified, accessed }")
+    }
+    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
+        Ok(Box::new(std::io::Cursor::new(self.read(path)?)))
+    }
 }
 
-// Write
-fs.write("/path", b"content")?;          // Create or overwrite
-fs.append("/path", b"more")?;            // Append
+impl FsWrite for MyBackend {
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        todo!("create or overwrite file")
+    }
+    fn append(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        todo!("append to file")
+    }
+    fn remove_file(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("delete file")
+    }
+    fn rename(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("move/rename")
+    }
+    fn copy(&amp;mut self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("copy file")
+    }
+    fn truncate(&amp;mut self, path: impl AsRef&lt;Path&gt;, size: u64) -&gt; Result&lt;(), FsError&gt; {
+        todo!("resize file")
+    }
+    fn open_write(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
+        todo!("return writer")
+    }
+}
 
-// Directories
-fs.create_dir("/path")?;
-fs.create_dir_all("/path")?;
-
-// Delete
-fs.remove_file("/path")?;
-fs.remove_dir("/path")?;                 // Empty only
-fs.remove_dir_all("/path")?;             // Recursive
-
-// Move/Copy
-fs.rename("/from", "/to")?;
-fs.copy("/from", "/to")?;
-
-// Links (requires Restrictions)
-fs.symlink("/target", "/link")?;
-fs.hard_link("/original", "/link")?;
-fs.read_link("/link")?;                  // -&gt; PathBuf
-
-// Permissions (requires Restrictions)
-fs.set_permissions("/path", perms)?;
-
-// File size
-fs.truncate("/path", 1024)?;             // Resize to 1024 bytes
-
-// Durability
-fs.sync()?;                              // Flush all writes
-fs.fsync("/path")?;                      // Flush writes for one file
+impl FsDir for MyBackend {
+    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;DirEntry&gt;, FsError&gt; {
+        todo!("return Vec&lt;DirEntry { name, inode, file_type }&gt;")
+    }
+    fn create_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("create single directory")
+    }
+    fn create_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("create directory and parents")
+    }
+    fn remove_dir(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("remove empty directory")
+    }
+    fn remove_dir_all(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("remove directory recursively")
+    }
+}
+// MyBackend now implements Fs automatically!
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="inode-operations-fsinode-trait"><a class="header" href="#inode-operations-fsinode-trait">Inode Operations (<code>FsInode</code> trait)</a></h2>
-<p>Backends implementing <code>FsInode</code> track inodes internally for hardlink support and FUSE mounting:</p>
+<h3 id="add-linkspermissions-implement-fsfull-add-4-traits"><a class="header" href="#add-linkspermissions-implement-fsfull-add-4-traits">Add Links/Permissions: Implement <code>FsFull</code> (add 4 traits)</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Convert between paths and inodes
-let inode: u64 = backend.path_to_inode("/some/path")?;
-let path: PathBuf = backend.inode_to_path(inode)?;
+</span>impl FsLink for MyBackend {
+    fn symlink(&amp;mut self, target: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("create symlink pointing to target")
+    }
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("create hard link (same inode)")
+    }
+    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
+        todo!("return symlink target")
+    }
+    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+        todo!("metadata without following symlink")
+    }
+}
 
-// Lookup child by name within a directory (FUSE-style)
-let root_inode = backend.path_to_inode("/")?;
-let child_inode = backend.lookup(root_inode, "filename.txt")?;
+impl FsPermissions for MyBackend {
+    fn set_permissions(&amp;mut self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), FsError&gt; {
+        todo!("set file permissions")
+    }
+}
 
-// Get metadata by inode (avoids path resolution)
-let meta = backend.metadata_by_inode(inode)?;
+impl FsSync for MyBackend {
+    fn sync(&amp;mut self) -&gt; Result&lt;(), FsError&gt; {
+        todo!("flush all writes to storage")
+    }
+    fn fsync(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        todo!("flush writes for one file")
+    }
+}
 
-// Hardlinks share the same inode
-backend.hard_link("/original", "/link")?;
-let ino1 = backend.path_to_inode("/original")?;
-let ino2 = backend.path_to_inode("/link")?;
-assert_eq!(ino1, ino2);  // Same inode!
+impl FsStats for MyBackend {
+    fn statfs(&amp;self) -&gt; Result&lt;anyfs_backend::StatFs, FsError&gt; {
+        todo!("return StatFs { total_bytes, available_bytes, ... }")
+    }
+}
+// MyBackend now implements FsFull!
 <span class="boring">}</span></code></pre>
-<p><strong>Inode sources by backend:</strong></p>
+<h3 id="add-fuse-support-implement-fsfuse-add-1-trait"><a class="header" href="#add-fuse-support-implement-fsfuse-add-1-trait">Add FUSE Support: Implement <code>FsFuse</code> (add 1 trait)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsInode for MyBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, FsError&gt; {
+        todo!("return unique inode for path")
+    }
+    fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
+        todo!("return path for inode")
+    }
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;std::ffi::OsStr) -&gt; Result&lt;u64, FsError&gt; {
+        todo!("find child inode by name")
+    }
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt; {
+        todo!("get metadata by inode (fast path)")
+    }
+}
+// MyBackend now implements FsFuse!
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="pattern-2-implement-middleware"><a class="header" href="#pattern-2-implement-middleware">Pattern 2: Implement Middleware</a></h2>
+<p><strong>Rule:</strong> Middleware implements the same traits as its inner backend, intercepting some methods.</p>
+<h3 id="template"><a class="header" href="#template">Template</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Layer};
+
+pub struct MyMiddleware&lt;B&gt; {
+    inner: B,
+    // your state
+}
+
+impl&lt;B&gt; MyMiddleware&lt;B&gt; {
+    pub fn new(inner: B) -&gt; Self {
+        Self { inner }
+    }
+}
+
+// Implement each trait, delegating or intercepting as needed
+impl&lt;B: FsRead&gt; FsRead for MyMiddleware&lt;B&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        // INTERCEPT: add your logic
+        let data = self.inner.read(path)?;  // DELEGATE
+        // INTERCEPT: modify result
+        Ok(data)
+    }
+
+    // For passthrough methods, just delegate:
+    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+        self.inner.exists(path)
+    }
+    // ... implement all FsRead methods
+}
+
+impl&lt;B: FsWrite&gt; FsWrite for MyMiddleware&lt;B&gt; {
+    // ... implement all FsWrite methods
+}
+
+impl&lt;B: FsDir&gt; FsDir for MyMiddleware&lt;B&gt; {
+    // ... implement all FsDir methods
+}
+
+// Optional: Layer for .layer() syntax
+pub struct MyMiddlewareLayer { /* config */ }
+
+impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
+    type Backend = MyMiddleware&lt;B&gt;;
+    fn layer(self, backend: B) -&gt; Self::Backend {
+        MyMiddleware::new(backend)
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="common-middleware-patterns"><a class="header" href="#common-middleware-patterns">Common Middleware Patterns</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Backend</th><th>Inode Source</th></tr>
+<tr><th>Pattern</th><th>Intercept</th><th>Delegate</th><th>Example</th></tr>
 </thead>
 <tbody>
-<tr><td><code>MemoryBackend</code></td><td>Internal node IDs (incrementing counter)</td></tr>
-<tr><td><code>SqliteBackend</code></td><td>SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td>OS inode numbers (<code>Metadata::ino()</code>)</td></tr>
+<tr><td><strong>Logging</strong></td><td>All (before/after)</td><td>All</td><td><code>Tracing</code></td></tr>
+<tr><td><strong>Block writes</strong></td><td>Write methods → return error</td><td>Read methods</td><td><code>ReadOnly</code></td></tr>
+<tr><td><strong>Transform data</strong></td><td><code>read</code>/<code>write</code></td><td>Everything else</td><td><code>Encryption</code></td></tr>
+<tr><td><strong>Check permissions</strong></td><td>All (before)</td><td>All</td><td><code>PathFilter</code></td></tr>
+<tr><td><strong>Enforce limits</strong></td><td>Write methods (check size)</td><td>Read methods</td><td><code>Quota</code></td></tr>
+<tr><td><strong>Count operations</strong></td><td>All (increment counter)</td><td>All</td><td><code>Counter</code></td></tr>
 </tbody>
 </table>
 </div>
+<h3 id="example-readonly-middleware"><a class="header" href="#example-readonly-middleware">Example: ReadOnly Middleware</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: FsWrite&gt; FsWrite for ReadOnly&lt;B&gt; {
+    fn write(&amp;mut self, _: impl AsRef&lt;Path&gt;, _: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        Err(FsError::ReadOnly { operation: "write" })
+    }
+    fn remove_file(&amp;mut self, _: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+        Err(FsError::ReadOnly { operation: "remove_file" })
+    }
+    // ... all write methods return ReadOnly error
+}
+<span class="boring">}</span></code></pre>
+<h3 id="example-encryption-middleware"><a class="header" href="#example-encryption-middleware">Example: Encryption Middleware</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: FsRead&gt; FsRead for Encrypted&lt;B&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        let encrypted = self.inner.read(path)?;
+        Ok(self.decrypt(&amp;encrypted))
+    }
+}
+
+impl&lt;B: FsWrite&gt; FsWrite for Encrypted&lt;B&gt; {
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        let encrypted = self.encrypt(data);
+        self.inner.write(path, &amp;encrypted)
+    }
+}
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="pattern-3-implement-an-adapter"><a class="header" href="#pattern-3-implement-an-adapter">Pattern 3: Implement an Adapter</a></h2>
+<h3 id="adapter-from-another-crates-trait"><a class="header" href="#adapter-from-another-crates-trait">Adapter FROM another crate’s trait</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Wrap external crate's filesystem to use as AnyFS backend
+pub struct ExternalCompat&lt;F&gt;(F);
+
+impl&lt;F: external::FileSystem&gt; FsRead for ExternalCompat&lt;F&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        self.0.read_file(path).map_err(|e| FsError::Backend(e.to_string()))
+    }
+    // Map each method, converting errors
+}
+
+impl&lt;F: external::FileSystem&gt; FsWrite for ExternalCompat&lt;F&gt; { /* ... */ }
+impl&lt;F: external::FileSystem&gt; FsDir for ExternalCompat&lt;F&gt; { /* ... */ }
+// Only implement traits the external crate supports
+<span class="boring">}</span></code></pre>
+<h3 id="adapter-to-another-crates-trait"><a class="header" href="#adapter-to-another-crates-trait">Adapter TO another crate’s trait</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Wrap AnyFS backend to use with external crate
+pub struct AnyFsCompat&lt;B: Fs&gt;(B);
+
+impl&lt;B: Fs&gt; external::FileSystem for AnyFsCompat&lt;B&gt; {
+    fn read_file(&amp;self, path: &amp;Path) -&gt; external::Result&lt;Vec&lt;u8&gt;&gt; {
+        self.0.read(path).map_err(|e| external::Error::from(e.to_string()))
+    }
+    // Only expose methods the external trait requires
+}
+<span class="boring">}</span></code></pre>
 <hr>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
+<p><strong>Rule:</strong> Always return <code>FsError</code>, never panic.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_backend::FsError;
-
-match result {
-    // Path errors
-    Err(FsError::NotFound { path, operation }) =&gt; {
-        // e.g., path="/file.txt", operation="read"
-    }
-    Err(FsError::AlreadyExists { path, operation }) =&gt; ...
-    Err(FsError::NotADirectory { path }) =&gt; ...
-    Err(FsError::NotAFile { path }) =&gt; ...
-    Err(FsError::DirectoryNotEmpty { path }) =&gt; ...
-
-    // Quota middleware errors
-    Err(FsError::QuotaExceeded { limit, requested, usage }) =&gt; ...
-    Err(FsError::FileSizeExceeded { path, size, limit }) =&gt; ...
-
-    // Restrictions middleware errors
-    Err(FsError::FeatureNotEnabled { feature, operation }) =&gt; ...
-
-    // PathFilter middleware errors
-    Err(FsError::AccessDenied { path, reason }) =&gt; ...
-
-    // ReadOnly middleware errors
-    Err(FsError::ReadOnly { operation }) =&gt; ...
-
-    // RateLimit middleware errors
-    Err(FsError::RateLimitExceeded { limit, window_secs }) =&gt; ...
-
-    // FsExt errors
-    Err(FsError::Serialization(msg)) =&gt; ...
-    Err(FsError::Deserialization(msg)) =&gt; ...
-
-    // Optional feature not supported
-    Err(FsError::NotSupported { operation }) =&gt; ...
-
-    Err(e) =&gt; ...
-}
+</span>// Common error returns
+FsError::NotFound { path, operation }      // Path doesn't exist
+FsError::AlreadyExists { path, operation } // Path already exists
+FsError::NotAFile { path }                 // Expected file, got directory
+FsError::NotADirectory { path }            // Expected directory, got file
+FsError::DirectoryNotEmpty { path }        // Can't remove non-empty dir
+FsError::ReadOnly { operation }            // Write blocked by ReadOnly middleware
+FsError::AccessDenied { path, reason }     // Blocked by PathFilter
+FsError::QuotaExceeded { limit, requested, usage }
+FsError::NotSupported { operation }        // Backend doesn't support this
+FsError::Backend(String)                   // Backend-specific error
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="built-in-backends"><a class="header" href="#built-in-backends">Built-in Backends</a></h2>
+<h2 id="quick-reference-what-to-implement"><a class="header" href="#quick-reference-what-to-implement">Quick Reference: What to Implement</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Type</th><th>Feature</th><th>Description</th></tr>
+<tr><th>You want to…</th><th>Implement</th></tr>
 </thead>
 <tbody>
-<tr><td><code>MemoryBackend</code></td><td><code>memory</code> (default)</td><td>In-memory</td></tr>
-<tr><td><code>SqliteBackend</code></td><td><code>sqlite</code></td><td>Persistent</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem</td></tr>
+<tr><td>Basic file operations</td><td><code>FsRead</code> + <code>FsWrite</code> + <code>FsDir</code> (= <code>Fs</code>)</td></tr>
+<tr><td>+ Symlinks/hardlinks</td><td>+ <code>FsLink</code></td></tr>
+<tr><td>+ Permissions</td><td>+ <code>FsPermissions</code></td></tr>
+<tr><td>+ Durability (sync)</td><td>+ <code>FsSync</code></td></tr>
+<tr><td>+ Filesystem stats</td><td>+ <code>FsStats</code></td></tr>
+<tr><td>All of above</td><td><code>Fs</code> + <code>FsLink</code> + <code>FsPermissions</code> + <code>FsSync</code> + <code>FsStats</code> (= <code>FsFull</code>)</td></tr>
+<tr><td>+ FUSE mounting</td><td>+ <code>FsInode</code> (= <code>FsFuse</code>)</td></tr>
+<tr><td>+ File handles/locks</td><td>+ <code>FsHandles</code> + <code>FsLock</code> + <code>FsXattr</code> (= <code>FsPosix</code>)</td></tr>
 </tbody>
 </table>
 </div>
 <hr>
-<h2 id="middleware"><a class="header" href="#middleware">Middleware</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Type</th><th>Purpose</th></tr>
-</thead>
-<tbody>
-<tr><td><code>Quota&lt;B&gt;</code></td><td>Quota enforcement</td></tr>
-<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Least privilege</td></tr>
-<tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path-based access control</td></tr>
-<tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Prevent write operations</td></tr>
-<tr><td><code>RateLimit&lt;B&gt;</code></td><td>Operation throttling</td></tr>
-<tr><td><code>Tracing&lt;B&gt;</code></td><td>Instrumentation (tracing ecosystem)</td></tr>
-<tr><td><code>DryRun&lt;B&gt;</code></td><td>Log without executing</td></tr>
-<tr><td><code>Cache&lt;B&gt;</code></td><td>LRU read caching</td></tr>
-<tr><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Union filesystem</td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="layers"><a class="header" href="#layers">Layers</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Layer</th><th>Creates</th></tr>
-</thead>
-<tbody>
-<tr><td><code>QuotaLayer</code></td><td><code>Quota&lt;B&gt;</code></td></tr>
-<tr><td><code>RestrictionsLayer</code></td><td><code>Restrictions&lt;B&gt;</code></td></tr>
-<tr><td><code>PathFilterLayer</code></td><td><code>PathFilter&lt;B&gt;</code></td></tr>
-<tr><td><code>ReadOnlyLayer</code></td><td><code>ReadOnly&lt;B&gt;</code></td></tr>
-<tr><td><code>RateLimitLayer</code></td><td><code>RateLimit&lt;B&gt;</code></td></tr>
-<tr><td><code>TracingLayer</code></td><td><code>Tracing&lt;B&gt;</code></td></tr>
-<tr><td><code>DryRunLayer</code></td><td><code>DryRun&lt;B&gt;</code></td></tr>
-<tr><td><code>CacheLayer</code></td><td><code>Cache&lt;B&gt;</code></td></tr>
-<tr><td><code>OverlayLayer</code></td><td><code>Overlay&lt;B1,B2&gt;</code></td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="type-reference"><a class="header" href="#type-reference">Type Reference</a></h2>
-<h3 id="from-anyfs-backend"><a class="header" href="#from-anyfs-backend">From <code>anyfs-backend</code></a></h3>
-<p><strong>Core Traits (Layer 1):</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Trait</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>FsRead</code></td><td>Read operations: <code>read</code>, <code>exists</code>, <code>metadata</code>, <code>open_read</code></td></tr>
-<tr><td><code>FsWrite</code></td><td>Write operations: <code>write</code>, <code>append</code>, <code>remove_file</code>, <code>rename</code>, <code>copy</code>, <code>truncate</code></td></tr>
-<tr><td><code>FsDir</code></td><td>Directory operations: <code>read_dir</code>, <code>create_dir*</code>, <code>remove_dir*</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Extended Traits (Layer 2):</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Trait</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>FsLink</code></td><td>Link operations: <code>symlink</code>, <code>hard_link</code>, <code>read_link</code></td></tr>
-<tr><td><code>FsPermissions</code></td><td>Permission operations: <code>set_permissions</code></td></tr>
-<tr><td><code>FsSync</code></td><td>Sync operations: <code>sync</code>, <code>fsync</code></td></tr>
-<tr><td><code>FsStats</code></td><td>Stats operations: <code>statfs</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Inode Trait (Layer 3):</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Trait</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>FsInode</code></td><td>Inode operations: <code>path_to_inode</code>, <code>inode_to_path</code>, <code>lookup</code>, <code>metadata_by_inode</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>POSIX Traits (Layer 4):</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Trait</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>FsHandles</code></td><td>Handle operations: <code>open</code>, <code>read_at</code>, <code>write_at</code>, <code>close</code></td></tr>
-<tr><td><code>FsLock</code></td><td>Lock operations: <code>lock</code>, <code>try_lock</code>, <code>unlock</code></td></tr>
-<tr><td><code>FsXattr</code></td><td>Extended attribute operations: <code>get_xattr</code>, <code>set_xattr</code>, <code>list_xattr</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Convenience Supertraits:</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Trait</th><th>Combines</th></tr>
-</thead>
-<tbody>
-<tr><td><code>Fs</code></td><td><code>FsRead</code> + <code>FsWrite</code> + <code>FsDir</code> (90% of use cases)</td></tr>
-<tr><td><code>FsFull</code></td><td><code>Fs</code> + <code>FsLink</code> + <code>FsPermissions</code> + <code>FsSync</code> + <code>FsStats</code></td></tr>
-<tr><td><code>FsFuse</code></td><td><code>FsFull</code> + <code>FsInode</code> (FUSE-mountable)</td></tr>
-<tr><td><code>FsPosix</code></td><td><code>FsFuse</code> + <code>FsHandles</code> + <code>FsLock</code> + <code>FsXattr</code> (full POSIX)</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Other Types:</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>Layer</code></td><td>Middleware composition trait</td></tr>
-<tr><td><code>FsExt</code></td><td>Extension methods trait (JSON, type checks)</td></tr>
-<tr><td><code>FsError</code></td><td>Error type (with context)</td></tr>
-<tr><td><code>ROOT_INODE</code></td><td>Constant: root directory inode (= 1)</td></tr>
-<tr><td><code>FileType</code></td><td><code>File</code>, <code>Directory</code>, <code>Symlink</code></td></tr>
-<tr><td><code>Metadata</code></td><td>File/dir metadata (inode, nlink, size, times, permissions)</td></tr>
-<tr><td><code>DirEntry</code></td><td>Directory entry (name, inode, file_type)</td></tr>
-<tr><td><code>Permissions</code></td><td>File permissions (mode: u32)</td></tr>
-<tr><td><code>StatFs</code></td><td>Filesystem stats (bytes, inodes, block_size)</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="from-anyfs"><a class="header" href="#from-anyfs">From <code>anyfs</code></a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>MemoryBackend</code></td><td>In-memory backend</td></tr>
-<tr><td><code>SqliteBackend</code></td><td>SQLite backend</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td>Host FS backend</td></tr>
-<tr><td><code>Quota&lt;B&gt;</code></td><td>Quota middleware</td></tr>
-<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
-<tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path access control middleware</td></tr>
-<tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Read-only middleware</td></tr>
-<tr><td><code>RateLimit&lt;B&gt;</code></td><td>Rate limiting middleware</td></tr>
-<tr><td><code>Tracing&lt;B&gt;</code></td><td>Tracing middleware</td></tr>
-<tr><td><code>DryRun&lt;B&gt;</code></td><td>Dry-run middleware</td></tr>
-<tr><td><code>Cache&lt;B&gt;</code></td><td>Caching middleware</td></tr>
-<tr><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Union filesystem middleware</td></tr>
-<tr><td><code>QuotaLayer</code></td><td>Layer for Quota</td></tr>
-<tr><td><code>RestrictionsLayer</code></td><td>Layer for Restrictions</td></tr>
-<tr><td><code>PathFilterLayer</code></td><td>Layer for PathFilter</td></tr>
-<tr><td><code>ReadOnlyLayer</code></td><td>Layer for ReadOnly</td></tr>
-<tr><td><code>RateLimitLayer</code></td><td>Layer for RateLimit</td></tr>
-<tr><td><code>TracingLayer</code></td><td>Layer for Tracing</td></tr>
-<tr><td><code>DryRunLayer</code></td><td>Layer for DryRun</td></tr>
-<tr><td><code>CacheLayer</code></td><td>Layer for Cache</td></tr>
-<tr><td><code>OverlayLayer</code></td><td>Layer for Overlay</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="from-anyfs-container"><a class="header" href="#from-anyfs-container">From <code>anyfs-container</code></a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>FileStorage&lt;M&gt;</code></td><td>Ergonomic wrapper (type-erased backend)</td></tr>
-<tr><td><code>BackendStack</code></td><td>Fluent builder for middleware stacks</td></tr>
-</tbody>
-</table>
-</div>
+<h2 id="usage-examples"><a class="header" href="#usage-examples">Usage Examples</a></h2>
+<h3 id="create-a-backend-stack"><a class="header" href="#create-a-backend-stack">Create a backend stack</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Tracing, Fs};
+
+let backend = MemoryBackend::new();
+let limited = Quota::new(backend).with_max_total_size(100 * 1024 * 1024);
+let filtered = PathFilter::new(limited).allow("/workspace/**").deny("**/.env");
+let traced = Tracing::new(filtered);
+<span class="boring">}</span></code></pre>
+<h3 id="using-layer-syntax"><a class="header" href="#using-layer-syntax">Using Layer syntax</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let backend = MemoryBackend::new()
+    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
+    .layer(PathFilterLayer::new().allow("/workspace/**"))
+    .layer(TracingLayer::new());
+<span class="boring">}</span></code></pre>
+<h3 id="with-filestorage-wrapper"><a class="header" href="#with-filestorage-wrapper">With FileStorage wrapper</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs_container::FileStorage;
+
+let mut fs = FileStorage::new(backend);
+fs.write("/file.txt", b"hello")?;
+let data = fs.read("/file.txt")?;
+<span class="boring">}</span></code></pre>
+<h3 id="type-safe-containers"><a class="header" href="#type-safe-containers">Type-safe containers</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Sandbox;
+struct UserData;
+
+let sandbox: FileStorage&lt;Sandbox&gt; = FileStorage::with_marker(MemoryBackend::new());
+let userdata: FileStorage&lt;UserData&gt; = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+
+fn process(fs: &amp;FileStorage&lt;Sandbox&gt;) { /* only accepts Sandbox */ }
+<span class="boring">}</span></code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../getting-started/guide.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../guides/which-layer.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../architecture/design-overview.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../comparisons/positioning.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -697,11 +554,11 @@ match result {
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../getting-started/guide.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../guides/which-layer.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../architecture/design-overview.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../comparisons/positioning.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

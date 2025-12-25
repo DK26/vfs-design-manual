@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-70e84558.js";
+            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-49a6e0ad.js"></script>
+        <script src="../toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,9 +189,9 @@
   Cargo.toml
   src/
     lib.rs
-    backend.rs              # VfsBackend trait
+    backend.rs              # Fs trait
     types.rs                # Metadata, DirEntry, Permissions, StatFs
-    error.rs                # VfsError
+    error.rs                # FsError
 
 anyfs/                      # Crate 2: backends + middleware
   Cargo.toml
@@ -233,9 +233,9 @@ anyfs-container/            # Crate 3: ergonomic wrapper
     wraps -&gt; Tracing&lt;B&gt;
         wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;
-                wraps -&gt; SqliteBackend (or any VfsBackend)
+                wraps -&gt; SqliteBackend (or any Fs)
 </code></pre>
-<p>Each layer implements <code>VfsBackend</code>, enabling composition.</p>
+<p>Each layer implements <code>Fs</code>, enabling composition.</p>
 <hr>
 <h2 id="cargo-features"><a class="header" href="#cargo-features">Cargo Features</a></h2>
 <p>Features in <code>anyfs</code> select which backends to include:</p>

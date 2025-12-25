@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-70e84558.js";
+            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-49a6e0ad.js"></script>
+        <script src="../toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -196,7 +196,7 @@
 │    Tracing → PathFilter → Restrictions  │
 │    → Quota → Backend                    │
 ├─────────────────────────────────────────┤
-│  VfsBackend                             │  ← Pure storage
+│  Fs                             │  ← Pure storage
 │  (Memory, SQLite, VRootFs, custom)      │
 └─────────────────────────────────────────┘
 </code></pre>
@@ -237,7 +237,7 @@ let fs = FilesContainer::new(backend);
 <p>For <code>VRootFsBackend</code> (real filesystem), path containment uses <code>strict-path::VirtualRoot</code> internally:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl VfsBackend for VRootFsBackend {
+</span>impl Fs for VRootFsBackend {
     fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
         // VirtualRoot ensures paths can't escape
         let safe_path = self.root.join(path)?;

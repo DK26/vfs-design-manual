@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-70e84558.js";
+            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-49a6e0ad.js"></script>
+        <script src="../toc-1f24c6e5.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -203,9 +203,9 @@
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
-let mut fs = FilesContainer::new(MemoryBackend::new());
+let mut fs = FileStorage::new(MemoryBackend::new());
 fs.create_dir_all("/data")?;
 fs.write("/data/file.txt", b"hello")?;
 <span class="boring">}</span></code></pre>
@@ -213,7 +213,7 @@ fs.write("/data/file.txt", b"hello")?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, Quota, Restrictions, PathFilter, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?;
 
@@ -228,35 +228,35 @@ let stack = Tracing::new(
     .deny("**/.env")
 );
 
-let mut fs = FilesContainer::new(stack);
+let mut fs = FileStorage::new(stack);
 <span class="boring">}</span></code></pre>
 <h3 id="using-layer-trait-alternative-syntax"><a class="header" href="#using-layer-trait-alternative-syntax">Using Layer trait (alternative syntax)</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
     .layer(RestrictionsLayer::new())
     .layer(TracingLayer::new());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 <span class="boring">}</span></code></pre>
 <h3 id="custom-backend-implementation"><a class="header" href="#custom-backend-implementation">Custom backend implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_backend::{VfsBackend, VfsError, Metadata, DirEntry};
+</span>use anyfs_backend::{Fs, FsError, Metadata, DirEntry};
 use std::path::Path;
 
 pub struct MyBackend;
 
-impl VfsBackend for MyBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
+impl Fs for MyBackend {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         todo!()
     }
 
-    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt; {
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         todo!()
     }
 
@@ -266,15 +266,15 @@ impl VfsBackend for MyBackend {
 <h3 id="custom-middleware-implementation"><a class="header" href="#custom-middleware-implementation">Custom middleware implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_backend::{VfsBackend, Layer, VfsError};
+</span>use anyfs_backend::{Fs, Layer, FsError};
 use std::path::Path;
 
-pub struct MyMiddleware&lt;B: VfsBackend&gt; {
+pub struct MyMiddleware&lt;B: Fs&gt; {
     inner: B,
 }
 
-impl&lt;B: VfsBackend&gt; VfsBackend for MyMiddleware&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
+impl&lt;B: Fs&gt; Fs for MyMiddleware&lt;B&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         // Intercept, transform, or delegate
         self.inner.read(path)
     }
@@ -283,7 +283,7 @@ impl&lt;B: VfsBackend&gt; VfsBackend for MyMiddleware&lt;B&gt; {
 
 pub struct MyMiddlewareLayer;
 
-impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
+impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
     type Backend = MyMiddleware&lt;B&gt;;
     fn layer(self, backend: B) -&gt; Self::Backend {
         MyMiddleware { inner: backend }
@@ -295,7 +295,7 @@ impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <ul>
 <li><strong>Don’t depend on <code>anyfs</code></strong> if you’re only implementing a backend or middleware. Use <code>anyfs-backend</code>.</li>
 <li><strong>Don’t put policy in backends.</strong> Use middleware (Quota, PathFilter, etc.).</li>
-<li><strong>Don’t put policy in FilesContainer.</strong> It’s just an ergonomic wrapper.</li>
+<li><strong>Don’t put policy in FileStorage.</strong> It’s just an ergonomic wrapper.</li>
 </ul>
 
                     </main>
@@ -306,7 +306,7 @@ impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../comparisons/positioning.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../guides/llm-context.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -320,7 +320,7 @@ impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../comparisons/positioning.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../guides/llm-context.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
