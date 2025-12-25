@@ -167,13 +167,109 @@ pub trait VfsBackend: Send {
 
 ---
 
-## 6. Tradeoffs
+## 6. Deep Dive: `vfs` Crate Compatibility
+
+The [`vfs`](https://github.com/manuel-woelker/rust-vfs) crate is the most similar project. This section details why we don't adopt their trait and how we'll provide interop.
+
+### `vfs::FileSystem` Trait (Complete)
+
+```rust
+pub trait FileSystem: Send + Sync {
+    // Required (9 methods)
+    fn read_dir(&self, path: &str) -> VfsResult<Box<dyn Iterator<Item = String>>>;
+    fn create_dir(&self, path: &str) -> VfsResult<()>;
+    fn open_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndRead>>;
+    fn create_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndWrite>>;
+    fn append_file(&self, path: &str) -> VfsResult<Box<dyn SeekAndWrite>>;
+    fn metadata(&self, path: &str) -> VfsResult<VfsMetadata>;
+    fn exists(&self, path: &str) -> VfsResult<bool>;
+    fn remove_file(&self, path: &str) -> VfsResult<()>;
+    fn remove_dir(&self, path: &str) -> VfsResult<()>;
+
+    // Optional - default to NotSupported (6 methods)
+    fn set_creation_time(&self, path: &str, time: SystemTime) -> VfsResult<()>;
+    fn set_modification_time(&self, path: &str, time: SystemTime) -> VfsResult<()>;
+    fn set_access_time(&self, path: &str, time: SystemTime) -> VfsResult<()>;
+    fn copy_file(&self, src: &str, dest: &str) -> VfsResult<()>;
+    fn move_file(&self, src: &str, dest: &str) -> VfsResult<()>;
+    fn move_dir(&self, src: &str, dest: &str) -> VfsResult<()>;
+}
+```
+
+### Feature Gap Analysis
+
+| Feature | `vfs` | AnyFS | Gap |
+|---------|:-----:|:-----:|-----|
+| Basic read/write | Yes | Yes | - |
+| Directory ops | Yes | Yes | - |
+| Streaming I/O | Yes | Yes | - |
+| `rename` | `move_file` | Yes | - |
+| `copy` | `copy_file` | Yes | - |
+| **Symlinks** | No | Yes | Critical |
+| **Hard links** | No | Yes | Critical |
+| **Permissions** | No | Yes | Critical |
+| **truncate** | No | Yes | Missing |
+| **sync/fsync** | No | Yes | Missing |
+| **statfs** | No | Yes | Missing |
+| **read_range** | No | Yes | Missing |
+| **symlink_metadata** | No | Yes | Missing |
+| Path type | `&str` | `impl AsRef<Path>` | Different |
+| Middleware | No | Yes | Architectural |
+
+### Why Not Adopt Their Trait?
+
+1. **No symlinks/hardlinks** - Can't virtualize real filesystem semantics
+2. **No permissions** - Our `Restrictions` middleware needs `set_permissions` to gate
+3. **No durability primitives** - No `sync`/`fsync` for data integrity
+4. **No middleware pattern** - Their `VfsPath` bakes in behaviors we want composable
+5. **`&str` paths** - We prefer `impl AsRef<Path>` for ergonomics
+
+**Our trait is a strict superset.** Everything `vfs` can do, we can do. The reverse is not true.
+
+### `vfs` Backends
+
+| vfs Backend | AnyFS Equivalent | Notes |
+|-------------|------------------|-------|
+| `PhysicalFS` | `VRootFsBackend` | Both use real filesystem |
+| `MemoryFS` | `MemoryBackend` | Both in-memory |
+| `OverlayFS` | `Overlay<B1,B2>` | Both union filesystems |
+| `AltrootFS` | `PathFilter` (partial) | vfs is simpler chroot |
+| `EmbeddedFS` | (none) | Read-only embedded assets |
+| (none) | `SqliteBackend` | We have SQLite |
+
+### Interoperability Plan
+
+Future `anyfs-vfs-compat` crate provides bidirectional adapters:
+
+```rust
+use anyfs_vfs_compat::{VfsCompat, AnyFsCompat};
+
+// Use a vfs backend in AnyFS
+// Missing features return VfsError::NotSupported
+let backend = VfsCompat::new(vfs::MemoryFS::new());
+let fs = FilesContainer::new(backend);
+
+// Use an AnyFS backend in vfs-based code
+// Only exposes what vfs supports
+let anyfs_backend = MemoryBackend::new();
+let vfs_fs: Box<dyn vfs::FileSystem> = Box::new(AnyFsCompat::new(anyfs_backend));
+```
+
+**Use cases:**
+- Migrate from `vfs` to AnyFS incrementally
+- Use `vfs::EmbeddedFS` in AnyFS (read-only embedded assets)
+- Use AnyFS backends in projects depending on `vfs`
+
+---
+
+## 7. Tradeoffs
 
 ### AnyFS Advantages
 - Composable middleware pattern
 - Backend-agnostic
 - Third-party extensibility
 - Clean separation of concerns
+- Full filesystem semantics (symlinks, permissions, durability)
 
 ### AnyFS Limitations
 - Sync-first (async planned)

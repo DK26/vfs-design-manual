@@ -313,9 +313,39 @@ Required CI checks:
 - Extended attributes
 - Encryption middleware
 - Compression middleware
-- `vfs` crate compatibility adapter
 - `no_std` support (learned from `vfs` #38)
 - Batch operations for performance (learned from `agentfs` #130)
+
+### `anyfs-vfs-compat` - Interop with `vfs` crate
+
+Adapter crate for bidirectional compatibility with the [`vfs`](https://github.com/manuel-woelker/rust-vfs) crate ecosystem.
+
+**Why not adopt their trait?** The `vfs::FileSystem` trait is too limited:
+- No symlinks, hard links, or permissions
+- No `sync`/`fsync` for durability
+- No `truncate`, `statfs`, or `read_range`
+- No middleware composition pattern
+
+**Our trait is a superset** - we support everything they do, plus more.
+
+**Adapters:**
+
+```rust
+// Wrap a vfs::FileSystem to use as AnyFS backend
+// Missing features (symlinks, permissions, etc.) return VfsError::NotSupported
+pub struct VfsCompat<F: vfs::FileSystem>(F);
+impl<F: vfs::FileSystem> VfsBackend for VfsCompat<F> { ... }
+
+// Wrap an AnyFS backend to use as vfs::FileSystem
+// Only exposes the subset that vfs supports
+pub struct AnyFsCompat<B: VfsBackend>(B);
+impl<B: VfsBackend> vfs::FileSystem for AnyFsCompat<B> { ... }
+```
+
+**Use cases:**
+- Migrate from `vfs` to AnyFS incrementally
+- Use existing `vfs` backends (EmbeddedFS) in AnyFS
+- Use AnyFS backends in projects that depend on `vfs`
 
 ---
 
