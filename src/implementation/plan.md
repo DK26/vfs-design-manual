@@ -90,21 +90,88 @@ Every backend and middleware must document:
 
 ## Phase 1: `anyfs-backend` (core contract)
 
-**Goal:** Define the stable backend interface and composition traits.
+**Goal:** Define the stable backend interface using layered traits.
 
-- Define `VfsBackend` trait (29 methods)
-  - 25 `std::fs`-aligned path-based methods (required)
-  - 4 inode methods with sensible defaults (override for hardlinks/FUSE):
-    - `path_to_inode(path)` - default: hash path
-    - `inode_to_path(inode)` - default: NotSupported
-    - `lookup(parent_inode, name)` - default: path-based fallback
-    - `metadata_by_inode(inode)` - default: path-based fallback
-  - Include `const NEEDS_PATH_RESOLUTION: bool = true` (opt-out for real FS backends)
-  - Define `ROOT_INODE = 1` constant
+### Layered Trait Architecture
+
+```
+                    VfsPosix
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+   VfsHandles      VfsLock       VfsXattr
+        │              │              │
+        └──────────────┼──────────────┘
+                       │
+                    VfsFuse
+                       │
+                   VfsInode
+                       │
+                    VfsFull
+                       │
+        ┌──────┬───────┼───────┬──────┐
+        │      │       │       │      │
+   VfsLink  VfsPerm  VfsSync VfsStats │
+        │      │       │       │      │
+        └──────┴───────┼───────┴──────┘
+                       │
+                      Vfs  ← Most users only need this
+                       │
+           ┌───────────┼───────────┐
+           │           │           │
+        VfsRead    VfsWrite     VfsDir
+```
+
+### Core Traits (Layer 1 - Required)
+
+- **`VfsRead`**: `read`, `read_to_string`, `read_range`, `exists`, `metadata`, `open_read`
+- **`VfsWrite`**: `write`, `append`, `remove_file`, `rename`, `copy`, `truncate`, `open_write`
+- **`VfsDir`**: `read_dir`, `create_dir`, `create_dir_all`, `remove_dir`, `remove_dir_all`
+
+### Extended Traits (Layer 2 - Optional)
+
+- **`VfsLink`**: `symlink`, `hard_link`, `read_link`, `symlink_metadata`
+- **`VfsPermissions`**: `set_permissions`
+- **`VfsSync`**: `sync`, `fsync`
+- **`VfsStats`**: `statfs`
+
+### Inode Trait (Layer 3 - For FUSE)
+
+- **`VfsInode`**: `path_to_inode`, `inode_to_path`, `lookup`, `metadata_by_inode`
+  - Default implementations use path hashing/fallback
+  - Override for hardlink support and FUSE efficiency
+
+### POSIX Traits (Layer 4 - Full POSIX)
+
+- **`VfsHandles`**: `open`, `read_at`, `write_at`, `close`
+- **`VfsLock`**: `lock`, `try_lock`, `unlock`
+- **`VfsXattr`**: `get_xattr`, `set_xattr`, `remove_xattr`, `list_xattr`
+
+### Convenience Supertraits
+
+```rust
+/// Basic filesystem - covers 90% of use cases
+pub trait Vfs: VfsRead + VfsWrite + VfsDir {}
+impl<T: VfsRead + VfsWrite + VfsDir> Vfs for T {}
+
+/// Full filesystem with all std::fs features
+pub trait VfsFull: Vfs + VfsLink + VfsPermissions + VfsSync + VfsStats {}
+
+/// FUSE-mountable filesystem
+pub trait VfsFuse: VfsFull + VfsInode {}
+
+/// Full POSIX filesystem
+pub trait VfsPosix: VfsFuse + VfsHandles + VfsLock + VfsXattr {}
+```
+
+### Other Definitions
+
 - Define `Layer` trait (Tower-style middleware composition)
-- Define `VfsBackendExt` trait (extension methods)
+- Define `VfsBackendExt` trait (extension methods for JSON, type checks)
 - Define core types (`Metadata`, `Permissions`, `FileType`, `DirEntry`, `StatFs`)
 - Define `VfsError` with contextual variants (see guidelines above)
+- Define `ROOT_INODE = 1` constant
+- Include `const NEEDS_PATH_RESOLUTION: bool = true` (opt-out for real FS backends)
 
 **Exit criteria:** `anyfs-backend` stands alone with minimal dependencies (`thiserror`).
 
@@ -125,15 +192,20 @@ Every backend and middleware must document:
 
 ### Backends (feature-gated)
 
+Each backend implements the traits it supports:
+
 - `memory` (default): `MemoryBackend`
+  - Implements: `Vfs` + `VfsLink` + `VfsPermissions` + `VfsSync` + `VfsStats` + `VfsInode` = `VfsFuse`
   - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
   - Inode source: internal node IDs (incrementing counter)
   - `set_follow_symlinks(bool)` - control symlink resolution
 - `sqlite` (optional): `SqliteBackend`
+  - Implements: `VfsFuse` (all traits through Layer 3)
   - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
   - Inode source: SQLite row IDs (`INTEGER PRIMARY KEY`)
   - `set_follow_symlinks(bool)` - control symlink resolution
 - `vrootfs` (optional): `VRootFsBackend` using `strict-path` for containment
+  - Implements: `VfsPosix` (all traits including Layer 4)
   - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)
   - Inode source: OS inode numbers (`std::fs::Metadata::ino()`)
   - `strict-path` prevents symlink escapes
@@ -176,13 +248,26 @@ Every backend and middleware must document:
 
 ### Backend conformance tests
 
-#### Basic Operations
-- `read`/`write`/`append` semantics
-- Directory operations (`create_dir*`, `read_dir`, `remove_dir*`)
-- `rename` and `copy` semantics
-- Link behavior (`symlink`, `read_link`, `hard_link`)
-- Streaming I/O (`open_read`, `open_write`)
-- `truncate`, `sync`, `fsync`, `statfs`
+Conformance tests are organized by trait layer:
+
+#### Layer 1: `Vfs` (Core) - All backends MUST pass
+- **VfsRead**: `read`/`read_to_string`/`read_range`/`exists`/`metadata`/`open_read`
+- **VfsWrite**: `write`/`append`/`remove_file`/`rename`/`copy`/`truncate`/`open_write`
+- **VfsDir**: `read_dir`/`create_dir*`/`remove_dir*`
+
+#### Layer 2: `VfsFull` (Extended) - Backends that support these features
+- **VfsLink**: `symlink`/`hard_link`/`read_link`/`symlink_metadata`
+- **VfsPermissions**: `set_permissions`
+- **VfsSync**: `sync`/`fsync`
+- **VfsStats**: `statfs`
+
+#### Layer 3: `VfsFuse` (Inode) - Backends that support FUSE mounting
+- **VfsInode**: `path_to_inode`/`inode_to_path`/`lookup`/`metadata_by_inode`
+
+#### Layer 4: `VfsPosix` (Full POSIX) - Backends that support full POSIX
+- **VfsHandles**: `open`/`read_at`/`write_at`/`close`
+- **VfsLock**: `lock`/`try_lock`/`unlock`
+- **VfsXattr**: `get_xattr`/`set_xattr`/`remove_xattr`/`list_xattr`
 
 #### Path Resolution Tests (virtual backends only)
 - `/foo/../bar` resolves correctly when `foo` is a regular directory
@@ -320,60 +405,26 @@ Required CI checks:
 
 ## Future work (post-MVP)
 
-- Async API (`AsyncVfsBackend` trait)
+- Async API (`AsyncVfs`, `AsyncVfsFull`, etc.)
 - Import/export helpers (host path <-> container)
 - Encryption middleware
 - Compression middleware
 - `no_std` support (learned from `vfs` #38)
 - Batch operations for performance (learned from `agentfs` #130)
 
-### `VfsBackendPosixExt` - Optional POSIX Semantics
-
-Optional trait extension for backends that can support POSIX-like semantics.
-
-**Why optional?** The core `VfsBackend` is path-based (25 methods), covering 90% of use cases. Full POSIX (41+ methods) adds complexity not all backends can support.
-
-**What it adds:**
-
-```rust
-pub trait VfsBackendPosixExt: VfsBackend {
-    // File handle operations (stateful)
-    fn open(&mut self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, VfsError>;
-    fn read_handle(&self, handle: Handle, buf: &mut [u8]) -> Result<usize, VfsError>;
-    fn write_handle(&mut self, handle: Handle, data: &[u8]) -> Result<usize, VfsError>;
-    fn seek(&mut self, handle: Handle, pos: SeekFrom) -> Result<u64, VfsError>;
-    fn close(&mut self, handle: Handle) -> Result<(), VfsError>;
-
-    // File locking
-    fn lock(&mut self, handle: Handle, lock: LockType) -> Result<(), VfsError>;
-    fn try_lock(&mut self, handle: Handle, lock: LockType) -> Result<bool, VfsError>;
-    fn unlock(&mut self, handle: Handle) -> Result<(), VfsError>;
-
-    // Extended attributes
-    fn get_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<Vec<u8>, VfsError>;
-    fn set_xattr(&mut self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), VfsError>;
-    fn remove_xattr(&mut self, path: impl AsRef<Path>, name: &str) -> Result<(), VfsError>;
-    fn list_xattr(&self, path: impl AsRef<Path>) -> Result<Vec<String>, VfsError>;
-}
-```
-
-**Use cases:**
-- Applications requiring file handles (seek, partial read/write)
-- Concurrent access with file locking
-- Storing metadata in extended attributes
-
 ### `anyfs-fuse` - Mount as Real Filesystem
 
-Adapter to expose any `VfsBackend` as a FUSE mount point.
+Adapter to expose any `VfsFuse` backend as a FUSE mount point.
 
 ```rust
-use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs::{MemoryBackend, QuotaLayer, VfsFuse};
 use anyfs_fuse::FuseMount;
 
 // RAM drive with 1GB quota
 let backend = MemoryBackend::new()
     .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
 
+// Backend must implement VfsFuse (includes VfsInode)
 let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
 
 // Now it's a real mount point:
@@ -394,7 +445,7 @@ let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
 `anyfs-fuse` provides a unified API across platforms:
 
 ```rust
-impl<B: VfsBackend> FuseMount<B> {
+impl<B: VfsFuse> FuseMount<B> {
     #[cfg(unix)]
     pub fn mount(backend: B, path: &Path) -> Result<Self, ...> {
         // Uses fuser crate
@@ -450,17 +501,18 @@ let sandbox = FuseMount::mount(
 │    - Linux/macOS/BSD: fuser                    │
 │    - Windows: winfsp-rs                        │
 ├────────────────────────────────────────────────┤
-│  VfsBackendPosixExt (optional, for locks/xattr)│
-├────────────────────────────────────────────────┤
 │  Middleware stack (Quota, PathFilter, etc.)    │
 ├────────────────────────────────────────────────┤
-│  VfsBackend (Memory, SQLite, etc.)             │
+│  VfsFuse (Memory, SQLite, etc.)                │
+│    └─ includes VfsInode for efficient lookups  │
+│                                                │
+│  Optional: VfsPosix for locks/xattr            │
 └────────────────────────────────────────────────┘
 ```
 
 **Requirements:**
-- Backend should implement `VfsBackendPosixExt` for full functionality
-- Falls back gracefully for backends without POSIX extension
+- Backend must implement `VfsFuse` (includes `VfsInode` for efficient inode operations)
+- Backends implementing `VfsPosix` get full lock/xattr support
 - Platform-specific FUSE provider must be installed
 
 ### `anyfs-vfs-compat` - Interop with `vfs` crate

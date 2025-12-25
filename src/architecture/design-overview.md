@@ -132,186 +132,218 @@ anyfs-backend (trait + types)
 
 ---
 
-## Core Trait: `VfsBackend` (in `anyfs-backend`)
+## Trait Architecture (in `anyfs-backend`)
 
-`VfsBackend` is a path-based trait aligned with `std::fs`. It handles **storage + filesystem semantics only**. No policy, no limits.
+AnyFS uses **layered traits** for maximum flexibility with minimal complexity.
+
+```
+                        VfsPosix
+                           │
+            ┌──────────────┼──────────────┐
+            │              │              │
+       VfsHandles      VfsLock       VfsXattr
+            │              │              │
+            └──────────────┼──────────────┘
+                           │
+                        VfsFuse
+                           │
+                       VfsInode
+                           │
+                        VfsFull
+                           │
+            ┌──────┬───────┼───────┬──────┐
+            │      │       │       │      │
+       VfsLink  VfsPerm  VfsSync VfsStats │
+            │      │       │       │      │
+            └──────┴───────┼───────┴──────┘
+                           │
+                          Vfs  ← Most users only need this
+                           │
+               ┌───────────┼───────────┐
+               │           │           │
+            VfsRead    VfsWrite     VfsDir
+```
+
+**Simple rule:** Import `Vfs` for basic use. Add traits as needed for advanced features.
+
+---
+
+## Core Traits (Layer 1)
+
+### VfsRead - Read Operations
 
 ```rust
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-
-pub trait VfsBackend: Send {
-    // Read
+pub trait VfsRead: Send {
     fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError>;
     fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, VfsError>;
     fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, VfsError>;
     fn exists(&self, path: impl AsRef<Path>) -> Result<bool, VfsError>;
     fn metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
-    fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
-    fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, VfsError>;
+    fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
+}
+```
 
-    // Write
+### VfsWrite - Write Operations
+
+```rust
+pub trait VfsWrite: Send {
     fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
     fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError>;
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
     fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
     fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
     fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), VfsError>;
+    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
+}
+```
 
-    // Links
+### VfsDir - Directory Operations
+
+```rust
+pub trait VfsDir: Send {
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, VfsError>;
+    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+}
+```
+
+---
+
+## Extended Traits (Layer 2 - Optional)
+
+```rust
+pub trait VfsLink: Send {
     fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
     fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError>;
+    fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, VfsError>;
+    fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, VfsError>;
+}
 
-    // Permissions
+pub trait VfsPermissions: Send {
     fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), VfsError>;
+}
 
-    // Streaming I/O
-    fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, VfsError>;
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, VfsError>;
-
-    // File size
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), VfsError>;
-
-    // Durability
+pub trait VfsSync: Send {
     fn sync(&mut self) -> Result<(), VfsError>;
     fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), VfsError>;
+}
 
-    // Filesystem info
+pub trait VfsStats: Send {
     fn statfs(&self) -> Result<StatFs, VfsError>;
-
-    // --- Inode operations (with sensible defaults) ---
-    // Backends can override for hardlink support and FUSE efficiency.
-    // Default implementations work but are less efficient.
-
-    /// Get the inode number for a path.
-    /// Default: hashes the path (works, but hardlinks won't share inodes).
-    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
-        use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        path.as_ref().hash(&mut hasher);
-        Ok(hasher.finish())
-    }
-
-    /// Get the path for an inode number.
-    /// Default: not supported (override for FUSE efficiency).
-    fn inode_to_path(&self, _inode: u64) -> Result<PathBuf, VfsError> {
-        Err(VfsError::NotSupported { operation: "inode_to_path" })
-    }
-
-    /// Lookup a child by name within a parent directory (by inode).
-    /// Default: uses path-based lookup (override for FUSE efficiency).
-    fn lookup(&self, parent_inode: u64, name: &std::ffi::OsStr) -> Result<u64, VfsError> {
-        let parent_path = self.inode_to_path(parent_inode)?;
-        self.path_to_inode(parent_path.join(name))
-    }
-
-    /// Get metadata by inode (avoids path resolution).
-    /// Default: uses path-based metadata (override for FUSE efficiency).
-    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
-        let path = self.inode_to_path(inode)?;
-        self.metadata(path)
-    }
 }
 ```
 
-### Inode Support
+---
 
-Inode methods have **sensible defaults** that work out of the box. Override them for:
-- **Hardlink support**: Two paths must share the same inode
-- **FUSE efficiency**: Native inode operations avoid path lookups
-
-**Three levels of implementation:**
-
-| Level | Override | Use Case |
-|-------|----------|----------|
-| **Basic** | Nothing | Simple backends, no hardlinks, no FUSE |
-| **Hardlinks** | `path_to_inode` | Backends that support `hard_link()` |
-| **Full FUSE** | All 4 methods | Maximum FUSE performance |
-
-**Level 1: Basic (use defaults)**
+## Inode Traits (Layer 3 - For FUSE)
 
 ```rust
-impl VfsBackend for SimpleBackend {
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> { ... }
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), VfsError> { ... }
-    // ... implement 25 path-based methods
-
-    // Inode methods: use defaults (no override needed!)
-    // - path_to_inode: hashes path
-    // - inode_to_path: returns NotSupported
-    // - lookup/metadata_by_inode: fall back to path-based
+pub trait VfsInode: Send {
+    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError>;
+    fn inode_to_path(&self, inode: u64) -> Result<PathBuf, VfsError>;
+    fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError>;
+    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError>;
 }
 ```
 
-**Level 2: Hardlink support**
+---
 
-For `hard_link()` to work correctly, two paths must return the same inode:
+## POSIX Traits (Layer 4 - Full POSIX)
 
 ```rust
-impl VfsBackend for MemoryBackend {
-    // ... path-based methods ...
+pub trait VfsHandles: Send {
+    fn open(&mut self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, VfsError>;
+    fn read_at(&self, handle: Handle, buf: &mut [u8], offset: u64) -> Result<usize, VfsError>;
+    fn write_at(&mut self, handle: Handle, data: &[u8], offset: u64) -> Result<usize, VfsError>;
+    fn close(&mut self, handle: Handle) -> Result<(), VfsError>;
+}
 
-    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
-        // Look up the node ID in our internal HashMap
-        let node = self.nodes.get(path.as_ref())
-            .ok_or(VfsError::NotFound { path: path.as_ref().into() })?;
-        Ok(node.id)  // Same ID for hardlinked paths!
-    }
+pub trait VfsLock: Send {
+    fn lock(&mut self, handle: Handle, lock: LockType) -> Result<(), VfsError>;
+    fn try_lock(&mut self, handle: Handle, lock: LockType) -> Result<bool, VfsError>;
+    fn unlock(&mut self, handle: Handle) -> Result<(), VfsError>;
+}
 
-    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), VfsError> {
-        // Both paths point to the same node
-        let node_id = self.path_to_inode(&original)?;
-        self.paths.insert(link.as_ref().to_path_buf(), node_id);
-        self.nodes.get_mut(&node_id).unwrap().nlink += 1;
-        Ok(())
-    }
+pub trait VfsXattr: Send {
+    fn get_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<Vec<u8>, VfsError>;
+    fn set_xattr(&mut self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), VfsError>;
+    fn remove_xattr(&mut self, path: impl AsRef<Path>, name: &str) -> Result<(), VfsError>;
+    fn list_xattr(&self, path: impl AsRef<Path>) -> Result<Vec<String>, VfsError>;
 }
 ```
 
-**Level 3: Full FUSE efficiency**
+---
 
-Override all 4 methods for O(1) inode operations:
+## Convenience Supertraits (Simple API)
 
 ```rust
-impl VfsBackend for SqliteBackend {
-    fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, VfsError> {
-        let id: i64 = self.conn.query_row(
-            "SELECT id FROM nodes WHERE path = ?",
-            [path.as_ref().to_string_lossy()],
-            |row| row.get(0),
-        )?;
-        Ok(id as u64)
-    }
+/// Basic filesystem - covers 90% of use cases
+pub trait Vfs: VfsRead + VfsWrite + VfsDir {}
+impl<T: VfsRead + VfsWrite + VfsDir> Vfs for T {}
 
-    fn inode_to_path(&self, inode: u64) -> Result<PathBuf, VfsError> {
-        let path: String = self.conn.query_row(
-            "SELECT path FROM nodes WHERE id = ?",
-            [inode as i64],
-            |row| row.get(0),
-        )?;
-        Ok(PathBuf::from(path))
-    }
+/// Full filesystem with all std::fs features
+pub trait VfsFull: Vfs + VfsLink + VfsPermissions + VfsSync + VfsStats {}
+impl<T: Vfs + VfsLink + VfsPermissions + VfsSync + VfsStats> VfsFull for T {}
 
-    fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, VfsError> {
-        let id: i64 = self.conn.query_row(
-            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
-            params![parent_inode as i64, name.to_string_lossy()],
-            |row| row.get(0),
-        )?;
-        Ok(id as u64)
-    }
+/// FUSE-mountable filesystem
+pub trait VfsFuse: VfsFull + VfsInode {}
+impl<T: VfsFull + VfsInode> VfsFuse for T {}
 
-    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, VfsError> {
-        self.conn.query_row(
-            "SELECT type, size, created, modified, nlink FROM nodes WHERE id = ?",
-            [inode as i64],
-            |row| Ok(Metadata { ... }),
-        )
-    }
+/// Full POSIX filesystem
+pub trait VfsPosix: VfsFuse + VfsHandles + VfsLock + VfsXattr {}
+impl<T: VfsFuse + VfsHandles + VfsLock + VfsXattr> VfsPosix for T {}
+```
+
+---
+
+## Usage Examples
+
+### Most Users: Just `Vfs`
+
+```rust
+use anyfs::Vfs;
+
+fn process_files(fs: &impl Vfs) {
+    let data = fs.read("/input.txt")?;
+    fs.write("/output.txt", &processed(data))?;
+}
+```
+
+### Need Links? Add the Trait
+
+```rust
+use anyfs::{Vfs, VfsLink};
+
+fn with_symlinks(fs: &mut (impl Vfs + VfsLink)) {
+    fs.write("/target.txt", b"content")?;
+    fs.symlink("/target.txt", "/link.txt")?;
+}
+```
+
+### FUSE Mount
+
+```rust
+use anyfs::VfsFuse;
+use anyfs_fuse::FuseMount;
+
+fn mount_filesystem(fs: impl VfsFuse) {
+    FuseMount::mount(fs, "/mnt/myfs")?;
+}
+```
+
+### Full POSIX Application
+
+```rust
+use anyfs::VfsPosix;
+
+fn database_app(fs: &mut impl VfsPosix) {
+    let handle = fs.open("/data.db", OpenFlags::READ_WRITE)?;
+    fs.lock(handle, LockType::Exclusive)?;
+    fs.write_at(handle, data, offset)?;
+    fs.unlock(handle)?;
+    fs.close(handle)?;
 }
 
 ---

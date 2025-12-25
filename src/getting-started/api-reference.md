@@ -271,9 +271,9 @@ fs.fsync("/path")?;                      // Flush writes for one file
 
 ---
 
-## Inode Operations
+## Inode Operations (`VfsInode` trait)
 
-Backends track inodes internally for hardlink support. These methods expose that tracking:
+Backends implementing `VfsInode` track inodes internally for hardlink support and FUSE mounting:
 
 ```rust
 // Convert between paths and inodes
@@ -394,11 +394,52 @@ match result {
 
 ### From `anyfs-backend`
 
+**Core Traits (Layer 1):**
+
+| Trait | Description |
+|-------|-------------|
+| `VfsRead` | Read operations: `read`, `exists`, `metadata`, `open_read` |
+| `VfsWrite` | Write operations: `write`, `append`, `remove_file`, `rename`, `copy`, `truncate` |
+| `VfsDir` | Directory operations: `read_dir`, `create_dir*`, `remove_dir*` |
+
+**Extended Traits (Layer 2):**
+
+| Trait | Description |
+|-------|-------------|
+| `VfsLink` | Link operations: `symlink`, `hard_link`, `read_link` |
+| `VfsPermissions` | Permission operations: `set_permissions` |
+| `VfsSync` | Sync operations: `sync`, `fsync` |
+| `VfsStats` | Stats operations: `statfs` |
+
+**Inode Trait (Layer 3):**
+
+| Trait | Description |
+|-------|-------------|
+| `VfsInode` | Inode operations: `path_to_inode`, `inode_to_path`, `lookup`, `metadata_by_inode` |
+
+**POSIX Traits (Layer 4):**
+
+| Trait | Description |
+|-------|-------------|
+| `VfsHandles` | Handle operations: `open`, `read_at`, `write_at`, `close` |
+| `VfsLock` | Lock operations: `lock`, `try_lock`, `unlock` |
+| `VfsXattr` | Extended attribute operations: `get_xattr`, `set_xattr`, `list_xattr` |
+
+**Convenience Supertraits:**
+
+| Trait | Combines |
+|-------|----------|
+| `Vfs` | `VfsRead` + `VfsWrite` + `VfsDir` (90% of use cases) |
+| `VfsFull` | `Vfs` + `VfsLink` + `VfsPermissions` + `VfsSync` + `VfsStats` |
+| `VfsFuse` | `VfsFull` + `VfsInode` (FUSE-mountable) |
+| `VfsPosix` | `VfsFuse` + `VfsHandles` + `VfsLock` + `VfsXattr` (full POSIX) |
+
+**Other Types:**
+
 | Type | Description |
 |------|-------------|
-| `VfsBackend` | Core trait (29 methods) |
 | `Layer` | Middleware composition trait |
-| `VfsBackendExt` | Extension methods trait |
+| `VfsBackendExt` | Extension methods trait (JSON, type checks) |
 | `VfsError` | Error type (with context) |
 | `ROOT_INODE` | Constant: root directory inode (= 1) |
 | `FileType` | `File`, `Directory`, `Symlink` |
