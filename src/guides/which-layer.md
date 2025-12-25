@@ -20,9 +20,9 @@
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
-let mut fs = FilesContainer::new(MemoryBackend::new());
+let mut fs = FileStorage::new(MemoryBackend::new());
 fs.create_dir_all("/data")?;
 fs.write("/data/file.txt", b"hello")?;
 ```
@@ -31,7 +31,7 @@ fs.write("/data/file.txt", b"hello")?;
 
 ```rust
 use anyfs::{SqliteBackend, Quota, Restrictions, PathFilter, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?;
 
@@ -46,21 +46,21 @@ let stack = Tracing::new(
     .deny("**/.env")
 );
 
-let mut fs = FilesContainer::new(stack);
+let mut fs = FileStorage::new(stack);
 ```
 
 ### Using Layer trait (alternative syntax)
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
     .layer(RestrictionsLayer::new())
     .layer(TracingLayer::new());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 ```
 
 ### Custom backend implementation
@@ -118,4 +118,4 @@ impl<B: VfsBackend> Layer<B> for MyMiddlewareLayer {
 
 - **Don't depend on `anyfs`** if you're only implementing a backend or middleware. Use `anyfs-backend`.
 - **Don't put policy in backends.** Use middleware (Quota, PathFilter, etc.).
-- **Don't put policy in FilesContainer.** It's just an ergonomic wrapper.
+- **Don't put policy in FileStorage.** It's just an ergonomic wrapper.

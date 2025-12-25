@@ -138,7 +138,7 @@ All inode methods have **sensible defaults**. Override for:
 | Quota enforcement | `Quota<B>` middleware |
 | Feature gating | `Restrictions<B>` middleware |
 | Audit logging | `Tracing<B>` middleware |
-| Ergonomic API | `FilesContainer<B>` wrapper |
+| Ergonomic API | `FileStorage<M>` wrapper |
 
 Backends focus on storage. Policy is middleware.
 

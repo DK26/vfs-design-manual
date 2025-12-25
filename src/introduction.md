@@ -19,7 +19,7 @@ You get:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FilesContainer<B>                      │  ← Ergonomics (std::fs API)
+│  FileStorage<M>                         │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota<B>                             │  ← Quotas
@@ -41,7 +41,7 @@ You get:
 | ----------------- | -------------------------------------------- |
 | `anyfs-backend`   | Minimal contract: `VfsBackend` trait + types |
 | `anyfs`           | Backends + middleware                        |
-| `anyfs-container` | Ergonomic `FilesContainer<B>` wrapper        |
+| `anyfs-container` | Ergonomic `FileStorage<M>` wrapper           |
 
 ---
 
@@ -49,7 +49,7 @@ You get:
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Layer-based composition
 let backend = SqliteBackend::open("data.db")?
@@ -59,7 +59,7 @@ let backend = SqliteBackend::open("data.db")?
         .deny_hard_links()
         .deny_permissions());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 
 fs.create_dir_all("/data")?;
 fs.write("/data/file.txt", b"hello")?;

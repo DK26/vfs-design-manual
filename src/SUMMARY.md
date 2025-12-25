@@ -29,7 +29,7 @@
 # Traits & APIs
 
 - [VfsBackend Trait (anyfs-backend)](./traits/vfs-trait.md)
-- [FilesContainer (anyfs-container)](./traits/files-container.md)
+- [FileStorage<M> (anyfs-container)](./traits/files-container.md)
 
 ---
 

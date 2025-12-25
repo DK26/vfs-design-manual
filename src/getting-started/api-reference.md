@@ -24,20 +24,20 @@ anyfs = { version = "0.1", features = ["sqlite", "vrootfs", "bytes"] }
 
 ```rust
 use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Simple
-let fs = FilesContainer::new(MemoryBackend::new());
+let fs = FileStorage::new(MemoryBackend::new());
 
 // With limits
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     Quota::new(SqliteBackend::open("data.db")?)
         .with_max_total_size(100 * 1024 * 1024)
         .with_max_file_size(10 * 1024 * 1024)
 );
 
 // Full stack (manual composition)
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     Tracing::new(
         Restrictions::new(
             Quota::new(SqliteBackend::open("data.db")?)
@@ -437,5 +437,5 @@ match result {
 
 | Type | Description |
 |------|-------------|
-| `FilesContainer<B>` | Ergonomic wrapper |
+| `FileStorage<M>` | Ergonomic wrapper (type-erased backend) |
 | `BackendStack` | Fluent builder for middleware stacks |

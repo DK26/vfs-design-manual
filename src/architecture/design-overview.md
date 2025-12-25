@@ -12,7 +12,7 @@ AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust.
 Anyone can:
 - Implement a custom backend for their storage needs
 - Compose middleware to add limits, logging, feature gates
-- Use the ergonomic `FilesContainer` wrapper
+- Use the ergonomic `FileStorage<M>` wrapper
 
 ---
 
@@ -20,7 +20,7 @@ Anyone can:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FilesContainer<B>                      │  ← Ergonomics only (std::fs API)
+│  FileStorage<M>                         │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
 │                                         │
@@ -83,13 +83,17 @@ The trait is a low-level interface that any backend can implement - memory, SQLi
 |-------|------------------------|
 | `VfsBackend` | None - pure filesystem semantics |
 | Middleware (`Restrictions`, `PathFilter`, etc.) | Opt-in restrictions |
-| `FilesContainer` or application code | Configure appropriate middleware |
+| `FileStorage` or application code | Configure appropriate middleware |
 
 **Example: Secure AI Agent Sandbox**
 
 ```rust
+use anyfs_container::FileStorage;
+
+struct AiSandbox;  // Marker type
+
 // Application composes secure defaults
-let sandbox = FilesContainer::new(
+let sandbox: FileStorage<_, AiSandbox> = FileStorage::with_marker(
     PathFilter::new(
         Restrictions::new(
             Quota::new(MemoryBackend::new())
@@ -113,7 +117,7 @@ The backend is permissive. The application adds restrictions appropriate for its
 |-------|---------|----------|
 | `anyfs-backend` | Minimal contract | `VfsBackend` trait, `Layer` trait, types, `VfsBackendExt` |
 | `anyfs` | Backends + middleware | Built-in backends, all middleware layers |
-| `anyfs-container` | Ergonomic wrapper | `FilesContainer<B>`, `BackendStack` builder |
+| `anyfs-container` | Ergonomic wrapper | `FileStorage<M>`, `BackendStack` builder |
 
 ### Dependency Graph
 
@@ -588,19 +592,92 @@ let backend = Overlay::new(base, upper);
 
 ---
 
-## FilesContainer (in `anyfs-container`)
+## FileStorage<M> (in `anyfs-container`)
 
-`FilesContainer<B>` is a **thin ergonomic wrapper**. It provides a familiar std::fs-aligned API but does nothing else. All policy (limits, feature gates) is handled by middleware.
+`FileStorage<M>` is a **thin ergonomic wrapper** with an optional **marker type** for compile-time safety. It type-erases the backend for a clean API. All policy is handled by middleware.
+
+### Basic Usage
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
-let mut fs = FilesContainer::new(MemoryBackend::new());
+let mut fs = FileStorage::new(MemoryBackend::new());
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;
 let content = fs.read("/documents/hello.txt")?;
+```
+
+### Marker Types (Type-Safe Containers)
+
+The second type parameter `M` (default: `()`) enables compile-time container differentiation:
+
+```rust
+use anyfs::{MemoryBackend, SqliteBackend};
+use anyfs_container::FileStorage;
+
+// Define marker types for your domains
+struct Sandbox;
+struct UserData;
+struct TempFiles;
+
+// Create typed containers - backend type is erased!
+let sandbox: FileStorage<Sandbox> = FileStorage::with_marker(MemoryBackend::new());
+let userdata: FileStorage<UserData> = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+
+// Type-safe function signatures prevent mixing containers
+fn process_sandbox(fs: &FileStorage<Sandbox>) {
+    // Can only accept Sandbox-marked containers
+}
+
+fn save_user_file(fs: &mut FileStorage<UserData>, name: &str, data: &[u8]) {
+    // Can only accept UserData-marked containers
+}
+
+// Compile-time safety:
+process_sandbox(&sandbox);   // OK
+process_sandbox(&userdata);  // Compile error! Type mismatch
+```
+
+### When to Use Markers
+
+| Scenario | Use Markers? | Why |
+|----------|--------------|-----|
+| Single container | No | `FileStorage` is sufficient |
+| Multiple containers, same type | **Yes** | Prevent accidental mixing |
+| Multi-tenant systems | **Yes** | Compile-time tenant isolation |
+| Sandbox + user data | **Yes** | Never write user data to sandbox |
+| Testing | Maybe | Tag test vs production containers |
+
+### FileStorage Implementation
+
+```rust
+use std::marker::PhantomData;
+
+/// Ergonomic filesystem wrapper with optional type marker.
+/// Backend is type-erased for a clean API.
+pub struct FileStorage<M = ()> {
+    backend: Box<dyn VfsBackend>,
+    _marker: PhantomData<M>,
+}
+
+impl<M> FileStorage<M> {
+    /// Create a new FileStorage (no marker).
+    pub fn new(backend: impl VfsBackend + 'static) -> FileStorage {
+        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+    }
+
+    /// Create a new FileStorage with a specific marker type.
+    pub fn with_marker<N>(backend: impl VfsBackend + 'static) -> FileStorage<N> {
+        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+    }
+
+    /// Change the marker type (zero-cost, compile-time only).
+    pub fn retype<N>(self) -> FileStorage<N> {
+        FileStorage { backend: self.backend, _marker: PhantomData }
+    }
+}
 ```
 
 ---
@@ -641,7 +718,7 @@ Middleware composes by wrapping. Order matters - innermost applies first.
 
 ```rust
 use anyfs::{SqliteBackend, Quota, Restrictions, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Build from inside out:
 let backend = SqliteBackend::open("data.db")?;
@@ -655,7 +732,7 @@ let restricted = Restrictions::new(limited)
 
 let traced = Tracing::new(restricted);
 
-let mut fs = FilesContainer::new(traced);
+let mut fs = FileStorage::new(traced);
 ```
 
 ### Layer-based Composition
@@ -772,12 +849,12 @@ impl VfsBackend for VRootFsBackend {
 }
 ```
 
-`FilesContainer` (or a dedicated wrapper) applies resolution automatically for backends that need it:
+`FileStorage` (or a dedicated wrapper) applies resolution automatically for backends that need it:
 
 ```rust
-impl<B: VfsBackend> FilesContainer<B> {
-    pub fn new(backend: B) -> Self {
-        // Resolution applied automatically if B::NEEDS_PATH_RESOLUTION
+impl<M> FileStorage<M> {
+    pub fn new(backend: impl VfsBackend + 'static) -> FileStorage {
+        // Resolution applied automatically if backend needs it
     }
 }
 ```
