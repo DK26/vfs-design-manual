@@ -34,10 +34,10 @@ Available features:
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut fs = FilesContainer::new(MemoryBackend::new());
+    let mut fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/hello.txt", b"Hello, AnyFS!")?;
     let content = fs.read("/hello.txt")?;
@@ -51,14 +51,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use anyfs::{SqliteBackend, Quota};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = Quota::new(SqliteBackend::open_or_create("data.db")?)
         .with_max_total_size(100 * 1024 * 1024)  // 100 MB
         .with_max_file_size(10 * 1024 * 1024);   // 10 MB per file
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     fs.create_dir_all("/documents")?;
     fs.write("/documents/notes.txt", b"Meeting notes")?;
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Block specific operations for untrusted code
@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .deny_hard_links()    // Block hard_link() calls
         .deny_permissions();  // Block set_permissions() calls
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
@@ -93,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = SqliteBackend::open_or_create("data.db")?
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .deny_permissions())
         .layer(TracingLayer::new());
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     fs.create_dir_all("/data")?;
     fs.write("/data/file.txt", b"hello")?;
@@ -243,11 +243,11 @@ match fs.write("/file.txt", &large_data) {
 
 ```rust
 use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 #[test]
 fn test_write_and_read() {
-    let mut fs = FilesContainer::new(MemoryBackend::new());
+    let mut fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/test.txt", b"test data").unwrap();
     let content = fs.read("/test.txt").unwrap();
@@ -260,13 +260,13 @@ With limits:
 
 ```rust
 use anyfs::{MemoryBackend, Quota};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 #[test]
 fn test_quota_exceeded() {
     let backend = Quota::new(MemoryBackend::new())
         .with_max_total_size(1024);  // 1 KB
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     let big_data = vec![0u8; 2048];  // 2 KB
     let result = fs.write("/big.bin", &big_data);
@@ -291,17 +291,17 @@ fn test_quota_exceeded() {
 
 ```rust
 // Minimal: just storage
-let fs = FilesContainer::new(MemoryBackend::new());
+let fs = FileStorage::new(MemoryBackend::new());
 
 // With limits (layer-based)
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::new()
             .max_total_size(100 * 1024 * 1024))
 );
 
 // Sandboxed (layer-based)
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     SqliteBackend::open("data.db")?
         .layer(QuotaLayer::new()
             .max_total_size(100 * 1024 * 1024))

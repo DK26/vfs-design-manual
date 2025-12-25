@@ -179,7 +179,7 @@ backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolu
 ```
 
 When following is disabled:
-- `read("/link")` on a symlink returns `VfsError::IsSymlink` (or reads link as opaque data)
+- `read("/link")` on a symlink returns `FsError::IsSymlink` (or reads link as opaque data)
 - Path resolution treats symlinks as terminal nodes
 
 **This is the actual security feature** - controlling whether symlinks are resolved.
@@ -217,7 +217,7 @@ This is "follow and verify containment" - symlinks are followed by the OS, but e
 
 ```rust
 use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let sandbox = Tracing::new(
     RateLimit::new(
@@ -236,7 +236,7 @@ let sandbox = Tracing::new(
     .per_second()
 );
 
-let mut fs = FilesContainer::new(sandbox);
+let mut fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
 ```
 
@@ -244,14 +244,14 @@ let mut fs = FilesContainer::new(sandbox);
 
 ```rust
 use anyfs::{SqliteBackend, Quota};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
-fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> FilesContainer<...> {
+fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> FileStorage<...> {
     let db_path = format!("tenants/{}.db", tenant_id);
     let backend = Quota::new(SqliteBackend::open(&db_path).unwrap())
         .with_max_total_size(quota_bytes);
 
-    FilesContainer::new(backend)
+    FileStorage::new(backend)
 }
 
 // Complete isolation: separate database files
@@ -261,13 +261,13 @@ fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> FilesContainer<..
 
 ```rust
 use anyfs::{SqliteBackend, ReadOnly};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
-let readonly_fs = FilesContainer::new(
+let readonly_fs = FileStorage::new(
     ReadOnly::new(SqliteBackend::open("archive.db")?)
 );
 
-// All write operations return VfsError::ReadOnly
+// All write operations return FsError::ReadOnly
 ```
 
 ---

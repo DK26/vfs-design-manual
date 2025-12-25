@@ -79,15 +79,15 @@ AnyFS fills the gap by separating concerns:
 
 | Crate | Responsibility |
 |-------|----------------|
-| `anyfs-backend` | Trait (`VfsBackend`, `Layer`) + types |
+| `anyfs-backend` | Trait (`Fs`, `Layer`) + types |
 | `anyfs` | Backends + middleware implementations |
-| `anyfs-container` | Ergonomic wrapper (`FilesContainer`) |
+| `anyfs-container` | Ergonomic wrapper (`FileStorage<M>`) |
 
 The middleware pattern (like Tower/Axum) enables composition:
 
 ```rust
 use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 let backend = Tracing::new(
     PathFilter::new(
@@ -99,7 +99,7 @@ let backend = Tracing::new(
     .allow("/workspace/**")
 );
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 fs.write("/workspace/doc.txt", b"hello")?;
 ```
 
@@ -142,4 +142,4 @@ fs.write("/workspace/doc.txt", b"hello")?;
 
 Build AnyFS with reusable primitives (`rusqlite`, `strict-path`, `thiserror`, `tracing`) but maintain the three-crate split. The middleware pattern is what makes the design both flexible and safe.
 
-**Compatibility option:** Later, provide an adapter that implements `vfs` traits on top of `VfsBackend` for projects that need `vfs` compatibility.
+**Compatibility option:** Later, provide an adapter that implements `vfs` traits on top of `Fs` for projects that need `vfs` compatibility.

@@ -19,7 +19,7 @@ You get:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FilesContainer<B>                      │  ← Ergonomics (std::fs API)
+│  FileStorage<B>                      │  ← Ergonomics (std::fs API)
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota<B>                    │  ← Quotas
@@ -67,7 +67,7 @@ You get:
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FilesContainer;
+use anyfs_container::FileStorage;
 
 // Layer-based composition
 let backend = SqliteBackend::open("tenant.db")?
@@ -77,7 +77,7 @@ let backend = SqliteBackend::open("tenant.db")?
         .deny_hard_links()
         .deny_permissions());
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;

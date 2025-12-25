@@ -12,7 +12,7 @@ anyfs-backend/              # Crate 1: trait + types
   Cargo.toml
   src/
     lib.rs
-    backend.rs              # Fs trait
+    backend.rs              # Fs traits (FsRead, FsWrite, FsDir, etc.)
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -33,7 +33,7 @@ anyfs-container/            # Crate 3: ergonomic wrapper
   Cargo.toml
   src/
     lib.rs
-    container.rs            # FilesContainer<B>
+    container.rs            # FileStorage<B>
 ```
 
 ---
@@ -52,14 +52,14 @@ anyfs-backend (trait + types)
 **Key points:**
 - Custom backends depend only on `anyfs-backend`
 - `anyfs` provides built-in backends and middleware
-- `anyfs-container` provides the ergonomic `FilesContainer` wrapper
+- `anyfs-container` provides the ergonomic `FileStorage` wrapper
 
 ---
 
 ## Middleware Pattern
 
 ```
-FilesContainer<B>
+FileStorage<B>
     wraps -> Tracing<B>
         wraps -> Restrictions<B>
             wraps -> Quota<B>
@@ -85,6 +85,6 @@ Middleware is always available (no feature flags).
 ## Where To Start
 
 - Application usage: `book/src/getting-started/guide.md`
-- Trait details: `book/src/traits/vfs-trait.md`
+- Trait details: `book/src/traits/layered-traits.md`
 - Middleware: `book/src/architecture/design-overview.md`
 - Decisions: `book/src/architecture/adrs.md`

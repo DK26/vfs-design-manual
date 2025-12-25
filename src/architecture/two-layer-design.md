@@ -4,7 +4,7 @@ AnyFS uses a layered architecture that separates concerns:
 
 1. **Backends**: Pure storage + filesystem semantics
 2. **Middleware**: Composable policy layers
-3. **FilesContainer**: Ergonomic wrapper
+3. **FileStorage**: Ergonomic wrapper
 
 ---
 
@@ -12,7 +12,7 @@ AnyFS uses a layered architecture that separates concerns:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FilesContainer                         │  ← Ergonomics only
+│  FileStorage                         │  ← Ergonomics only
 ├─────────────────────────────────────────┤
 │  Middleware Stack (composable):         │  ← Policy enforcement
 │    Tracing → PathFilter → Restrictions  │
@@ -29,7 +29,7 @@ AnyFS uses a layered architecture that separates concerns:
 
 | Layer | Responsibility | Path Handling |
 |-------|----------------|---------------|
-| `FilesContainer` | Ergonomic API | Accepts `impl AsRef<Path>` |
+| `FileStorage` | Ergonomic API | Accepts `impl AsRef<Path>` |
 | Middleware | Policy enforcement | Accepts `impl AsRef<Path>` |
 | Backend | Storage + FS semantics | Accepts `impl AsRef<Path>` |
 
@@ -39,7 +39,7 @@ All layers use `impl AsRef<Path>` for consistency with `std::fs`.
 
 ## Policy via Middleware
 
-**Old design (rejected):** FilesContainer contained quota/feature logic.
+**Old design (rejected):** FileStorage contained quota/feature logic.
 
 **Current design:** Policy is handled by composable middleware:
 
@@ -52,8 +52,8 @@ let backend = PathFilter::new(
 )
 .allow("/workspace/**");
 
-// FilesContainer is just ergonomics
-let fs = FilesContainer::new(backend);
+// FileStorage is just ergonomics
+let fs = FileStorage::new(backend);
 ```
 
 ---
@@ -64,7 +64,7 @@ For `VRootFsBackend` (real filesystem), path containment uses `strict-path::Virt
 
 ```rust
 impl Fs for VRootFsBackend {
-    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, VfsError> {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
         // VirtualRoot ensures paths can't escape
         let safe_path = self.root.join(path)?;
         std::fs::read(safe_path).map_err(Into::into)
