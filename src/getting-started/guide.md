@@ -67,19 +67,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### With Feature Guards
+### With Restrictions
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
 use anyfs_container::FilesContainer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Block specific operations for untrusted code
     let backend = Restrictions::new(MemoryBackend::new())
-        .with_symlinks()      // Enable symlinks
-        .with_hard_links();   // Enable hard links
+        .deny_hard_links()    // Block hard_link() calls
+        .deny_permissions();  // Block set_permissions() calls
 
     let mut fs = FilesContainer::new(backend);
 
+    // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
     fs.symlink("/original.txt", "/shortcut")?;
 
@@ -87,19 +89,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Full Stack (Limits + Feature Gates)
+### Full Stack (Layer-based)
 
 ```rust
-use anyfs::{SqliteBackend, Quota, Restrictions};
+use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 use anyfs_container::FilesContainer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Compose: storage -> limits -> feature gates
-    let backend = Restrictions::new(
-        Quota::new(SqliteBackend::open_or_create("data.db")?)
-            .with_max_total_size(100 * 1024 * 1024)
-    )
-    .with_symlinks();
+    let backend = SqliteBackend::open_or_create("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
+        .layer(TracingLayer::new());
 
     let mut fs = FilesContainer::new(backend);
 
@@ -191,19 +195,18 @@ if !remaining.can_write {
 }
 ```
 
-### Restrictions — Security
+### Restrictions — Block Operations
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
 
-// All features disabled by default
+// By default, all operations work. Use deny_*() to block specific ones.
 let backend = Restrictions::new(MemoryBackend::new())
-    .with_symlinks()                  // Enable symlink operations
-    .with_max_symlink_resolution(40)  // Max hops (default: 40)
-    .with_hard_links()                // Enable hard links
-    .with_permissions();              // Enable set_permissions
+    .deny_symlinks()      // Block symlink() calls
+    .deny_hard_links()    // Block hard_link() calls
+    .deny_permissions();  // Block set_permissions() calls
 
-// Disabled operations return VfsError::FeatureNotEnabled
+// Blocked operations return VfsError::FeatureNotEnabled
 ```
 
 ### Tracing — Instrumentation
@@ -290,18 +293,21 @@ fn test_quota_exceeded() {
 // Minimal: just storage
 let fs = FilesContainer::new(MemoryBackend::new());
 
-// With limits
+// With limits (layer-based)
 let fs = FilesContainer::new(
-    Quota::new(MemoryBackend::new())
-        .with_max_total_size(100 * 1024 * 1024)
+    MemoryBackend::new()
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
 );
 
-// Full security
+// Sandboxed (layer-based)
 let fs = FilesContainer::new(
-    Restrictions::new(
-        Quota::new(SqliteBackend::open("data.db")?)
-    )
-    .with_symlinks()
+    SqliteBackend::open("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
 );
 ```
 

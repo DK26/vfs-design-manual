@@ -88,11 +88,11 @@ backend.remaining()    // -> Remaining { bytes, can_write, ... }
 ## Restrictions Methods
 
 ```rust
-Restrictions::new(backend)    // All disabled by default
-    .with_symlinks()                  // Enable symlink ops
-    .with_max_symlink_resolution(40)  // Max hops
-    .with_hard_links()                // Enable hard links
-    .with_permissions()               // Enable set_permissions
+// By default, all operations work. Use deny_*() to block specific ones.
+Restrictions::new(backend)
+    .deny_symlinks()       // Block symlink() calls
+    .deny_hard_links()     // Block hard_link() calls
+    .deny_permissions()    // Block set_permissions() calls
 ```
 
 ---

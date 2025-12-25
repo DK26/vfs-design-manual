@@ -208,19 +208,19 @@ let remaining = backend.remaining();
 
 ### Restrictions<B>
 
-Enforces least-privilege by disabling features by default.
+Blocks specific operations when needed.
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
 
+// By default, all operations work. Use deny_*() to block specific ones.
 let backend = Restrictions::new(MemoryBackend::new())
-    .with_symlinks()                          // Enable symlink operations
-    .with_max_symlink_resolution(40)          // Max symlink hops
-    .with_hard_links()                        // Enable hard links
-    .with_permissions();                      // Enable set_permissions
+    .deny_symlinks()       // Block symlink() calls
+    .deny_hard_links()     // Block hard_link() calls
+    .deny_permissions();   // Block set_permissions() calls
 ```
 
-When a feature is disabled, operations return `VfsError::FeatureNotEnabled`.
+When blocked, operations return `VfsError::FeatureNotEnabled`.
 
 ### Tracing<B>
 
@@ -413,10 +413,11 @@ let backend = SqliteBackend::open("data.db")?;
 let limited = Quota::new(backend)
     .with_max_total_size(100 * 1024 * 1024);
 
-let gated = Restrictions::new(limited)
-    .with_symlinks();
+let restricted = Restrictions::new(limited)
+    .deny_hard_links()
+    .deny_permissions();
 
-let traced = Tracing::new(gated);
+let traced = Tracing::new(restricted);
 
 let mut fs = FilesContainer::new(traced);
 ```

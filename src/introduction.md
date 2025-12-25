@@ -48,15 +48,16 @@ You get:
 ## Quick Example
 
 ```rust
-use anyfs::{SqliteBackend, Quota, Restrictions};
+use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose: storage -> limits -> security
-let backend = Restrictions::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+// Layer-based composition
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 

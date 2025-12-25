@@ -72,8 +72,10 @@ let fs = MemoryBackend::new()
     .layer(PathFilterLayer::new()
         .allow("/workspace/**")
         .deny("**/.env"))
-    .layer(FeatureGuardLayer::new())  // No symlinks by default
-    .layer(TracingLayer::new());      // Audit trail
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions())
+    .layer(TracingLayer::new());
 ```
 
 ### Not Just Monitoring - Intervention
@@ -84,7 +86,7 @@ Unlike logging-only solutions, AnyFS middleware can **transform and control**:
 |------------|--------------|
 | `Quota` | Enforce storage limits, reject writes over quota |
 | `PathFilter` | Sandbox to allowed paths, block sensitive files |
-| `FeatureGuard` | Disable dangerous features (symlinks, hard links) |
+| `Restrictions` | Block specific operations (symlinks, hard links, permissions) |
 | `RateLimit` | Throttle operations per second |
 | `ReadOnly` | Block all writes |
 | `Cache` | LRU cache for repeated reads |
@@ -103,7 +105,7 @@ AnyFS treats security as a first-class concern, not an afterthought:
 
 **Virtual Backends Are Inherently Safe**: `MemoryBackend` and `SqliteBackend` treat paths as keys, not OS paths. There's no underlying filesystem to exploit - path traversal attacks are structurally impossible.
 
-**Least Privilege by Default**: Dangerous features (symlinks, hard links, permission changes) are disabled unless explicitly enabled via `FeatureGuard`.
+**Opt-in Restrictions**: Use `Restrictions` middleware to block operations like symlink creation, hard links, or permission changes when sandboxing untrusted code.
 
 ### Data Portability
 
@@ -138,15 +140,13 @@ dest.write("/config.json", &data)?;
 ## Quick Start
 
 ```rust
-use anyfs::{MemoryBackend, Quota, FeatureGuard, Tracing};
+use anyfs::{MemoryBackend, Quota, Tracing};
 use anyfs_container::FilesContainer;
 
 // Build a middleware stack
 let backend = Tracing::new(
-    FeatureGuard::new(
-        Quota::new(MemoryBackend::new())
-            .with_max_total_size(50 * 1024 * 1024)
-    )
+    Quota::new(MemoryBackend::new())
+        .with_max_total_size(50 * 1024 * 1024)
 );
 
 // Use familiar std::fs-like API
