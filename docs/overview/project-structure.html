@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -204,7 +204,7 @@ anyfs/                      # Crate 2: backends + middleware
     middleware/
       quota.rs              # Quota&lt;B&gt;
       tracing.rs            # Tracing&lt;B&gt;
-      feature_guard.rs      # FeatureGuard&lt;B&gt;
+      feature_guard.rs      # Restrictions&lt;B&gt;
 
 anyfs-container/            # Crate 3: ergonomic wrapper
   Cargo.toml
@@ -231,7 +231,7 @@ anyfs-container/            # Crate 3: ergonomic wrapper
 <h2 id="middleware-pattern"><a class="header" href="#middleware-pattern">Middleware Pattern</a></h2>
 <pre><code>FilesContainer&lt;B&gt;
     wraps -&gt; Tracing&lt;B&gt;
-        wraps -&gt; FeatureGuard&lt;B&gt;
+        wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;
                 wraps -&gt; SqliteBackend (or any VfsBackend)
 </code></pre>

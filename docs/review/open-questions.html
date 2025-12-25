@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -307,7 +307,7 @@ pub struct Capabilities {
 <ul>
 <li>For virtual backends: We control symlink following</li>
 <li>For VRootFsBackend: Rely on <code>strict-path</code> to prevent escapes</li>
-<li>Document that <code>FeatureGuard</code> symlink control only applies to virtual backends</li>
+<li>Document that <code>Restrictions</code> symlink control only applies to virtual backends</li>
 </ul>
 <div class="table-wrapper">
 <table>
@@ -364,49 +364,49 @@ strict-path: canonicalize(/root/link) = /escape
 strict-path: /escape is NOT within /root → DENIED
 </code></pre>
 <p>This is secure against escape, but it’s “follow and check” not “don’t follow”.</p>
-<h3 id="recommendation"><a class="header" href="#recommendation">Recommendation</a></h3>
-<p><strong>For v1, we should:</strong></p>
+<h3 id="v1-decision-accept-the-limitation"><a class="header" href="#v1-decision-accept-the-limitation">v1 Decision: Accept the Limitation</a></h3>
+<p>The design is straightforward:</p>
 <ol>
 <li>
-<p><strong>Remove the misleading “allow symlinks” feature from FeatureGuard</strong> - it doesn’t mean what we thought</p>
+<p><strong>Virtual backends always support symlinks</strong> - creating symlinks is just storing data.</p>
 </li>
 <li>
-<p><strong>Document the real situation:</strong></p>
-<ul>
-<li>Virtual backends: We control symlink resolution</li>
-<li>VRootFsBackend: OS controls symlink resolution, <code>strict-path</code> prevents escapes</li>
-</ul>
+<p><strong>Virtual backends provide <code>set_follow_symlinks(bool)</code></strong> - the actual security control:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut backend = MemoryBackend::new();
+backend.set_follow_symlinks(false);  // Symlinks not resolved during path operations
+<span class="boring">}</span></code></pre>
 </li>
 <li>
-<p><strong>For archive extraction safety:</strong></p>
-<ul>
-<li>Virtual backends: Can add a <code>follow_symlinks: bool</code> option to path resolution</li>
-<li>VRootFsBackend: <code>strict-path</code> provides escape protection (different model)</li>
-</ul>
+<p><strong>VRootFsBackend cannot control symlink following</strong> - the OS handles resolution. <code>strict-path</code> prevents escapes but cannot disable following entirely.</p>
 </li>
 <li>
-<p><strong>Consider for future:</strong></p>
-<ul>
-<li>Option 2 (two traits) if the abstraction mismatch becomes painful</li>
-<li>Option 3 (capabilities) for gradual feature discovery</li>
-</ul>
+<p><strong>Everything works by default</strong> - all operations (<code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code>) work out of the box. Use <code>Restrictions</code> middleware to opt-in to restrictions when needed.</p>
 </li>
 </ol>
-<h3 id="questions-for-discussion"><a class="header" href="#questions-for-discussion">Questions for Discussion</a></h3>
-<ol>
-<li>
-<p><strong>Is the two-trait approach worth the complexity?</strong> Would it actually help users, or just confuse them?</p>
-</li>
-<li>
-<p><strong>Should VRootFsBackend implement custom path resolution?</strong> The TOCTOU and complexity costs are real.</p>
-</li>
-<li>
-<p><strong>Is escape prevention (strict-path) sufficient?</strong> Or do users need “no symlink following at all”?</p>
-</li>
-<li>
-<p><strong>Should we rename <code>FeatureGuard</code>?</strong> Current name implies features we can’t reliably provide.</p>
-</li>
-</ol>
+<h3 id="summary"><a class="header" href="#summary">Summary</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Virtual Backends</th><th>VRootFsBackend</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlink creation</td><td>Always allowed (just data)</td><td>Always allowed (just data)</td></tr>
+<tr><td>Symlink following</td><td><code>set_follow_symlinks(bool)</code></td><td>OS controls (strict-path prevents escapes)</td></tr>
+<tr><td>Jail escape protection</td><td><code>set_follow_symlinks(false)</code></td><td>strict-path containment</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="why-vrootfsbackend-cannot-control-symlink-following"><a class="header" href="#why-vrootfsbackend-cannot-control-symlink-following">Why VRootFsBackend Cannot Control Symlink Following</a></h3>
+<p>VRootFsBackend calls OS functions (<code>std::fs::read()</code>, etc.) which follow symlinks automatically. We don’t implement path resolution - the OS does.</p>
+<p><strong>Theoretical alternatives (not recommended):</strong></p>
+<ul>
+<li>Walk path manually before each operation → TOCTOU race condition</li>
+<li>Use <code>O_NOFOLLOW</code> flags → Only affects final component, platform-specific</li>
+<li>FUSE mount → Way too complex for a library</li>
+</ul>
+<p><strong>The honest answer:</strong> VRootFsBackend cannot disable symlink following. <code>strict-path</code> prevents escapes, but symlinks within the jail are followed by the OS. This is a fundamental limitation of wrapping a real filesystem.</p>
 <hr>
 <h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
 <p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (VRootFsBackend)?</p>
@@ -633,14 +633,14 @@ strict-path: /escape is NOT within /root → DENIED
 <li>No breaking changes to existing sync API</li>
 </ul>
 <hr>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Topic</th><th>v1 Decision</th></tr>
 </thead>
 <tbody>
-<tr><td>Symlink security</td><td><strong>NEEDS REDESIGN</strong> - see discussion above</td></tr>
+<tr><td>Symlink security</td><td>Virtual backends: <code>set_follow_symlinks()</code>. VRootFsBackend: <code>strict-path</code> escapes only.</td></tr>
 <tr><td>Path resolution</td><td>Virtual = lexical; VRootFs = OS</td></tr>
 <tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
 <tr><td>Hooks/callbacks</td><td>Defer to v2</td></tr>

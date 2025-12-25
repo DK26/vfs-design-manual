@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -196,7 +196,7 @@
 <tr><td>ADR-004</td><td>Tower-style middleware pattern</td><td>Accepted</td></tr>
 <tr><td>ADR-005</td><td><code>std::fs</code>-aligned method names</td><td>Accepted</td></tr>
 <tr><td>ADR-006</td><td>Quota for quota enforcement</td><td>Accepted</td></tr>
-<tr><td>ADR-007</td><td>FeatureGuard for least-privilege</td><td>Accepted</td></tr>
+<tr><td>ADR-007</td><td>Restrictions for least-privilege</td><td>Accepted</td></tr>
 <tr><td>ADR-008</td><td>FilesContainer as thin ergonomic wrapper</td><td>Accepted</td></tr>
 <tr><td>ADR-009</td><td>Built-in backends are feature-gated</td><td>Accepted</td></tr>
 <tr><td>ADR-010</td><td>Sync-first, async-ready design</td><td>Accepted</td></tr>
@@ -228,7 +228,7 @@
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait, <code>Layer</code> trait, <code>VfsBackendExt</code>, types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware (Quota, FeatureGuard, Tracing)</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware (Quota, Restrictions, Tracing)</td></tr>
 <tr><td><code>anyfs-container</code></td><td>Ergonomic wrapper: <code>FilesContainer&lt;B&gt;</code>, <code>BackendStack</code> builder</td></tr>
 </tbody>
 </table>
@@ -263,7 +263,7 @@
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let backend = Tracing::new(
-    FeatureGuard::new(
+    Restrictions::new(
         Quota::new(SqliteBackend::open("data.db")?)
     )
 );
@@ -296,21 +296,25 @@
 <li>Check limits before operations, update usage after successful operations.</li>
 </ul>
 <hr>
-<h2 id="adr-007-featureguard-for-least-privilege"><a class="header" href="#adr-007-featureguard-for-least-privilege">ADR-007: FeatureGuard for least-privilege</a></h2>
-<p><strong>Decision:</strong> Dangerous features (symlinks, hard links, permission mutation) are disabled by default via <code>FeatureGuard&lt;B&gt;</code> middleware.</p>
-<p><strong>Configuration:</strong></p>
+<h2 id="adr-007-restrictions-for-opt-in-restrictions"><a class="header" href="#adr-007-restrictions-for-opt-in-restrictions">ADR-007: Restrictions for opt-in restrictions</a></h2>
+<p><strong>Decision:</strong> By default, all operations work. <code>Restrictions&lt;B&gt;</code> middleware provides opt-in restrictions.</p>
+<p><strong>Default behavior (no Restrictions):</strong></p>
 <ul>
-<li><code>.with_symlinks()</code> - enable symlink creation/following</li>
-<li><code>.with_hard_links()</code> - enable hard link creation</li>
-<li><code>.with_permissions()</code> - enable <code>set_permissions</code></li>
-<li><code>.with_max_symlink_resolution(n)</code> - limit symlink hops (default: 40)</li>
+<li>All operations work: <code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code></li>
 </ul>
-<p>When disabled, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
+<p><strong>Opt-in restrictions:</strong></p>
+<ul>
+<li><code>.deny_symlinks()</code> - block <code>symlink()</code> calls</li>
+<li><code>.deny_hard_links()</code> - block <code>hard_link()</code> calls</li>
+<li><code>.deny_permissions()</code> - block <code>set_permissions()</code> calls</li>
+</ul>
+<p>When blocked, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
+<p><strong>Symlink following:</strong> Controlled separately via <code>set_follow_symlinks(bool)</code> on virtual backends. VRootFsBackend delegates to OS (strict-path prevents escapes).</p>
 <p><strong>Why:</strong></p>
 <ul>
-<li>Reduces attack surface by default.</li>
-<li>Explicit opt-in for dangerous features.</li>
-<li>Separate from backend - works with any backend.</li>
+<li>Simple default: everything works out of the box.</li>
+<li>Security is opt-in via middleware composition.</li>
+<li>Clear separation: Restrictions blocks operations, backend settings control behavior.</li>
 </ul>
 <hr>
 <h2 id="adr-008-filescontainer-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filescontainer-as-thin-ergonomic-wrapper">ADR-008: FilesContainer as thin ergonomic wrapper</a></h2>
@@ -324,7 +328,7 @@
 <p><strong>What it does NOT do:</strong></p>
 <ul>
 <li>Quota enforcement (use Quota)</li>
-<li>Feature gating (use FeatureGuard)</li>
+<li>Feature gating (use Restrictions)</li>
 <li>Instrumentation (use Tracing)</li>
 <li>Any other policy</li>
 </ul>
@@ -557,7 +561,7 @@ VfsError::QuotaExceeded {
 <ul>
 <li>Safe browsing of container contents without modification risk.</li>
 <li>Useful for debugging, inspection, auditing.</li>
-<li>Simpler than configuring FeatureGuard for read-only use case.</li>
+<li>Simpler than configuring Restrictions for read-only use case.</li>
 </ul>
 <hr>
 <h2 id="adr-018-ratelimit-for-operation-throttling"><a class="header" href="#adr-018-ratelimit-for-operation-throttling">ADR-018: RateLimit for operation throttling</a></h2>

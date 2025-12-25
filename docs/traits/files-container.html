@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -197,18 +197,18 @@ use anyfs_container::FilesContainer;
 // Simple: just ergonomics
 let mut fs = FilesContainer::new(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
-<p>With middleware:</p>
+<p>With middleware (layer-based):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose middleware, then wrap in FilesContainer
-let backend = FeatureGuard::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 <span class="boring">}</span></code></pre>
@@ -248,7 +248,7 @@ let mut fs = FilesContainer::new(backend);
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code></td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code></td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code></td></tr>
 <tr><td>Audit logging</td><td><code>Tracing&lt;B&gt;</code></td></tr>
 <tr><td>Path containment</td><td>Backend-specific (VRootFsBackend)</td></tr>
 </tbody>
@@ -262,7 +262,7 @@ let mut fs = FilesContainer::new(backend);
 </span><span class="boring">fn main() {
 </span>let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks());
+    .layer(RestrictionsLayer::new().deny_hard_links());  // Block hard_link() calls
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="direct-backend-access"><a class="header" href="#direct-backend-access">Direct Backend Access</a></h2>

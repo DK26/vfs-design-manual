@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -198,7 +198,7 @@
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                    │  ← Quotas
-│    FeatureGuard&lt;B&gt;               │  ← Security
+│    Restrictions&lt;B&gt;               │  ← Security
 │    Tracing&lt;B&gt;                    │  ← Audit
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Storage
@@ -214,7 +214,7 @@
 <tbody>
 <tr><td>Multi-tenant isolation</td><td>Separate backend instances per tenant</td></tr>
 <tr><td>Portability</td><td>SQLite backend: tenant data = single <code>.db</code> file</td></tr>
-<tr><td>Security</td><td>FeatureGuard disables dangerous features by default</td></tr>
+<tr><td>Security</td><td>Restrictions disables dangerous features by default</td></tr>
 <tr><td>Resource control</td><td>Quota enforces quotas</td></tr>
 <tr><td>Audit compliance</td><td>Tracing records all operations</td></tr>
 <tr><td>Custom storage</td><td>Implement VfsBackend for any medium</td></tr>
@@ -252,15 +252,16 @@
 <h2 id="quick-example"><a class="header" href="#quick-example">Quick example</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose: storage + limits + security
-let backend = FeatureGuard::new(
-    Quota::new(SqliteBackend::open("tenant.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+// Layer-based composition
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 

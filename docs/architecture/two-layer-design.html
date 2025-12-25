@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -193,7 +193,7 @@
 │  FilesContainer                         │  ← Ergonomics only
 ├─────────────────────────────────────────┤
 │  Middleware Stack (composable):         │  ← Policy enforcement
-│    Tracing → PathFilter → FeatureGuard  │
+│    Tracing → PathFilter → Restrictions  │
 │    → Quota → Backend                    │
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Pure storage
@@ -223,7 +223,7 @@
 </span><span class="boring">fn main() {
 </span>// Middleware enforces policy
 let backend = PathFilter::new(
-    FeatureGuard::new(
+    Restrictions::new(
         Quota::new(MemoryBackend::new())
     )
 )

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -246,13 +246,13 @@ fs.toolcall_start("tool")?;  // Auditing bundled
 <p>Tower-style middleware + pluggable backends:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, FeatureGuard, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 // Compose middleware stack
 let backend = Tracing::new(
     PathFilter::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("data.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )
@@ -289,6 +289,8 @@ let mut fs = FilesContainer::new(backend);
 <tr><td><strong>Tracing/logging</strong></td><td style="text-align: center">Middleware</td><td style="text-align: center">Manual</td><td style="text-align: center">Built-in</td><td style="text-align: center">Middleware</td></tr>
 <tr><td><strong>Streaming I/O</strong></td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td></tr>
 <tr><td><strong>Async API</strong></td><td style="text-align: center">Future</td><td style="text-align: center">Partial</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td></tr>
+<tr><td><strong>POSIX extension</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
+<tr><td><strong>FUSE mountable</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
 <tr><td><strong>KV store</strong></td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td style="text-align: center">No</td></tr>
 </tbody>
 </table>
@@ -304,7 +306,7 @@ let mut fs = FilesContainer::new(backend);
 <tbody>
 <tr><td><code>Quota</code></td><td>Writes</td><td>Reject if over limit</td></tr>
 <tr><td><code>PathFilter</code></td><td>All ops</td><td>Block denied paths</td></tr>
-<tr><td><code>FeatureGuard</code></td><td>Symlinks, etc.</td><td>Block disabled features</td></tr>
+<tr><td><code>Restrictions</code></td><td>Configurable operations</td><td>Block via <code>.deny_*()</code> methods</td></tr>
 <tr><td><code>RateLimit</code></td><td>All ops</td><td>Throttle per second</td></tr>
 <tr><td><code>ReadOnly</code></td><td>Writes</td><td>Block all writes</td></tr>
 <tr><td><code>Tracing</code></td><td>All ops</td><td>Log with tracing crate</td></tr>
@@ -353,13 +355,113 @@ let mut fs = FilesContainer::new(backend);
 </table>
 </div>
 <hr>
-<h2 id="6-tradeoffs"><a class="header" href="#6-tradeoffs">6. Tradeoffs</a></h2>
+<h2 id="6-deep-dive-vfs-crate-compatibility"><a class="header" href="#6-deep-dive-vfs-crate-compatibility">6. Deep Dive: <code>vfs</code> Crate Compatibility</a></h2>
+<p>The <a href="https://github.com/manuel-woelker/rust-vfs"><code>vfs</code></a> crate is the most similar project. This section details why we don’t adopt their trait and how we’ll provide interop.</p>
+<h3 id="vfsfilesystem-trait-complete"><a class="header" href="#vfsfilesystem-trait-complete"><code>vfs::FileSystem</code> Trait (Complete)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FileSystem: Send + Sync {
+    // Required (9 methods)
+    fn read_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn Iterator&lt;Item = String&gt;&gt;&gt;;
+    fn create_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn open_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndRead&gt;&gt;;
+    fn create_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndWrite&gt;&gt;;
+    fn append_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndWrite&gt;&gt;;
+    fn metadata(&amp;self, path: &amp;str) -&gt; VfsResult&lt;VfsMetadata&gt;;
+    fn exists(&amp;self, path: &amp;str) -&gt; VfsResult&lt;bool&gt;;
+    fn remove_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn remove_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+
+    // Optional - default to NotSupported (6 methods)
+    fn set_creation_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn set_modification_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn set_access_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn copy_file(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn move_file(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn move_dir(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+}
+<span class="boring">}</span></code></pre>
+<h3 id="feature-gap-analysis"><a class="header" href="#feature-gap-analysis">Feature Gap Analysis</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th style="text-align: center"><code>vfs</code></th><th style="text-align: center">AnyFS</th><th>Gap</th></tr>
+</thead>
+<tbody>
+<tr><td>Basic read/write</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td>Directory ops</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td>Streaming I/O</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><code>rename</code></td><td style="text-align: center"><code>move_file</code></td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><code>copy</code></td><td style="text-align: center"><code>copy_file</code></td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><strong>Symlinks</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>Hard links</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>Permissions</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>truncate</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>sync/fsync</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>statfs</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>read_range</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>symlink_metadata</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td>Path type</td><td style="text-align: center"><code>&amp;str</code></td><td style="text-align: center"><code>impl AsRef&lt;Path&gt;</code></td><td>Different</td></tr>
+<tr><td>Middleware</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Architectural</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="why-not-adopt-their-trait"><a class="header" href="#why-not-adopt-their-trait">Why Not Adopt Their Trait?</a></h3>
+<ol>
+<li><strong>No symlinks/hardlinks</strong> - Can’t virtualize real filesystem semantics</li>
+<li><strong>No permissions</strong> - Our <code>Restrictions</code> middleware needs <code>set_permissions</code> to gate</li>
+<li><strong>No durability primitives</strong> - No <code>sync</code>/<code>fsync</code> for data integrity</li>
+<li><strong>No middleware pattern</strong> - Their <code>VfsPath</code> bakes in behaviors we want composable</li>
+<li><strong><code>&amp;str</code> paths</strong> - We prefer <code>impl AsRef&lt;Path&gt;</code> for ergonomics</li>
+</ol>
+<p><strong>Our trait is a strict superset.</strong> Everything <code>vfs</code> can do, we can do. The reverse is not true.</p>
+<h3 id="vfs-backends"><a class="header" href="#vfs-backends"><code>vfs</code> Backends</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>vfs Backend</th><th>AnyFS Equivalent</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PhysicalFS</code></td><td><code>VRootFsBackend</code></td><td>Both use real filesystem</td></tr>
+<tr><td><code>MemoryFS</code></td><td><code>MemoryBackend</code></td><td>Both in-memory</td></tr>
+<tr><td><code>OverlayFS</code></td><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Both union filesystems</td></tr>
+<tr><td><code>AltrootFS</code></td><td><code>PathFilter</code> (partial)</td><td>vfs is simpler chroot</td></tr>
+<tr><td><code>EmbeddedFS</code></td><td>(none)</td><td>Read-only embedded assets</td></tr>
+<tr><td>(none)</td><td><code>SqliteBackend</code></td><td>We have SQLite</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="interoperability-plan"><a class="header" href="#interoperability-plan">Interoperability Plan</a></h3>
+<p>Future <code>anyfs-vfs-compat</code> crate provides bidirectional adapters:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs_vfs_compat::{VfsCompat, AnyFsCompat};
+
+// Use a vfs backend in AnyFS
+// Missing features return VfsError::NotSupported
+let backend = VfsCompat::new(vfs::MemoryFS::new());
+let fs = FilesContainer::new(backend);
+
+// Use an AnyFS backend in vfs-based code
+// Only exposes what vfs supports
+let anyfs_backend = MemoryBackend::new();
+let vfs_fs: Box&lt;dyn vfs::FileSystem&gt; = Box::new(AnyFsCompat::new(anyfs_backend));
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Migrate from <code>vfs</code> to AnyFS incrementally</li>
+<li>Use <code>vfs::EmbeddedFS</code> in AnyFS (read-only embedded assets)</li>
+<li>Use AnyFS backends in projects depending on <code>vfs</code></li>
+</ul>
+<hr>
+<h2 id="7-tradeoffs"><a class="header" href="#7-tradeoffs">7. Tradeoffs</a></h2>
 <h3 id="anyfs-advantages"><a class="header" href="#anyfs-advantages">AnyFS Advantages</a></h3>
 <ul>
 <li>Composable middleware pattern</li>
 <li>Backend-agnostic</li>
 <li>Third-party extensibility</li>
 <li>Clean separation of concerns</li>
+<li>Full filesystem semantics (symlinks, permissions, durability)</li>
 </ul>
 <h3 id="anyfs-limitations"><a class="header" href="#anyfs-limitations">AnyFS Limitations</a></h3>
 <ul>

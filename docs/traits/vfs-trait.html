@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -256,10 +256,28 @@ pub trait VfsBackend: Send {
     // FILESYSTEM INFO
     // ═══════════════════════════════════════════════════════════════════════
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, VfsError&gt;;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INODE OPERATIONS (with sensible defaults - override for hardlinks/FUSE)
+    // ═══════════════════════════════════════════════════════════════════════
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        Ok(hash(path.as_ref()))  // Default: hash the path
+    }
+    fn inode_to_path(&amp;self, _inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        Err(VfsError::NotSupported { operation: "inode_to_path" })
+    }
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        let parent = self.inode_to_path(parent_inode)?;
+        self.path_to_inode(parent.join(name))
+    }
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        self.metadata(self.inode_to_path(inode)?)
+    }
 }
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
+<h3 id="path-based-operations"><a class="header" href="#path-based-operations">Path-based Operations</a></h3>
 <ul>
 <li><code>read</code>/<code>write</code>/<code>metadata</code>/<code>exists</code>/<code>copy</code> follow symlinks.</li>
 <li><code>symlink_metadata</code> and <code>read_link</code> do not follow.</li>
@@ -270,6 +288,26 @@ pub trait VfsBackend: Send {
 <li><code>fsync</code> flushes pending writes for a specific file.</li>
 <li><code>statfs</code> returns filesystem capacity information.</li>
 </ul>
+<h3 id="inode-operations-defaults-provided"><a class="header" href="#inode-operations-defaults-provided">Inode Operations (defaults provided)</a></h3>
+<p>All inode methods have <strong>sensible defaults</strong>. Override for:</p>
+<ul>
+<li><strong>Hardlinks</strong>: <code>path_to_inode</code> must return same inode for hardlinked paths</li>
+<li><strong>FUSE efficiency</strong>: All 4 methods for O(1) operations</li>
+</ul>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Method</th><th>Default Behavior</th><th>Override When</th></tr>
+</thead>
+<tbody>
+<tr><td><code>path_to_inode</code></td><td>Hashes path</td><td>Hardlink support</td></tr>
+<tr><td><code>inode_to_path</code></td><td>Returns <code>NotSupported</code></td><td>FUSE efficiency</td></tr>
+<tr><td><code>lookup</code></td><td>Falls back to path-based</td><td>FUSE efficiency</td></tr>
+<tr><td><code>metadata_by_inode</code></td><td>Falls back to path-based</td><td>FUSE efficiency</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Convention:</strong> Root directory should return <code>ROOT_INODE</code> (= 1) from <code>path_to_inode("/")</code>.</p>
 <hr>
 <h2 id="what-vfsbackend-does-not-do"><a class="header" href="#what-vfsbackend-does-not-do">What VfsBackend Does NOT Do</a></h2>
 <div class="table-wrapper">
@@ -279,7 +317,7 @@ pub trait VfsBackend: Send {
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Audit logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Ergonomic API</td><td><code>FilesContainer&lt;B&gt;</code> wrapper</td></tr>
 </tbody>

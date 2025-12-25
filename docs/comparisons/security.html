@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -195,7 +195,7 @@
 </thead>
 <tbody>
 <tr><td><strong>Path traversal</strong></td><td>Access files outside allowed paths</td><td><code>PathFilter</code></td></tr>
-<tr><td><strong>Symlink attacks</strong></td><td>Use symlinks to bypass controls</td><td><code>FeatureGuard</code> (disabled by default)</td></tr>
+<tr><td><strong>Symlink attacks</strong></td><td>Use symlinks to bypass controls</td><td>Backend-dependent (see below)</td></tr>
 <tr><td><strong>Resource exhaustion</strong></td><td>Fill storage or create excessive files</td><td><code>Quota</code></td></tr>
 <tr><td><strong>Runaway processes</strong></td><td>Excessive operations consuming resources</td><td><code>RateLimit</code></td></tr>
 <tr><td><strong>Unauthorized writes</strong></td><td>Modifications to read-only data</td><td><code>ReadOnly</code></td></tr>
@@ -223,12 +223,12 @@
 <p>Security policies are composable middleware layers:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, FeatureGuard, RateLimit, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
 
 let secure_backend = Tracing::new(           // Audit trail
     RateLimit::new(                          // Throttle operations
         PathFilter::new(                     // Sandbox paths
-            FeatureGuard::new(               // Block dangerous features
+            Restrictions::new(               // Block dangerous features
                 Quota::new(MemoryBackend::new())  // Limit resources
                     .with_max_total_size(100 * 1024 * 1024)
             )
@@ -257,22 +257,22 @@ let secure_backend = Tracing::new(           // Audit trail
 <li>No rule = denied (deny by default)</li>
 <li><code>read_dir</code> filters denied entries from results</li>
 </ul>
-<h3 id="3-feature-gating-featureguard"><a class="header" href="#3-feature-gating-featureguard">3. Feature Gating (FeatureGuard)</a></h3>
-<p>Dangerous features are disabled by default:</p>
+<h3 id="3-feature-gating-restrictions"><a class="header" href="#3-feature-gating-restrictions">3. Feature Gating (Restrictions)</a></h3>
+<p>By default, all operations work. Use <code>Restrictions</code> middleware to <strong>opt-in to restrictions</strong>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FeatureGuard::new(backend)
-    // Symlinks disabled by default
-    // Hard links disabled by default
-    // Permissions disabled by default
-    .with_symlinks()           // Opt-in if needed
-    .with_max_symlink_resolution(40)
+</span>Restrictions::new(backend)
+    .deny_hard_links()         // Block hard_link() calls
+    .deny_permissions()        // Block set_permissions() calls
+    .deny_symlinks()           // Block symlink() calls
 <span class="boring">}</span></code></pre>
-<p><strong>Guarantees:</strong></p>
+<p><strong>Use cases:</strong></p>
 <ul>
-<li>Symlinks, hard links, permission changes blocked unless enabled</li>
-<li>Symlink resolution depth is bounded</li>
+<li>Sandboxing untrusted code (block permission changes)</li>
+<li>Archive extraction (block symlink/hardlink creation)</li>
+<li>Read-only-ish environments (block permission mutations)</li>
 </ul>
+<p><strong>Note:</strong> This controls operation <strong>availability</strong>. For symlink <strong>following</strong> behavior, see “Symlink Security” below.</p>
 <h3 id="4-resource-limits-quota"><a class="header" href="#4-resource-limits-quota">4. Resource Limits (Quota)</a></h3>
 <p><code>Quota</code> middleware enforces capacity limits:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -332,18 +332,69 @@ AnyFS virtual backend behavior (safe):
 <li><strong>No host path leakage</strong> - paths never touch the OS path resolver</li>
 </ul>
 <p>For <code>VRootFsBackend</code> (real filesystem), <code>strict-path::VirtualRoot</code> provides equivalent guarantees by validating and containing all paths before they reach the OS.</p>
+<h3 id="8-symlink-security-virtual-vs-real-backends"><a class="header" href="#8-symlink-security-virtual-vs-real-backends">8. Symlink Security: Virtual vs Real Backends</a></h3>
+<p><strong>The security concern with symlinks is <em>following</em> them, not <em>creating</em> them.</strong></p>
+<p>Symlinks are just data. Creating <code>/sandbox/link -&gt; /etc/passwd</code> is harmless. The danger is when reading <code>/sandbox/link</code> follows the symlink and accesses <code>/etc/passwd</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Type</th><th>Symlink Creation</th><th>Symlink Following</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Always supported</td><td><strong>OS controls</strong> - <code>strict-path</code> prevents escapes</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="virtual-backends-memory-sqlite"><a class="header" href="#virtual-backends-memory-sqlite">Virtual Backends (Memory, SQLite)</a></h4>
+<p>Virtual backends always support symlinks. They also provide control over symlink following:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut backend = MemoryBackend::new();
+backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolution
+<span class="boring">}</span></code></pre>
+<p>When following is disabled:</p>
+<ul>
+<li><code>read("/link")</code> on a symlink returns <code>VfsError::IsSymlink</code> (or reads link as opaque data)</li>
+<li>Path resolution treats symlinks as terminal nodes</li>
+</ul>
+<p><strong>This is the actual security feature</strong> - controlling whether symlinks are resolved.</p>
+<h4 id="real-filesystem-backend-vrootfsbackend"><a class="header" href="#real-filesystem-backend-vrootfsbackend">Real Filesystem Backend (VRootFsBackend)</a></h4>
+<p>VRootFsBackend calls OS functions (<code>std::fs::read()</code>, etc.) which follow symlinks automatically. <strong>We cannot control this</strong> - the OS does the symlink resolution, not us.</p>
+<p><code>strict-path::VirtualRoot</code> prevents <strong>escapes</strong>:</p>
+<pre><code>User requests: /sandbox/link
+link -&gt; ../../../etc/passwd
+strict-path: canonicalize(/sandbox/link) = /etc/passwd
+strict-path: /etc/passwd is NOT within /sandbox → DENIED
+</code></pre>
+<p>This is “follow and verify containment” - symlinks are followed by the OS, but escapes are blocked by strict-path.</p>
+<p><strong>Limitation:</strong> Symlinks within the jail are followed. We cannot disable this without implementing custom path resolution (TOCTOU risk) or platform-specific hacks.</p>
+<h4 id="summary"><a class="header" href="#summary">Summary</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Virtual Backend</th><th>VRootFsBackend</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlink creation</td><td>Always allowed (just data)</td><td>Always allowed (just data)</td></tr>
+<tr><td>Symlink following</td><td><code>set_follow_symlinks(bool)</code></td><td>OS controls (strict-path prevents escapes)</td></tr>
+<tr><td>Jail escape via symlink</td><td><code>set_follow_symlinks(false)</code></td><td>Prevented by strict-path</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="secure-usage-patterns"><a class="header" href="#secure-usage-patterns">Secure Usage Patterns</a></h2>
 <h3 id="ai-agent-sandbox"><a class="header" href="#ai-agent-sandbox">AI Agent Sandbox</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, FeatureGuard, RateLimit, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
 use anyfs_container::FilesContainer;
 
 let sandbox = Tracing::new(
     RateLimit::new(
         PathFilter::new(
-            FeatureGuard::new(
+            Restrictions::new(
                 Quota::new(MemoryBackend::new())
                     .with_max_total_size(50 * 1024 * 1024)
                     .with_max_file_size(5 * 1024 * 1024)
@@ -394,7 +445,7 @@ let readonly_fs = FilesContainer::new(
 <ul>
 <li><input disabled="" type="checkbox"> Use <code>PathFilter</code> to sandbox untrusted code</li>
 <li><input disabled="" type="checkbox"> Use <code>Quota</code> to prevent resource exhaustion</li>
-<li><input disabled="" type="checkbox"> Use <code>FeatureGuard</code> (default) to disable dangerous features</li>
+<li><input disabled="" type="checkbox"> Use <code>Restrictions</code> (default) to disable dangerous features</li>
 <li><input disabled="" type="checkbox"> Use <code>RateLimit</code> for untrusted/shared environments</li>
 <li><input disabled="" type="checkbox"> Use <code>Tracing</code> for audit trails</li>
 <li><input disabled="" type="checkbox"> Use separate backends for separate tenants</li>

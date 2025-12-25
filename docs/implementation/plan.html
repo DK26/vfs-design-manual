@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -264,7 +264,21 @@ pub enum VfsError {
 <h2 id="phase-1-anyfs-backend-core-contract"><a class="header" href="#phase-1-anyfs-backend-core-contract">Phase 1: <code>anyfs-backend</code> (core contract)</a></h2>
 <p><strong>Goal:</strong> Define the stable backend interface and composition traits.</p>
 <ul>
-<li>Define <code>VfsBackend</code> trait (25 <code>std::fs</code>-aligned methods)</li>
+<li>Define <code>VfsBackend</code> trait (29 methods)
+<ul>
+<li>25 <code>std::fs</code>-aligned path-based methods (required)</li>
+<li>4 inode methods with sensible defaults (override for hardlinks/FUSE):
+<ul>
+<li><code>path_to_inode(path)</code> - default: hash path</li>
+<li><code>inode_to_path(inode)</code> - default: NotSupported</li>
+<li><code>lookup(parent_inode, name)</code> - default: path-based fallback</li>
+<li><code>metadata_by_inode(inode)</code> - default: path-based fallback</li>
+</ul>
+</li>
+<li>Include <code>const NEEDS_PATH_RESOLUTION: bool = true</code> (opt-out for real FS backends)</li>
+<li>Define <code>ROOT_INODE = 1</code> constant</li>
+</ul>
+</li>
 <li>Define <code>Layer</code> trait (Tower-style middleware composition)</li>
 <li>Define <code>VfsBackendExt</code> trait (extension methods)</li>
 <li>Define core types (<code>Metadata</code>, <code>Permissions</code>, <code>FileType</code>, <code>DirEntry</code>, <code>StatFs</code>)</li>
@@ -274,16 +288,46 @@ pub enum VfsError {
 <hr>
 <h2 id="phase-2-anyfs-backends--middleware"><a class="header" href="#phase-2-anyfs-backends--middleware">Phase 2: <code>anyfs</code> (backends + middleware)</a></h2>
 <p><strong>Goal:</strong> Provide reference backends and core middleware.</p>
+<h3 id="path-resolution-utility"><a class="header" href="#path-resolution-utility">Path Resolution Utility</a></h3>
+<ul>
+<li><code>resolve_path(backend, path, follow_symlinks)</code> - works on any <code>VfsBackend</code>
+<ul>
+<li>Walks path component by component using <code>metadata()</code> and <code>read_link()</code></li>
+<li>Handles <code>..</code> correctly (requires knowing what each component resolves to)</li>
+<li>Detects circular symlinks (max depth or visited set)</li>
+<li>Returns canonical resolved path</li>
+</ul>
+</li>
+<li>Applied automatically by <code>FilesContainer</code> when <code>B::NEEDS_PATH_RESOLUTION == true</code></li>
+</ul>
 <h3 id="backends-feature-gated"><a class="header" href="#backends-feature-gated">Backends (feature-gated)</a></h3>
 <ul>
-<li><code>memory</code> (default): <code>MemoryBackend</code></li>
-<li><code>sqlite</code> (optional): <code>SqliteBackend</code></li>
-<li><code>vrootfs</code> (optional): <code>VRootFsBackend</code> using <code>strict-path</code> for containment</li>
+<li><code>memory</code> (default): <code>MemoryBackend</code>
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = true</code> (uses path resolution utility)</li>
+<li>Inode source: internal node IDs (incrementing counter)</li>
+<li><code>set_follow_symlinks(bool)</code> - control symlink resolution</li>
+</ul>
+</li>
+<li><code>sqlite</code> (optional): <code>SqliteBackend</code>
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = true</code> (uses path resolution utility)</li>
+<li>Inode source: SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</li>
+<li><code>set_follow_symlinks(bool)</code> - control symlink resolution</li>
+</ul>
+</li>
+<li><code>vrootfs</code> (optional): <code>VRootFsBackend</code> using <code>strict-path</code> for containment
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = false</code> (OS handles resolution)</li>
+<li>Inode source: OS inode numbers (<code>std::fs::Metadata::ino()</code>)</li>
+<li><code>strict-path</code> prevents symlink escapes</li>
+</ul>
+</li>
 </ul>
 <h3 id="middleware"><a class="header" href="#middleware">Middleware</a></h3>
 <ul>
 <li><code>Quota&lt;B&gt;</code> + <code>QuotaLayer</code> - Resource limits</li>
-<li><code>FeatureGuard&lt;B&gt;</code> + <code>FeatureGuardLayer</code> - Feature whitelist</li>
+<li><code>Restrictions&lt;B&gt;</code> + <code>RestrictionsLayer</code> - Opt-in restrictions (<code>.deny_symlinks()</code>, <code>.deny_hard_links()</code>, etc.)</li>
 <li><code>PathFilter&lt;B&gt;</code> + <code>PathFilterLayer</code> - Path-based access control</li>
 <li><code>ReadOnly&lt;B&gt;</code> + <code>ReadOnlyLayer</code> - Block writes</li>
 <li><code>RateLimit&lt;B&gt;</code> + <code>RateLimitLayer</code> - Operation throttling</li>
@@ -316,10 +360,20 @@ pub enum VfsError {
 <li>Streaming I/O (<code>open_read</code>, <code>open_write</code>)</li>
 <li><code>truncate</code>, <code>sync</code>, <code>fsync</code>, <code>statfs</code></li>
 </ul>
+<h4 id="path-resolution-tests-virtual-backends-only"><a class="header" href="#path-resolution-tests-virtual-backends-only">Path Resolution Tests (virtual backends only)</a></h4>
+<ul>
+<li><code>/foo/../bar</code> resolves correctly when <code>foo</code> is a regular directory</li>
+<li><code>/foo/../bar</code> resolves correctly when <code>foo</code> is a symlink (follows symlink, then <code>..</code>)</li>
+<li>Symlink chains resolve correctly (A → B → C → target)</li>
+<li>Circular symlink detection (A → B → A returns error, not infinite loop)</li>
+<li>Max symlink depth enforced (prevent deep chains)</li>
+<li><code>set_follow_symlinks(true)</code>: reading symlink follows to target</li>
+<li><code>set_follow_symlinks(false)</code>: reading symlink returns symlink metadata, not target</li>
+</ul>
 <h4 id="path-edge-cases-learned-from-vfs-issues"><a class="header" href="#path-edge-cases-learned-from-vfs-issues">Path Edge Cases (learned from <code>vfs</code> issues)</a></h4>
 <ul>
-<li><code>/foo/../bar</code> normalizes to <code>/bar</code></li>
 <li><code>//double//slashes//</code> normalizes correctly</li>
+<li>Note: <code>/foo/../bar</code> requires resolution (see above), not simple normalization</li>
 <li>Trailing slashes handled consistently</li>
 <li>Empty path returns error (not panic)</li>
 <li>Root path <code>/</code> works correctly</li>
@@ -351,7 +405,7 @@ pub enum VfsError {
 <h3 id="middleware-tests"><a class="header" href="#middleware-tests">Middleware tests</a></h3>
 <ul>
 <li><code>Quota</code>: Limit enforcement, usage tracking, streaming writes</li>
-<li><code>FeatureGuard</code>: Feature blocking, error messages</li>
+<li><code>Restrictions</code>: Operation blocking via <code>.deny_*()</code> methods, error messages</li>
 <li><code>PathFilter</code>: Glob pattern matching, deny-by-default</li>
 <li><code>RateLimit</code>: Throttling behavior, burst handling</li>
 <li><code>ReadOnly</code>: All write operations blocked</li>
@@ -439,12 +493,176 @@ strategy:
 <ul>
 <li>Async API (<code>AsyncVfsBackend</code> trait)</li>
 <li>Import/export helpers (host path &lt;-&gt; container)</li>
-<li>Extended attributes</li>
 <li>Encryption middleware</li>
 <li>Compression middleware</li>
-<li><code>vfs</code> crate compatibility adapter</li>
 <li><code>no_std</code> support (learned from <code>vfs</code> #38)</li>
 <li>Batch operations for performance (learned from <code>agentfs</code> #130)</li>
+</ul>
+<h3 id="vfsbackendposixext---optional-posix-semantics"><a class="header" href="#vfsbackendposixext---optional-posix-semantics"><code>VfsBackendPosixExt</code> - Optional POSIX Semantics</a></h3>
+<p>Optional trait extension for backends that can support POSIX-like semantics.</p>
+<p><strong>Why optional?</strong> The core <code>VfsBackend</code> is path-based (25 methods), covering 90% of use cases. Full POSIX (41+ methods) adds complexity not all backends can support.</p>
+<p><strong>What it adds:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait VfsBackendPosixExt: VfsBackend {
+    // File handle operations (stateful)
+    fn open(&amp;mut self, path: impl AsRef&lt;Path&gt;, flags: OpenFlags) -&gt; Result&lt;Handle, VfsError&gt;;
+    fn read_handle(&amp;self, handle: Handle, buf: &amp;mut [u8]) -&gt; Result&lt;usize, VfsError&gt;;
+    fn write_handle(&amp;mut self, handle: Handle, data: &amp;[u8]) -&gt; Result&lt;usize, VfsError&gt;;
+    fn seek(&amp;mut self, handle: Handle, pos: SeekFrom) -&gt; Result&lt;u64, VfsError&gt;;
+    fn close(&amp;mut self, handle: Handle) -&gt; Result&lt;(), VfsError&gt;;
+
+    // File locking
+    fn lock(&amp;mut self, handle: Handle, lock: LockType) -&gt; Result&lt;(), VfsError&gt;;
+    fn try_lock(&amp;mut self, handle: Handle, lock: LockType) -&gt; Result&lt;bool, VfsError&gt;;
+    fn unlock(&amp;mut self, handle: Handle) -&gt; Result&lt;(), VfsError&gt;;
+
+    // Extended attributes
+    fn get_xattr(&amp;self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn set_xattr(&amp;mut self, path: impl AsRef&lt;Path&gt;, name: &amp;str, value: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_xattr(&amp;mut self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;(), VfsError&gt;;
+    fn list_xattr(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;String&gt;, VfsError&gt;;
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Applications requiring file handles (seek, partial read/write)</li>
+<li>Concurrent access with file locking</li>
+<li>Storing metadata in extended attributes</li>
+</ul>
+<h3 id="anyfs-fuse---mount-as-real-filesystem"><a class="header" href="#anyfs-fuse---mount-as-real-filesystem"><code>anyfs-fuse</code> - Mount as Real Filesystem</a></h3>
+<p>Adapter to expose any <code>VfsBackend</code> as a FUSE mount point.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// RAM drive with 1GB quota
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
+
+let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
+
+// Now it's a real mount point:
+// $ df -h /mnt/ramdisk
+// $ cp large_file.bin /mnt/ramdisk/  # fast!
+// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
+<span class="boring">}</span></code></pre>
+<p><strong>Cross-Platform Support:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Platform</th><th>FUSE Provider</th><th>Rust Crate</th><th>User Must Install</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux</td><td>Native kernel</td><td><code>fuser</code></td><td><code>fuse3</code> package</td></tr>
+<tr><td>macOS</td><td>macFUSE</td><td><code>fuser</code></td><td><a href="https://osxfuse.github.io/">macFUSE</a></td></tr>
+<tr><td>FreeBSD</td><td>Native</td><td><code>fuser</code></td><td>(built-in)</td></tr>
+<tr><td>Windows</td><td>WinFsp</td><td><code>winfsp-rs</code></td><td><a href="https://winfsp.dev/">WinFsp</a></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>anyfs-fuse</code> provides a unified API across platforms:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: VfsBackend&gt; FuseMount&lt;B&gt; {
+    #[cfg(unix)]
+    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
+        // Uses fuser crate
+    }
+
+    #[cfg(windows)]
+    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
+        // Uses winfsp-rs crate
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Creative Use Cases:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Stack</th><th>What You Get</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>RAM drive</td></tr>
+<tr><td><code>MemoryBackend</code> + <code>Quota</code></td><td>RAM drive with size limit</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Single-file portable drive</td></tr>
+<tr><td><code>Overlay&lt;SqliteBackend, MemoryBackend&gt;</code></td><td>Persistent base + RAM scratch layer</td></tr>
+<tr><td><code>Cache&lt;SqliteBackend&gt;</code></td><td>SQLite with RAM read cache</td></tr>
+<tr><td><code>Tracing&lt;MemoryBackend&gt;</code></td><td>RAM drive with full audit log</td></tr>
+<tr><td><code>ReadOnly&lt;SqliteBackend&gt;</code></td><td>Immutable snapshot mount</td></tr>
+<tr><td><code>Encryption&lt;SqliteBackend&gt;</code></td><td>Encrypted portable drive</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example: AI Agent Sandbox</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Sandboxed workspace mounted as real filesystem
+let sandbox = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/**")
+            .deny("**/..*"))           // No hidden files
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks())           // No symlink escapes
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)),
+    "/mnt/agent-workspace"
+)?;
+
+// Agent's tools can now use standard filesystem APIs
+// All operations are sandboxed, logged, and quota-limited
+<span class="boring">}</span></code></pre>
+<p><strong>Architecture:</strong></p>
+<pre><code>┌────────────────────────────────────────────────┐
+│  /mnt/myfs (FUSE mount point)                  │
+├────────────────────────────────────────────────┤
+│  anyfs-fuse                                    │
+│    - Linux/macOS/BSD: fuser                    │
+│    - Windows: winfsp-rs                        │
+├────────────────────────────────────────────────┤
+│  VfsBackendPosixExt (optional, for locks/xattr)│
+├────────────────────────────────────────────────┤
+│  Middleware stack (Quota, PathFilter, etc.)    │
+├────────────────────────────────────────────────┤
+│  VfsBackend (Memory, SQLite, etc.)             │
+└────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Backend should implement <code>VfsBackendPosixExt</code> for full functionality</li>
+<li>Falls back gracefully for backends without POSIX extension</li>
+<li>Platform-specific FUSE provider must be installed</li>
+</ul>
+<h3 id="anyfs-vfs-compat---interop-with-vfs-crate"><a class="header" href="#anyfs-vfs-compat---interop-with-vfs-crate"><code>anyfs-vfs-compat</code> - Interop with <code>vfs</code> crate</a></h3>
+<p>Adapter crate for bidirectional compatibility with the <a href="https://github.com/manuel-woelker/rust-vfs"><code>vfs</code></a> crate ecosystem.</p>
+<p><strong>Why not adopt their trait?</strong> The <code>vfs::FileSystem</code> trait is too limited:</p>
+<ul>
+<li>No symlinks, hard links, or permissions</li>
+<li>No <code>sync</code>/<code>fsync</code> for durability</li>
+<li>No <code>truncate</code>, <code>statfs</code>, or <code>read_range</code></li>
+<li>No middleware composition pattern</li>
+</ul>
+<p><strong>Our trait is a superset</strong> - we support everything they do, plus more.</p>
+<p><strong>Adapters:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Wrap a vfs::FileSystem to use as AnyFS backend
+// Missing features (symlinks, permissions, etc.) return VfsError::NotSupported
+pub struct VfsCompat&lt;F: vfs::FileSystem&gt;(F);
+impl&lt;F: vfs::FileSystem&gt; VfsBackend for VfsCompat&lt;F&gt; { ... }
+
+// Wrap an AnyFS backend to use as vfs::FileSystem
+// Only exposes the subset that vfs supports
+pub struct AnyFsCompat&lt;B: VfsBackend&gt;(B);
+impl&lt;B: VfsBackend&gt; vfs::FileSystem for AnyFsCompat&lt;B&gt; { ... }
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Migrate from <code>vfs</code> to AnyFS incrementally</li>
+<li>Use existing <code>vfs</code> backends (EmbeddedFS) in AnyFS</li>
+<li>Use AnyFS backends in projects that depend on <code>vfs</code></li>
 </ul>
 <hr>
 <h2 id="lessons-learned-reference"><a class="header" href="#lessons-learned-reference">Lessons Learned (Reference)</a></h2>

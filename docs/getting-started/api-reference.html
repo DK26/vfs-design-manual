@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -195,7 +195,7 @@ anyfs-container = "0.1"  # Optional
 <h2 id="creating-a-backend-stack"><a class="header" href="#creating-a-backend-stack">Creating a Backend Stack</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, FeatureGuard, Tracing};
+</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 // Simple
@@ -211,21 +211,20 @@ let fs = FilesContainer::new(
 // Full stack (manual composition)
 let fs = FilesContainer::new(
     Tracing::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("data.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )
-        .with_symlinks()
-        .with_hard_links()
+        .deny_permissions()  // Block set_permissions() calls
     )
 );
 
 // Layer-based composition
-use anyfs::{QuotaLayer, FeatureGuardLayer, TracingLayer};
+use anyfs::{QuotaLayer, RestrictionsLayer, TracingLayer};
 
 let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks())
+    .layer(RestrictionsLayer::new().deny_permissions())
     .layer(TracingLayer::new());
 
 // BackendStack builder (fluent API)
@@ -233,7 +232,7 @@ use anyfs_container::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .feature_gated(|g| g.allow_symlinks())
+    .restricted(|g| g.deny_hard_links().deny_permissions())
     .traced()
     .into_container();
 <span class="boring">}</span></code></pre>
@@ -254,14 +253,14 @@ backend.limits()       // -&gt; Limits { max_total_size, ... }
 backend.remaining()    // -&gt; Remaining { bytes, can_write, ... }
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="featureguard-methods"><a class="header" href="#featureguard-methods">FeatureGuard Methods</a></h2>
+<h2 id="restrictions-methods"><a class="header" href="#restrictions-methods">Restrictions Methods</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FeatureGuard::new(backend)    // All disabled by default
-    .with_symlinks()                  // Enable symlink ops
-    .with_max_symlink_resolution(40)  // Max hops
-    .with_hard_links()                // Enable hard links
-    .with_permissions()               // Enable set_permissions
+</span>// By default, all operations work. Use deny_*() to block specific ones.
+Restrictions::new(backend)
+    .deny_symlinks()       // Block symlink() calls
+    .deny_hard_links()     // Block hard_link() calls
+    .deny_permissions()    // Block set_permissions() calls
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="tracing-methods"><a class="header" href="#tracing-methods">Tracing Methods</a></h2>
@@ -364,11 +363,14 @@ fs.exists("/path")?                     // -&gt; bool
 
 // Metadata
 let meta = fs.metadata("/path")?;
-meta.size                                // file size
+meta.inode                               // unique identifier
+meta.nlink                               // hard link count
 meta.file_type                           // File | Directory | Symlink
-meta.permissions
+meta.size                                // file size in bytes
+meta.permissions                         // Permissions { mode: u32 }
 meta.created                             // Option&lt;SystemTime&gt;
-meta.modified
+meta.modified                            // Option&lt;SystemTime&gt;
+meta.accessed                            // Option&lt;SystemTime&gt;
 
 // Read
 let bytes = fs.read("/path")?;           // -&gt; Vec&lt;u8&gt;
@@ -377,6 +379,11 @@ let chunk = fs.read_range("/path", 0, 1024)?;
 
 // List directory
 let entries = fs.read_dir("/path")?;     // -&gt; Vec&lt;DirEntry&gt;
+for entry in &amp;entries {
+    entry.name                           // OsString
+    entry.inode                          // u64 (avoids extra stat)
+    entry.file_type                      // File | Directory | Symlink
+}
 
 // Write
 fs.write("/path", b"content")?;          // Create or overwrite
@@ -395,12 +402,12 @@ fs.remove_dir_all("/path")?;             // Recursive
 fs.rename("/from", "/to")?;
 fs.copy("/from", "/to")?;
 
-// Links (requires FeatureGuard)
+// Links (requires Restrictions)
 fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -&gt; PathBuf
 
-// Permissions (requires FeatureGuard)
+// Permissions (requires Restrictions)
 fs.set_permissions("/path", perms)?;
 
 // File size
@@ -410,6 +417,41 @@ fs.truncate("/path", 1024)?;             // Resize to 1024 bytes
 fs.sync()?;                              // Flush all writes
 fs.fsync("/path")?;                      // Flush writes for one file
 <span class="boring">}</span></code></pre>
+<hr>
+<h2 id="inode-operations"><a class="header" href="#inode-operations">Inode Operations</a></h2>
+<p>Backends track inodes internally for hardlink support. These methods expose that tracking:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Convert between paths and inodes
+let inode: u64 = backend.path_to_inode("/some/path")?;
+let path: PathBuf = backend.inode_to_path(inode)?;
+
+// Lookup child by name within a directory (FUSE-style)
+let root_inode = backend.path_to_inode("/")?;
+let child_inode = backend.lookup(root_inode, "filename.txt")?;
+
+// Get metadata by inode (avoids path resolution)
+let meta = backend.metadata_by_inode(inode)?;
+
+// Hardlinks share the same inode
+backend.hard_link("/original", "/link")?;
+let ino1 = backend.path_to_inode("/original")?;
+let ino2 = backend.path_to_inode("/link")?;
+assert_eq!(ino1, ino2);  // Same inode!
+<span class="boring">}</span></code></pre>
+<p><strong>Inode sources by backend:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Inode Source</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Internal node IDs (incrementing counter)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>OS inode numbers (<code>Metadata::ino()</code>)</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -430,7 +472,7 @@ match result {
     Err(VfsError::QuotaExceeded { limit, requested, usage }) =&gt; ...
     Err(VfsError::FileSizeExceeded { path, size, limit }) =&gt; ...
 
-    // FeatureGuard middleware errors
+    // Restrictions middleware errors
     Err(VfsError::FeatureNotEnabled { feature, operation }) =&gt; ...
 
     // PathFilter middleware errors
@@ -445,6 +487,9 @@ match result {
     // VfsBackendExt errors
     Err(VfsError::Serialization(msg)) =&gt; ...
     Err(VfsError::Deserialization(msg)) =&gt; ...
+
+    // Optional feature not supported
+    Err(VfsError::NotSupported { operation }) =&gt; ...
 
     Err(e) =&gt; ...
 }
@@ -472,7 +517,7 @@ match result {
 </thead>
 <tbody>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Quota enforcement</td></tr>
-<tr><td><code>FeatureGuard&lt;B&gt;</code></td><td>Least privilege</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Least privilege</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path-based access control</td></tr>
 <tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Prevent write operations</td></tr>
 <tr><td><code>RateLimit&lt;B&gt;</code></td><td>Operation throttling</td></tr>
@@ -492,7 +537,7 @@ match result {
 </thead>
 <tbody>
 <tr><td><code>QuotaLayer</code></td><td><code>Quota&lt;B&gt;</code></td></tr>
-<tr><td><code>FeatureGuardLayer</code></td><td><code>FeatureGuard&lt;B&gt;</code></td></tr>
+<tr><td><code>RestrictionsLayer</code></td><td><code>Restrictions&lt;B&gt;</code></td></tr>
 <tr><td><code>PathFilterLayer</code></td><td><code>PathFilter&lt;B&gt;</code></td></tr>
 <tr><td><code>ReadOnlyLayer</code></td><td><code>ReadOnly&lt;B&gt;</code></td></tr>
 <tr><td><code>RateLimitLayer</code></td><td><code>RateLimit&lt;B&gt;</code></td></tr>
@@ -512,15 +557,16 @@ match result {
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>VfsBackend</code></td><td>Core trait</td></tr>
+<tr><td><code>VfsBackend</code></td><td>Core trait (29 methods)</td></tr>
 <tr><td><code>Layer</code></td><td>Middleware composition trait</td></tr>
 <tr><td><code>VfsBackendExt</code></td><td>Extension methods trait</td></tr>
 <tr><td><code>VfsError</code></td><td>Error type (with context)</td></tr>
+<tr><td><code>ROOT_INODE</code></td><td>Constant: root directory inode (= 1)</td></tr>
 <tr><td><code>FileType</code></td><td><code>File</code>, <code>Directory</code>, <code>Symlink</code></td></tr>
-<tr><td><code>Metadata</code></td><td>File/dir metadata</td></tr>
-<tr><td><code>DirEntry</code></td><td>Directory entry</td></tr>
-<tr><td><code>Permissions</code></td><td>File permissions</td></tr>
-<tr><td><code>StatFs</code></td><td>Filesystem stats</td></tr>
+<tr><td><code>Metadata</code></td><td>File/dir metadata (inode, nlink, size, times, permissions)</td></tr>
+<tr><td><code>DirEntry</code></td><td>Directory entry (name, inode, file_type)</td></tr>
+<tr><td><code>Permissions</code></td><td>File permissions (mode: u32)</td></tr>
+<tr><td><code>StatFs</code></td><td>Filesystem stats (bytes, inodes, block_size)</td></tr>
 </tbody>
 </table>
 </div>
@@ -535,7 +581,7 @@ match result {
 <tr><td><code>SqliteBackend</code></td><td>SQLite backend</td></tr>
 <tr><td><code>VRootFsBackend</code></td><td>Host FS backend</td></tr>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Quota middleware</td></tr>
-<tr><td><code>FeatureGuard&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path access control middleware</td></tr>
 <tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Read-only middleware</td></tr>
 <tr><td><code>RateLimit&lt;B&gt;</code></td><td>Rate limiting middleware</td></tr>
@@ -544,7 +590,7 @@ match result {
 <tr><td><code>Cache&lt;B&gt;</code></td><td>Caching middleware</td></tr>
 <tr><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Union filesystem middleware</td></tr>
 <tr><td><code>QuotaLayer</code></td><td>Layer for Quota</td></tr>
-<tr><td><code>FeatureGuardLayer</code></td><td>Layer for FeatureGuard</td></tr>
+<tr><td><code>RestrictionsLayer</code></td><td>Layer for Restrictions</td></tr>
 <tr><td><code>PathFilterLayer</code></td><td>Layer for PathFilter</td></tr>
 <tr><td><code>ReadOnlyLayer</code></td><td>Layer for ReadOnly</td></tr>
 <tr><td><code>RateLimitLayer</code></td><td>Layer for RateLimit</td></tr>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-49a6e0ad.js"></script>
@@ -196,7 +196,7 @@
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                             │  ← Quotas
-│    FeatureGuard&lt;B&gt;                      │  ← Security
+│    Restrictions&lt;B&gt;                      │  ← Security
 │    Tracing&lt;B&gt;                           │  ← Audit
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Storage
@@ -222,15 +222,16 @@
 <h2 id="quick-example"><a class="header" href="#quick-example">Quick Example</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose: storage -&gt; limits -&gt; security
-let backend = FeatureGuard::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+// Layer-based composition
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 
@@ -292,7 +293,7 @@ fs.write("/data/file.txt", b"hello")?;
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                    │  ← Quotas
-│    FeatureGuard&lt;B&gt;               │  ← Security
+│    Restrictions&lt;B&gt;               │  ← Security
 │    Tracing&lt;B&gt;                    │  ← Audit
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Storage
@@ -308,7 +309,7 @@ fs.write("/data/file.txt", b"hello")?;
 <tbody>
 <tr><td>Multi-tenant isolation</td><td>Separate backend instances per tenant</td></tr>
 <tr><td>Portability</td><td>SQLite backend: tenant data = single <code>.db</code> file</td></tr>
-<tr><td>Security</td><td>FeatureGuard disables dangerous features by default</td></tr>
+<tr><td>Security</td><td>Restrictions disables dangerous features by default</td></tr>
 <tr><td>Resource control</td><td>Quota enforces quotas</td></tr>
 <tr><td>Audit compliance</td><td>Tracing records all operations</td></tr>
 <tr><td>Custom storage</td><td>Implement VfsBackend for any medium</td></tr>
@@ -346,15 +347,16 @@ fs.write("/data/file.txt", b"hello")?;
 <h2 id="quick-example-1"><a class="header" href="#quick-example-1">Quick example</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose: storage + limits + security
-let backend = FeatureGuard::new(
-    Quota::new(SqliteBackend::open("tenant.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+// Layer-based composition
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 
@@ -401,7 +403,7 @@ anyfs/                      # Crate 2: backends + middleware
     middleware/
       quota.rs              # Quota&lt;B&gt;
       tracing.rs            # Tracing&lt;B&gt;
-      feature_guard.rs      # FeatureGuard&lt;B&gt;
+      feature_guard.rs      # Restrictions&lt;B&gt;
 
 anyfs-container/            # Crate 3: ergonomic wrapper
   Cargo.toml
@@ -428,7 +430,7 @@ anyfs-container/            # Crate 3: ergonomic wrapper
 <h2 id="middleware-pattern"><a class="header" href="#middleware-pattern">Middleware Pattern</a></h2>
 <pre><code>FilesContainer&lt;B&gt;
     wraps -&gt; Tracing&lt;B&gt;
-        wraps -&gt; FeatureGuard&lt;B&gt;
+        wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;
                 wraps -&gt; SqliteBackend (or any VfsBackend)
 </code></pre>
@@ -501,33 +503,37 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h3 id="with-feature-guards"><a class="header" href="#with-feature-guards">With Feature Guards</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, FeatureGuard};
+<h3 id="with-restrictions"><a class="header" href="#with-restrictions">With Restrictions</a></h3>
+<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, Restrictions};
 use anyfs_container::FilesContainer;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    let backend = FeatureGuard::new(MemoryBackend::new())
-        .with_symlinks()      // Enable symlinks
-        .with_hard_links();   // Enable hard links
+    // Block specific operations for untrusted code
+    let backend = Restrictions::new(MemoryBackend::new())
+        .deny_hard_links()    // Block hard_link() calls
+        .deny_permissions();  // Block set_permissions() calls
 
     let mut fs = FilesContainer::new(backend);
 
+    // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
     fs.symlink("/original.txt", "/shortcut")?;
 
     Ok(())
 }</code></pre>
-<h3 id="full-stack-limits--feature-gates"><a class="header" href="#full-stack-limits--feature-gates">Full Stack (Limits + Feature Gates)</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, Quota, FeatureGuard};
+<h3 id="full-stack-layer-based"><a class="header" href="#full-stack-layer-based">Full Stack (Layer-based)</a></h3>
+<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 use anyfs_container::FilesContainer;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Compose: storage -&gt; limits -&gt; feature gates
-    let backend = FeatureGuard::new(
-        Quota::new(SqliteBackend::open_or_create("data.db")?)
-            .with_max_total_size(100 * 1024 * 1024)
-    )
-    .with_symlinks();
+    let backend = SqliteBackend::open_or_create("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
+        .layer(TracingLayer::new());
 
     let mut fs = FilesContainer::new(backend);
 
@@ -606,19 +612,18 @@ if !remaining.can_write {
     println!("Storage full!");
 }
 <span class="boring">}</span></code></pre>
-<h3 id="featureguard--security"><a class="header" href="#featureguard--security">FeatureGuard — Security</a></h3>
+<h3 id="restrictions--block-operations"><a class="header" href="#restrictions--block-operations">Restrictions — Block Operations</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, FeatureGuard};
+</span>use anyfs::{MemoryBackend, Restrictions};
 
-// All features disabled by default
-let backend = FeatureGuard::new(MemoryBackend::new())
-    .with_symlinks()                  // Enable symlink operations
-    .with_max_symlink_resolution(40)  // Max hops (default: 40)
-    .with_hard_links()                // Enable hard links
-    .with_permissions();              // Enable set_permissions
+// By default, all operations work. Use deny_*() to block specific ones.
+let backend = Restrictions::new(MemoryBackend::new())
+    .deny_symlinks()      // Block symlink() calls
+    .deny_hard_links()    // Block hard_link() calls
+    .deny_permissions();  // Block set_permissions() calls
 
-// Disabled operations return VfsError::FeatureNotEnabled
+// Blocked operations return VfsError::FeatureNotEnabled
 <span class="boring">}</span></code></pre>
 <h3 id="tracing--instrumentation"><a class="header" href="#tracing--instrumentation">Tracing — Instrumentation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -701,22 +706,154 @@ fn test_quota_exceeded() {
 </span>// Minimal: just storage
 let fs = FilesContainer::new(MemoryBackend::new());
 
-// With limits
+// With limits (layer-based)
 let fs = FilesContainer::new(
-    Quota::new(MemoryBackend::new())
-        .with_max_total_size(100 * 1024 * 1024)
+    MemoryBackend::new()
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
 );
 
-// Full security
+// Sandboxed (layer-based)
 let fs = FilesContainer::new(
-    FeatureGuard::new(
-        Quota::new(SqliteBackend::open("data.db")?)
-    )
-    .with_symlinks()
+    SqliteBackend::open("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
 );
 <span class="boring">}</span></code></pre>
 <h3 id="3-handle-errors-gracefully"><a class="header" href="#3-handle-errors-gracefully">3. Handle Errors Gracefully</a></h3>
 <p>Always check for quota exceeded, feature not enabled, and other errors.</p>
+<hr>
+<h2 id="advanced-use-cases-future"><a class="header" href="#advanced-use-cases-future">Advanced Use Cases (Future)</a></h2>
+<p>These use cases require <code>anyfs-fuse</code> (future crate).</p>
+<h3 id="database-backed-drive-with-live-monitoring"><a class="header" href="#database-backed-drive-with-live-monitoring">Database-Backed Drive with Live Monitoring</a></h3>
+<p>Mount a database-backed filesystem and query it directly for real-time analytics:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  Database (SQLite, PostgreSQL, etc.)                        │
+├─────────────────────────────────────────────────────────────┤
+│                         │                                   │
+│    anyfs-fuse           │         Stats Dashboard           │
+│    (write + read)       │         (direct DB queries)       │
+│         │               │               │                   │
+│         ▼               │               ▼                   │
+│  /mnt/workspace         │    SELECT SUM(size) FROM nodes    │
+│  $ cp file.txt ./       │    SELECT COUNT(*) FROM nodes     │
+│  $ mkdir projects/      │    SELECT * FROM operations_log   │
+│                         │               │                   │
+│                         │               ▼                   │
+│                         │        ┌──────────────┐           │
+│                         │        │ Live Graphs  │           │
+│                         │        │ - Disk usage │           │
+│                         │        │ - File count │           │
+│                         │        │ - Recent ops │           │
+│                         │        └──────────────┘           │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>SQLite Example:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+// Mount the drive
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(TracingLayer::new())  // Logs operations to DB
+    .layer(QuotaLayer::new().max_total_size(1_000_000_000));
+
+let mount = FuseMount::mount(backend, "/mnt/workspace")?;
+<span class="boring">}</span></code></pre>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Meanwhile, in a monitoring dashboard...
+use rusqlite::{Connection, OpenFlags};
+
+let conn = Connection::open_with_flags(
+    "tenant.db",
+    OpenFlags::SQLITE_OPEN_READ_ONLY,  // Safe concurrent reads
+)?;
+
+loop {
+    let (file_count, total_bytes): (i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM nodes WHERE type = 'file'",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+
+    let recent_ops: Vec&lt;String&gt; = conn
+        .prepare("SELECT operation, path, timestamp FROM audit_log ORDER BY timestamp DESC LIMIT 10")?
+        .query_map([], |row| Ok(format!("{}: {}", row.get::&lt;_, String&gt;(0)?, row.get::&lt;_, String&gt;(1)?)))?
+        .collect::&lt;Result&lt;_, _&gt;&gt;()?;
+
+    render_dashboard(file_count, total_bytes, &amp;recent_ops);
+    std::thread::sleep(Duration::from_secs(1));
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Works with any database backend:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Direct Query Method</th></tr>
+</thead>
+<tbody>
+<tr><td><code>SqliteBackend</code></td><td><code>rusqlite</code> with <code>SQLITE_OPEN_READ_ONLY</code></td></tr>
+<tr><td><code>PostgresBackend</code> (future)</td><td>Standard <code>postgres</code> crate connection</td></tr>
+<tr><td><code>MySqlBackend</code> (future)</td><td>Standard <code>mysql</code> crate connection</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>What you can visualize:</strong></p>
+<ul>
+<li>Real-time storage usage (gauges, bar charts)</li>
+<li>File count over time (line graphs)</li>
+<li>Operations log (live feed)</li>
+<li>Most accessed files (heatmaps)</li>
+<li>Directory tree maps (size visualization)</li>
+<li>Per-tenant usage (multi-tenant dashboards)</li>
+</ul>
+<p>This pattern is powerful because the database is the source of truth — you get filesystem semantics via FUSE and SQL analytics via direct queries, from the same data.</p>
+<h3 id="ram-drive"><a class="header" href="#ram-drive">RAM Drive</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// 4GB RAM drive
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(QuotaLayer::new().max_total_size(4 * 1024 * 1024 * 1024)),
+    "/mnt/ramdisk"
+)?;
+
+// Use for fast compilation, temp files, etc.
+// $ TMPDIR=/mnt/ramdisk cargo build
+<span class="boring">}</span></code></pre>
+<h3 id="sandboxed-ai-agent-workspace"><a class="header" href="#sandboxed-ai-agent-workspace">Sandboxed AI Agent Workspace</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/workspace/**")
+            .deny("**/..*")           // No hidden files
+            .deny("**/.*"))           // No dotfiles
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks()          // Prevent symlink attacks
+            .deny_hard_links())
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(TracingLayer::new()),  // Full audit trail
+    "/mnt/agent"
+)?;
+
+// Agent uses standard filesystem APIs
+// All operations are sandboxed, quota-limited, and logged
+<span class="boring">}</span></code></pre>
 <hr>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
 <ul>
@@ -740,7 +877,7 @@ anyfs-container = "0.1"  # Optional
 <h2 id="creating-a-backend-stack"><a class="header" href="#creating-a-backend-stack">Creating a Backend Stack</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, FeatureGuard, Tracing};
+</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 // Simple
@@ -756,21 +893,20 @@ let fs = FilesContainer::new(
 // Full stack (manual composition)
 let fs = FilesContainer::new(
     Tracing::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("data.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )
-        .with_symlinks()
-        .with_hard_links()
+        .deny_permissions()  // Block set_permissions() calls
     )
 );
 
 // Layer-based composition
-use anyfs::{QuotaLayer, FeatureGuardLayer, TracingLayer};
+use anyfs::{QuotaLayer, RestrictionsLayer, TracingLayer};
 
 let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks())
+    .layer(RestrictionsLayer::new().deny_permissions())
     .layer(TracingLayer::new());
 
 // BackendStack builder (fluent API)
@@ -778,7 +914,7 @@ use anyfs_container::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .feature_gated(|g| g.allow_symlinks())
+    .restricted(|g| g.deny_hard_links().deny_permissions())
     .traced()
     .into_container();
 <span class="boring">}</span></code></pre>
@@ -799,14 +935,14 @@ backend.limits()       // -&gt; Limits { max_total_size, ... }
 backend.remaining()    // -&gt; Remaining { bytes, can_write, ... }
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="featureguard-methods"><a class="header" href="#featureguard-methods">FeatureGuard Methods</a></h2>
+<h2 id="restrictions-methods"><a class="header" href="#restrictions-methods">Restrictions Methods</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FeatureGuard::new(backend)    // All disabled by default
-    .with_symlinks()                  // Enable symlink ops
-    .with_max_symlink_resolution(40)  // Max hops
-    .with_hard_links()                // Enable hard links
-    .with_permissions()               // Enable set_permissions
+</span>// By default, all operations work. Use deny_*() to block specific ones.
+Restrictions::new(backend)
+    .deny_symlinks()       // Block symlink() calls
+    .deny_hard_links()     // Block hard_link() calls
+    .deny_permissions()    // Block set_permissions() calls
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="tracing-methods"><a class="header" href="#tracing-methods">Tracing Methods</a></h2>
@@ -909,11 +1045,14 @@ fs.exists("/path")?                     // -&gt; bool
 
 // Metadata
 let meta = fs.metadata("/path")?;
-meta.size                                // file size
+meta.inode                               // unique identifier
+meta.nlink                               // hard link count
 meta.file_type                           // File | Directory | Symlink
-meta.permissions
+meta.size                                // file size in bytes
+meta.permissions                         // Permissions { mode: u32 }
 meta.created                             // Option&lt;SystemTime&gt;
-meta.modified
+meta.modified                            // Option&lt;SystemTime&gt;
+meta.accessed                            // Option&lt;SystemTime&gt;
 
 // Read
 let bytes = fs.read("/path")?;           // -&gt; Vec&lt;u8&gt;
@@ -922,6 +1061,11 @@ let chunk = fs.read_range("/path", 0, 1024)?;
 
 // List directory
 let entries = fs.read_dir("/path")?;     // -&gt; Vec&lt;DirEntry&gt;
+for entry in &amp;entries {
+    entry.name                           // OsString
+    entry.inode                          // u64 (avoids extra stat)
+    entry.file_type                      // File | Directory | Symlink
+}
 
 // Write
 fs.write("/path", b"content")?;          // Create or overwrite
@@ -940,12 +1084,12 @@ fs.remove_dir_all("/path")?;             // Recursive
 fs.rename("/from", "/to")?;
 fs.copy("/from", "/to")?;
 
-// Links (requires FeatureGuard)
+// Links (requires Restrictions)
 fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -&gt; PathBuf
 
-// Permissions (requires FeatureGuard)
+// Permissions (requires Restrictions)
 fs.set_permissions("/path", perms)?;
 
 // File size
@@ -955,6 +1099,41 @@ fs.truncate("/path", 1024)?;             // Resize to 1024 bytes
 fs.sync()?;                              // Flush all writes
 fs.fsync("/path")?;                      // Flush writes for one file
 <span class="boring">}</span></code></pre>
+<hr>
+<h2 id="inode-operations"><a class="header" href="#inode-operations">Inode Operations</a></h2>
+<p>Backends track inodes internally for hardlink support. These methods expose that tracking:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Convert between paths and inodes
+let inode: u64 = backend.path_to_inode("/some/path")?;
+let path: PathBuf = backend.inode_to_path(inode)?;
+
+// Lookup child by name within a directory (FUSE-style)
+let root_inode = backend.path_to_inode("/")?;
+let child_inode = backend.lookup(root_inode, "filename.txt")?;
+
+// Get metadata by inode (avoids path resolution)
+let meta = backend.metadata_by_inode(inode)?;
+
+// Hardlinks share the same inode
+backend.hard_link("/original", "/link")?;
+let ino1 = backend.path_to_inode("/original")?;
+let ino2 = backend.path_to_inode("/link")?;
+assert_eq!(ino1, ino2);  // Same inode!
+<span class="boring">}</span></code></pre>
+<p><strong>Inode sources by backend:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Inode Source</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Internal node IDs (incrementing counter)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>OS inode numbers (<code>Metadata::ino()</code>)</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="error-handling-1"><a class="header" href="#error-handling-1">Error Handling</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -975,7 +1154,7 @@ match result {
     Err(VfsError::QuotaExceeded { limit, requested, usage }) =&gt; ...
     Err(VfsError::FileSizeExceeded { path, size, limit }) =&gt; ...
 
-    // FeatureGuard middleware errors
+    // Restrictions middleware errors
     Err(VfsError::FeatureNotEnabled { feature, operation }) =&gt; ...
 
     // PathFilter middleware errors
@@ -990,6 +1169,9 @@ match result {
     // VfsBackendExt errors
     Err(VfsError::Serialization(msg)) =&gt; ...
     Err(VfsError::Deserialization(msg)) =&gt; ...
+
+    // Optional feature not supported
+    Err(VfsError::NotSupported { operation }) =&gt; ...
 
     Err(e) =&gt; ...
 }
@@ -1017,7 +1199,7 @@ match result {
 </thead>
 <tbody>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Quota enforcement</td></tr>
-<tr><td><code>FeatureGuard&lt;B&gt;</code></td><td>Least privilege</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Least privilege</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path-based access control</td></tr>
 <tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Prevent write operations</td></tr>
 <tr><td><code>RateLimit&lt;B&gt;</code></td><td>Operation throttling</td></tr>
@@ -1037,7 +1219,7 @@ match result {
 </thead>
 <tbody>
 <tr><td><code>QuotaLayer</code></td><td><code>Quota&lt;B&gt;</code></td></tr>
-<tr><td><code>FeatureGuardLayer</code></td><td><code>FeatureGuard&lt;B&gt;</code></td></tr>
+<tr><td><code>RestrictionsLayer</code></td><td><code>Restrictions&lt;B&gt;</code></td></tr>
 <tr><td><code>PathFilterLayer</code></td><td><code>PathFilter&lt;B&gt;</code></td></tr>
 <tr><td><code>ReadOnlyLayer</code></td><td><code>ReadOnly&lt;B&gt;</code></td></tr>
 <tr><td><code>RateLimitLayer</code></td><td><code>RateLimit&lt;B&gt;</code></td></tr>
@@ -1057,15 +1239,16 @@ match result {
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>VfsBackend</code></td><td>Core trait</td></tr>
+<tr><td><code>VfsBackend</code></td><td>Core trait (29 methods)</td></tr>
 <tr><td><code>Layer</code></td><td>Middleware composition trait</td></tr>
 <tr><td><code>VfsBackendExt</code></td><td>Extension methods trait</td></tr>
 <tr><td><code>VfsError</code></td><td>Error type (with context)</td></tr>
+<tr><td><code>ROOT_INODE</code></td><td>Constant: root directory inode (= 1)</td></tr>
 <tr><td><code>FileType</code></td><td><code>File</code>, <code>Directory</code>, <code>Symlink</code></td></tr>
-<tr><td><code>Metadata</code></td><td>File/dir metadata</td></tr>
-<tr><td><code>DirEntry</code></td><td>Directory entry</td></tr>
-<tr><td><code>Permissions</code></td><td>File permissions</td></tr>
-<tr><td><code>StatFs</code></td><td>Filesystem stats</td></tr>
+<tr><td><code>Metadata</code></td><td>File/dir metadata (inode, nlink, size, times, permissions)</td></tr>
+<tr><td><code>DirEntry</code></td><td>Directory entry (name, inode, file_type)</td></tr>
+<tr><td><code>Permissions</code></td><td>File permissions (mode: u32)</td></tr>
+<tr><td><code>StatFs</code></td><td>Filesystem stats (bytes, inodes, block_size)</td></tr>
 </tbody>
 </table>
 </div>
@@ -1080,7 +1263,7 @@ match result {
 <tr><td><code>SqliteBackend</code></td><td>SQLite backend</td></tr>
 <tr><td><code>VRootFsBackend</code></td><td>Host FS backend</td></tr>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Quota middleware</td></tr>
-<tr><td><code>FeatureGuard&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path access control middleware</td></tr>
 <tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Read-only middleware</td></tr>
 <tr><td><code>RateLimit&lt;B&gt;</code></td><td>Rate limiting middleware</td></tr>
@@ -1089,7 +1272,7 @@ match result {
 <tr><td><code>Cache&lt;B&gt;</code></td><td>Caching middleware</td></tr>
 <tr><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Union filesystem middleware</td></tr>
 <tr><td><code>QuotaLayer</code></td><td>Layer for Quota</td></tr>
-<tr><td><code>FeatureGuardLayer</code></td><td>Layer for FeatureGuard</td></tr>
+<tr><td><code>RestrictionsLayer</code></td><td>Layer for Restrictions</td></tr>
 <tr><td><code>PathFilterLayer</code></td><td>Layer for PathFilter</td></tr>
 <tr><td><code>ReadOnlyLayer</code></td><td>Layer for ReadOnly</td></tr>
 <tr><td><code>RateLimitLayer</code></td><td>Layer for RateLimit</td></tr>
@@ -1134,7 +1317,7 @@ match result {
 │                                         │
 │  Policy:                                │
 │    Quota&lt;B&gt;         - Resource limits   │
-│    FeatureGuard&lt;B&gt;  - Least privilege   │
+│    Restrictions&lt;B&gt;  - Least privilege   │
 │    PathFilter&lt;B&gt;    - Sandbox paths     │
 │    ReadOnly&lt;B&gt;      - Prevent writes    │
 │    RateLimit&lt;B&gt;     - Ops/sec limit     │
@@ -1163,18 +1346,60 @@ match result {
 <tbody>
 <tr><td><code>VfsBackend</code></td><td>Storage + filesystem semantics</td></tr>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Resource limits (size, count, depth)</td></tr>
-<tr><td><code>FeatureGuard&lt;B&gt;</code></td><td>Feature whitelist (symlinks, hardlinks)</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Opt-in operation restrictions</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path-based access control</td></tr>
 <tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Prevent all write operations</td></tr>
 <tr><td><code>RateLimit&lt;B&gt;</code></td><td>Limit operations per second</td></tr>
 <tr><td><code>Tracing&lt;B&gt;</code></td><td>Instrumentation / audit trail</td></tr>
-<tr><td><code>DryRun&lt;B&gt;</code></td><td>Log operations without executing</td></tr>
-<tr><td><code>Cache&lt;B&gt;</code></td><td>LRU cache for reads</td></tr>
-<tr><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Union filesystem (base + upper)</td></tr>
-<tr><td><code>FilesContainer&lt;B&gt;</code></td><td>Ergonomic std::fs-aligned API</td></tr>
 </tbody>
 </table>
 </div>
+<hr>
+<h2 id="design-principle-predictable-defaults-opt-in-security"><a class="header" href="#design-principle-predictable-defaults-opt-in-security">Design Principle: Predictable Defaults, Opt-in Security</a></h2>
+<p><strong><code>VfsBackend</code> mimics <code>std::fs</code> with predictable, permissive defaults.</strong></p>
+<p>The trait is a low-level interface that any backend can implement - memory, SQLite, real filesystem, network storage, etc. To maintain consistent behavior across all backends:</p>
+<ul>
+<li>All operations work by default (<code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code>)</li>
+<li>No security restrictions at the trait level</li>
+<li>Behavior matches what you’d expect from a real filesystem</li>
+</ul>
+<p><strong>Why not secure-by-default at this layer?</strong></p>
+<ol>
+<li><strong>Predictability</strong>: A backend should behave like a filesystem. Surprising restrictions break expectations.</li>
+<li><strong>Backend-agnostic</strong>: The trait doesn’t know if it’s wrapping a sandboxed memory store or a real filesystem. Restrictions that make sense for one may not for another.</li>
+<li><strong>Composition</strong>: Security is achieved by layering middleware, not by baking it into the storage layer.</li>
+</ol>
+<p><strong>Security is the responsibility of higher-level APIs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Security Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td><code>VfsBackend</code></td><td>None - pure filesystem semantics</td></tr>
+<tr><td>Middleware (<code>Restrictions</code>, <code>PathFilter</code>, etc.)</td><td>Opt-in restrictions</td></tr>
+<tr><td><code>FilesContainer</code> or application code</td><td>Configure appropriate middleware</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example: Secure AI Agent Sandbox</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Application composes secure defaults
+let sandbox = FilesContainer::new(
+    PathFilter::new(
+        Restrictions::new(
+            Quota::new(MemoryBackend::new())
+                .with_max_total_size(50 * 1024 * 1024)
+        )
+        .deny_hard_links()
+        .deny_permissions()
+    )
+    .allow("/workspace/**")
+    .deny("**/.env")
+);
+<span class="boring">}</span></code></pre>
+<p>The backend is permissive. The application adds restrictions appropriate for its use case.</p>
 <hr>
 <h2 id="crates"><a class="header" href="#crates">Crates</a></h2>
 <div class="table-wrapper">
@@ -1247,6 +1472,237 @@ pub trait VfsBackend: Send {
 
     // Filesystem info
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, VfsError&gt;;
+
+    // --- Inode operations (with sensible defaults) ---
+    // Backends can override for hardlink support and FUSE efficiency.
+    // Default implementations work but are less efficient.
+
+    /// Get the inode number for a path.
+    /// Default: hashes the path (works, but hardlinks won't share inodes).
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        path.as_ref().hash(&amp;mut hasher);
+        Ok(hasher.finish())
+    }
+
+    /// Get the path for an inode number.
+    /// Default: not supported (override for FUSE efficiency).
+    fn inode_to_path(&amp;self, _inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        Err(VfsError::NotSupported { operation: "inode_to_path" })
+    }
+
+    /// Lookup a child by name within a parent directory (by inode).
+    /// Default: uses path-based lookup (override for FUSE efficiency).
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;std::ffi::OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        let parent_path = self.inode_to_path(parent_inode)?;
+        self.path_to_inode(parent_path.join(name))
+    }
+
+    /// Get metadata by inode (avoids path resolution).
+    /// Default: uses path-based metadata (override for FUSE efficiency).
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        let path = self.inode_to_path(inode)?;
+        self.metadata(path)
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="inode-support"><a class="header" href="#inode-support">Inode Support</a></h3>
+<p>Inode methods have <strong>sensible defaults</strong> that work out of the box. Override them for:</p>
+<ul>
+<li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
+<li><strong>FUSE efficiency</strong>: Native inode operations avoid path lookups</li>
+</ul>
+<p><strong>Three levels of implementation:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Level</th><th>Override</th><th>Use Case</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Basic</strong></td><td>Nothing</td><td>Simple backends, no hardlinks, no FUSE</td></tr>
+<tr><td><strong>Hardlinks</strong></td><td><code>path_to_inode</code></td><td>Backends that support <code>hard_link()</code></td></tr>
+<tr><td><strong>Full FUSE</strong></td><td>All 4 methods</td><td>Maximum FUSE performance</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Level 1: Basic (use defaults)</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VfsBackend for SimpleBackend {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; { ... }
+    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt; { ... }
+    // ... implement 25 path-based methods
+
+    // Inode methods: use defaults (no override needed!)
+    // - path_to_inode: hashes path
+    // - inode_to_path: returns NotSupported
+    // - lookup/metadata_by_inode: fall back to path-based
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 2: Hardlink support</strong></p>
+<p>For <code>hard_link()</code> to work correctly, two paths must return the same inode:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VfsBackend for MemoryBackend {
+    // ... path-based methods ...
+
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        // Look up the node ID in our internal HashMap
+        let node = self.nodes.get(path.as_ref())
+            .ok_or(VfsError::NotFound { path: path.as_ref().into() })?;
+        Ok(node.id)  // Same ID for hardlinked paths!
+    }
+
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt; {
+        // Both paths point to the same node
+        let node_id = self.path_to_inode(&amp;original)?;
+        self.paths.insert(link.as_ref().to_path_buf(), node_id);
+        self.nodes.get_mut(&amp;node_id).unwrap().nlink += 1;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 3: Full FUSE efficiency</strong></p>
+<p>Override all 4 methods for O(1) inode operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VfsBackend for SqliteBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM nodes WHERE path = ?",
+            [path.as_ref().to_string_lossy()],
+            |row| row.get(0),
+        )?;
+        Ok(id as u64)
+    }
+
+    fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        let path: String = self.conn.query_row(
+            "SELECT path FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| row.get(0),
+        )?;
+        Ok(PathBuf::from(path))
+    }
+
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
+            params![parent_inode as i64, name.to_string_lossy()],
+            |row| row.get(0),
+        )?;
+        Ok(id as u64)
+    }
+
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT type, size, created, modified, nlink FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(Metadata { ... }),
+        )
+    }
+}
+
+---
+
+# Core Types (in `anyfs-backend`)
+
+## Constants
+
+```rust
+/// Root directory inode. FUSE convention.
+pub const ROOT_INODE: u64 = 1;
+<span class="boring">}</span></code></pre>
+<h3 id="metadata"><a class="header" href="#metadata">Metadata</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// File or directory metadata.
+pub struct Metadata {
+    /// Inode number (unique identifier for this file/directory).
+    pub inode: u64,
+
+    /// Number of hard links pointing to this inode.
+    pub nlink: u64,
+
+    /// Type: File, Directory, or Symlink.
+    pub file_type: FileType,
+
+    /// Size in bytes (0 for directories).
+    pub size: u64,
+
+    /// Permission bits.
+    pub permissions: Permissions,
+
+    /// Creation time (if supported by backend).
+    pub created: Option&lt;SystemTime&gt;,
+
+    /// Last modification time.
+    pub modified: Option&lt;SystemTime&gt;,
+
+    /// Last access time (if supported by backend).
+    pub accessed: Option&lt;SystemTime&gt;,
+}
+<span class="boring">}</span></code></pre>
+<h3 id="filetype"><a class="header" href="#filetype">FileType</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileType {
+    File,
+    Directory,
+    Symlink,
+}
+<span class="boring">}</span></code></pre>
+<h3 id="direntry"><a class="header" href="#direntry">DirEntry</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Entry in a directory listing.
+pub struct DirEntry {
+    /// File or directory name (not full path).
+    pub name: OsString,
+
+    /// Inode number (avoids extra stat calls).
+    pub inode: u64,
+
+    /// Type: File, Directory, or Symlink.
+    pub file_type: FileType,
+}
+<span class="boring">}</span></code></pre>
+<h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Unix-style permission bits.
+pub struct Permissions {
+    /// Permission mode (e.g., 0o755).
+    pub mode: u32,
+}
+
+impl Permissions {
+    pub fn readonly() -&gt; Self { Permissions { mode: 0o444 } }
+    pub fn default_file() -&gt; Self { Permissions { mode: 0o644 } }
+    pub fn default_dir() -&gt; Self { Permissions { mode: 0o755 } }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="statfs"><a class="header" href="#statfs">StatFs</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Filesystem statistics.
+pub struct StatFs {
+    /// Total size in bytes.
+    pub total_bytes: u64,
+
+    /// Available bytes.
+    pub available_bytes: u64,
+
+    /// Total number of inodes.
+    pub total_inodes: u64,
+
+    /// Available inodes.
+    pub available_inodes: u64,
+
+    /// Filesystem block size.
+    pub block_size: u64,
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -1269,19 +1725,19 @@ let backend = Quota::new(SqliteBackend::open("data.db")?)
 let usage = backend.usage();
 let remaining = backend.remaining();
 <span class="boring">}</span></code></pre>
-<h3 id="featureguard"><a class="header" href="#featureguard">FeatureGuard<b></b></a></h3>
-<p>Enforces least-privilege by disabling features by default.</p>
+<h3 id="restrictions"><a class="header" href="#restrictions">Restrictions<b></b></a></h3>
+<p>Blocks specific operations when needed.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, FeatureGuard};
+</span>use anyfs::{MemoryBackend, Restrictions};
 
-let backend = FeatureGuard::new(MemoryBackend::new())
-    .with_symlinks()                          // Enable symlink operations
-    .with_max_symlink_resolution(40)          // Max symlink hops
-    .with_hard_links()                        // Enable hard links
-    .with_permissions();                      // Enable set_permissions
+// By default, all operations work. Use deny_*() to block specific ones.
+let backend = Restrictions::new(MemoryBackend::new())
+    .deny_symlinks()       // Block symlink() calls
+    .deny_hard_links()     // Block hard_link() calls
+    .deny_permissions();   // Block set_permissions() calls
 <span class="boring">}</span></code></pre>
-<p>When a feature is disabled, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
+<p>When blocked, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
 <h3 id="tracing"><a class="header" href="#tracing">Tracing<b></b></a></h3>
 <p>Integrates with the <a href="https://docs.rs/tracing">tracing</a> ecosystem for structured logging and instrumentation.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1425,7 +1881,7 @@ pub trait Layer&lt;B: VfsBackend&gt; {
 <p>Each middleware provides a corresponding <code>Layer</code> implementation:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// QuotaLayer, TracingLayer, FeatureGuardLayer, etc.
+</span>// QuotaLayer, TracingLayer, RestrictionsLayer, etc.
 pub struct QuotaLayer { /* config */ }
 
 impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for QuotaLayer {
@@ -1441,7 +1897,7 @@ impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for QuotaLayer {
 <h3 id="manual-composition"><a class="header" href="#manual-composition">Manual Composition</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 // Build from inside out:
@@ -1450,10 +1906,11 @@ let backend = SqliteBackend::open("data.db")?;
 let limited = Quota::new(backend)
     .with_max_total_size(100 * 1024 * 1024);
 
-let gated = FeatureGuard::new(limited)
-    .with_symlinks();
+let restricted = Restrictions::new(limited)
+    .deny_hard_links()
+    .deny_permissions();
 
-let traced = Tracing::new(gated);
+let traced = Tracing::new(restricted);
 
 let mut fs = FilesContainer::new(traced);
 <span class="boring">}</span></code></pre>
@@ -1461,11 +1918,11 @@ let mut fs = FilesContainer::new(traced);
 <p>Use the <code>Layer</code> trait for Axum-style composition:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, QuotaLayer, FeatureGuardLayer, TracingLayer};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 
 let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks())
+    .layer(RestrictionsLayer::new().deny_permissions())  // Block set_permissions()
     .layer(TracingLayer::new());
 <span class="boring">}</span></code></pre>
 <h3 id="backendstack-builder"><a class="header" href="#backendstack-builder">BackendStack Builder</a></h3>
@@ -1478,9 +1935,9 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l
         .max_total_size(100 * 1024 * 1024)
         .max_file_size(10 * 1024 * 1024))
-    .feature_gated(|g| g
-        .allow_symlinks()
-        .allow_hard_links())
+    .restricted(|g| g
+        .deny_hard_links()      // Block hard_link() calls
+        .deny_permissions())    // Block set_permissions() calls
     .traced()
     .into_container();
 <span class="boring">}</span></code></pre>
@@ -1510,6 +1967,72 @@ fs.write(Path::new("/file.txt"), data)?;
 fs.write(PathBuf::from("/file.txt"), data)?;
 <span class="boring">}</span></code></pre>
 <hr>
+<h2 id="path-resolution"><a class="header" href="#path-resolution">Path Resolution</a></h2>
+<p>Path resolution (walking directory structure, following symlinks) operates on the <strong><code>VfsBackend</code> abstraction</strong>, not reimplemented per-backend.</p>
+<h3 id="why-abstract-path-resolution"><a class="header" href="#why-abstract-path-resolution">Why Abstract Path Resolution?</a></h3>
+<p>We simulate inodes - that’s the whole point of virtualizing a filesystem. Path resolution must work on that abstraction:</p>
+<ul>
+<li><code>/foo/../bar</code> cannot be resolved lexically - <code>foo</code> might be a symlink to <code>/other/place</code>, making <code>..</code> resolve to <code>/other</code></li>
+<li>Resolution requires following the actual directory structure (inodes)</li>
+<li>The <code>VfsBackend</code> trait has the needed methods: <code>metadata()</code>, <code>read_link()</code>, <code>read_dir()</code></li>
+</ul>
+<h3 id="resolution-utility-in-anyfs"><a class="header" href="#resolution-utility-in-anyfs">Resolution Utility (in <code>anyfs</code>)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Resolve a path, optionally following symlinks.
+/// Works on any VfsBackend.
+pub fn resolve_path(
+    backend: &amp;impl VfsBackend,
+    path: impl AsRef&lt;Path&gt;,
+    follow_symlinks: bool,
+) -&gt; Result&lt;PathBuf, VfsError&gt; {
+    // Walk path component by component
+    // Use backend.metadata() to check node types
+    // Use backend.read_link() to follow symlinks (if enabled)
+    // Detect circular symlinks
+    // Return fully resolved canonical path
+}
+<span class="boring">}</span></code></pre>
+<h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Needs Our Resolution?</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Yes</td><td>Storage (HashMap) has no FS semantics</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Yes</td><td>Storage (SQL tables) has no FS semantics</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>No</td><td>OS handles resolution; <code>strict-path</code> prevents escapes</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="opt-out-mechanism"><a class="header" href="#opt-out-mechanism">Opt-out Mechanism</a></h3>
+<p>Virtual backends need resolution by default. Real filesystem backends opt out:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait VfsBackend: Send {
+    /// Whether this backend needs virtual path resolution.
+    /// Returns `false` for backends where the OS handles resolution.
+    const NEEDS_PATH_RESOLUTION: bool = true;
+
+    // ... existing methods
+}
+
+impl VfsBackend for VRootFsBackend {
+    const NEEDS_PATH_RESOLUTION: bool = false;
+    // ...
+}
+<span class="boring">}</span></code></pre>
+<p><code>FilesContainer</code> (or a dedicated wrapper) applies resolution automatically for backends that need it:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: VfsBackend&gt; FilesContainer&lt;B&gt; {
+    pub fn new(backend: B) -&gt; Self {
+        // Resolution applied automatically if B::NEEDS_PATH_RESOLUTION
+    }
+}
+<span class="boring">}</span></code></pre>
+<hr>
 <h2 id="security-model"><a class="header" href="#security-model">Security Model</a></h2>
 <p>Security is achieved through composition:</p>
 <div class="table-wrapper">
@@ -1521,7 +2044,7 @@ fs.write(PathBuf::from("/file.txt"), data)?;
 <tr><td>Path containment</td><td><code>PathFilter</code> + VRootFsBackend</td></tr>
 <tr><td>Resource exhaustion</td><td><code>Quota</code> enforces quotas</td></tr>
 <tr><td>Rate limiting</td><td><code>RateLimit</code> prevents abuse</td></tr>
-<tr><td>Feature restriction</td><td><code>FeatureGuard</code> disables dangerous features</td></tr>
+<tr><td>Feature restriction</td><td><code>Restrictions</code> disables dangerous features</td></tr>
 <tr><td>Read-only access</td><td><code>ReadOnly</code> prevents writes</td></tr>
 <tr><td>Audit trail</td><td><code>Tracing</code> instruments operations</td></tr>
 <tr><td>Tenant isolation</td><td>Separate backend instances</td></tr>
@@ -1533,7 +2056,7 @@ fs.write(PathBuf::from("/file.txt"), data)?;
 <h3 id="ai-agent-sandbox-example"><a class="header" href="#ai-agent-sandbox-example">AI Agent Sandbox Example</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, FeatureGuard, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Restrictions, Tracing};
 
 // Build a secure sandbox for an AI agent
 let sandbox = MemoryBackend::new()
@@ -1544,7 +2067,7 @@ let sandbox = MemoryBackend::new()
         .allow("/workspace/**")
         .deny("**/.env")
         .deny("**/secrets/**"))
-    .layer(FeatureGuardLayer::new())        // No symlinks, no hardlinks
+    .layer(RestrictionsLayer::new())        // No symlinks, no hardlinks
     .layer(RateLimitLayer::new()
         .max_ops(1000)
         .per_second())
@@ -1648,7 +2171,7 @@ let slice = data.slice(1000..2000);  // Zero-copy!
         limit: u64,
     },
 
-    /// Feature not enabled (from FeatureGuard).
+    /// Feature not enabled (from Restrictions).
     FeatureNotEnabled {
         feature: &amp;'static str,  // "symlinks", "hard_links", "permissions"
         operation: &amp;'static str,
@@ -1699,7 +2222,7 @@ let slice = data.slice(1000..2000);  // Zero-copy!
 │  FilesContainer                         │  ← Ergonomics only
 ├─────────────────────────────────────────┤
 │  Middleware Stack (composable):         │  ← Policy enforcement
-│    Tracing → PathFilter → FeatureGuard  │
+│    Tracing → PathFilter → Restrictions  │
 │    → Quota → Backend                    │
 ├─────────────────────────────────────────┤
 │  VfsBackend                             │  ← Pure storage
@@ -1729,7 +2252,7 @@ let slice = data.slice(1000..2000);  // Zero-copy!
 </span><span class="boring">fn main() {
 </span>// Middleware enforces policy
 let backend = PathFilter::new(
-    FeatureGuard::new(
+    Restrictions::new(
         Quota::new(MemoryBackend::new())
     )
 )
@@ -1784,7 +2307,7 @@ let fs = FilesContainer::new(backend);
 <tr><td>ADR-004</td><td>Tower-style middleware pattern</td><td>Accepted</td></tr>
 <tr><td>ADR-005</td><td><code>std::fs</code>-aligned method names</td><td>Accepted</td></tr>
 <tr><td>ADR-006</td><td>Quota for quota enforcement</td><td>Accepted</td></tr>
-<tr><td>ADR-007</td><td>FeatureGuard for least-privilege</td><td>Accepted</td></tr>
+<tr><td>ADR-007</td><td>Restrictions for least-privilege</td><td>Accepted</td></tr>
 <tr><td>ADR-008</td><td>FilesContainer as thin ergonomic wrapper</td><td>Accepted</td></tr>
 <tr><td>ADR-009</td><td>Built-in backends are feature-gated</td><td>Accepted</td></tr>
 <tr><td>ADR-010</td><td>Sync-first, async-ready design</td><td>Accepted</td></tr>
@@ -1816,7 +2339,7 @@ let fs = FilesContainer::new(backend);
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait, <code>Layer</code> trait, <code>VfsBackendExt</code>, types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware (Quota, FeatureGuard, Tracing)</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware (Quota, Restrictions, Tracing)</td></tr>
 <tr><td><code>anyfs-container</code></td><td>Ergonomic wrapper: <code>FilesContainer&lt;B&gt;</code>, <code>BackendStack</code> builder</td></tr>
 </tbody>
 </table>
@@ -1851,7 +2374,7 @@ let fs = FilesContainer::new(backend);
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let backend = Tracing::new(
-    FeatureGuard::new(
+    Restrictions::new(
         Quota::new(SqliteBackend::open("data.db")?)
     )
 );
@@ -1884,21 +2407,25 @@ let fs = FilesContainer::new(backend);
 <li>Check limits before operations, update usage after successful operations.</li>
 </ul>
 <hr>
-<h2 id="adr-007-featureguard-for-least-privilege"><a class="header" href="#adr-007-featureguard-for-least-privilege">ADR-007: FeatureGuard for least-privilege</a></h2>
-<p><strong>Decision:</strong> Dangerous features (symlinks, hard links, permission mutation) are disabled by default via <code>FeatureGuard&lt;B&gt;</code> middleware.</p>
-<p><strong>Configuration:</strong></p>
+<h2 id="adr-007-restrictions-for-opt-in-restrictions"><a class="header" href="#adr-007-restrictions-for-opt-in-restrictions">ADR-007: Restrictions for opt-in restrictions</a></h2>
+<p><strong>Decision:</strong> By default, all operations work. <code>Restrictions&lt;B&gt;</code> middleware provides opt-in restrictions.</p>
+<p><strong>Default behavior (no Restrictions):</strong></p>
 <ul>
-<li><code>.with_symlinks()</code> - enable symlink creation/following</li>
-<li><code>.with_hard_links()</code> - enable hard link creation</li>
-<li><code>.with_permissions()</code> - enable <code>set_permissions</code></li>
-<li><code>.with_max_symlink_resolution(n)</code> - limit symlink hops (default: 40)</li>
+<li>All operations work: <code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code></li>
 </ul>
-<p>When disabled, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
+<p><strong>Opt-in restrictions:</strong></p>
+<ul>
+<li><code>.deny_symlinks()</code> - block <code>symlink()</code> calls</li>
+<li><code>.deny_hard_links()</code> - block <code>hard_link()</code> calls</li>
+<li><code>.deny_permissions()</code> - block <code>set_permissions()</code> calls</li>
+</ul>
+<p>When blocked, operations return <code>VfsError::FeatureNotEnabled</code>.</p>
+<p><strong>Symlink following:</strong> Controlled separately via <code>set_follow_symlinks(bool)</code> on virtual backends. VRootFsBackend delegates to OS (strict-path prevents escapes).</p>
 <p><strong>Why:</strong></p>
 <ul>
-<li>Reduces attack surface by default.</li>
-<li>Explicit opt-in for dangerous features.</li>
-<li>Separate from backend - works with any backend.</li>
+<li>Simple default: everything works out of the box.</li>
+<li>Security is opt-in via middleware composition.</li>
+<li>Clear separation: Restrictions blocks operations, backend settings control behavior.</li>
 </ul>
 <hr>
 <h2 id="adr-008-filescontainer-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filescontainer-as-thin-ergonomic-wrapper">ADR-008: FilesContainer as thin ergonomic wrapper</a></h2>
@@ -1912,7 +2439,7 @@ let fs = FilesContainer::new(backend);
 <p><strong>What it does NOT do:</strong></p>
 <ul>
 <li>Quota enforcement (use Quota)</li>
-<li>Feature gating (use FeatureGuard)</li>
+<li>Feature gating (use Restrictions)</li>
 <li>Instrumentation (use Tracing)</li>
 <li>Any other policy</li>
 </ul>
@@ -2145,7 +2672,7 @@ VfsError::QuotaExceeded {
 <ul>
 <li>Safe browsing of container contents without modification risk.</li>
 <li>Useful for debugging, inspection, auditing.</li>
-<li>Simpler than configuring FeatureGuard for read-only use case.</li>
+<li>Simpler than configuring Restrictions for read-only use case.</li>
 </ul>
 <hr>
 <h2 id="adr-018-ratelimit-for-operation-throttling"><a class="header" href="#adr-018-ratelimit-for-operation-throttling">ADR-018: RateLimit for operation throttling</a></h2>
@@ -2347,10 +2874,28 @@ pub trait VfsBackend: Send {
     // FILESYSTEM INFO
     // ═══════════════════════════════════════════════════════════════════════
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, VfsError&gt;;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // INODE OPERATIONS (with sensible defaults - override for hardlinks/FUSE)
+    // ═══════════════════════════════════════════════════════════════════════
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        Ok(hash(path.as_ref()))  // Default: hash the path
+    }
+    fn inode_to_path(&amp;self, _inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        Err(VfsError::NotSupported { operation: "inode_to_path" })
+    }
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        let parent = self.inode_to_path(parent_inode)?;
+        self.path_to_inode(parent.join(name))
+    }
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        self.metadata(self.inode_to_path(inode)?)
+    }
 }
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
+<h3 id="path-based-operations"><a class="header" href="#path-based-operations">Path-based Operations</a></h3>
 <ul>
 <li><code>read</code>/<code>write</code>/<code>metadata</code>/<code>exists</code>/<code>copy</code> follow symlinks.</li>
 <li><code>symlink_metadata</code> and <code>read_link</code> do not follow.</li>
@@ -2361,6 +2906,26 @@ pub trait VfsBackend: Send {
 <li><code>fsync</code> flushes pending writes for a specific file.</li>
 <li><code>statfs</code> returns filesystem capacity information.</li>
 </ul>
+<h3 id="inode-operations-defaults-provided"><a class="header" href="#inode-operations-defaults-provided">Inode Operations (defaults provided)</a></h3>
+<p>All inode methods have <strong>sensible defaults</strong>. Override for:</p>
+<ul>
+<li><strong>Hardlinks</strong>: <code>path_to_inode</code> must return same inode for hardlinked paths</li>
+<li><strong>FUSE efficiency</strong>: All 4 methods for O(1) operations</li>
+</ul>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Method</th><th>Default Behavior</th><th>Override When</th></tr>
+</thead>
+<tbody>
+<tr><td><code>path_to_inode</code></td><td>Hashes path</td><td>Hardlink support</td></tr>
+<tr><td><code>inode_to_path</code></td><td>Returns <code>NotSupported</code></td><td>FUSE efficiency</td></tr>
+<tr><td><code>lookup</code></td><td>Falls back to path-based</td><td>FUSE efficiency</td></tr>
+<tr><td><code>metadata_by_inode</code></td><td>Falls back to path-based</td><td>FUSE efficiency</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Convention:</strong> Root directory should return <code>ROOT_INODE</code> (= 1) from <code>path_to_inode("/")</code>.</p>
 <hr>
 <h2 id="what-vfsbackend-does-not-do"><a class="header" href="#what-vfsbackend-does-not-do">What VfsBackend Does NOT Do</a></h2>
 <div class="table-wrapper">
@@ -2370,7 +2935,7 @@ pub trait VfsBackend: Send {
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Audit logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Ergonomic API</td><td><code>FilesContainer&lt;B&gt;</code> wrapper</td></tr>
 </tbody>
@@ -2403,18 +2968,18 @@ use anyfs_container::FilesContainer;
 // Simple: just ergonomics
 let mut fs = FilesContainer::new(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
-<p>With middleware:</p>
+<p>With middleware (layer-based):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
 use anyfs_container::FilesContainer;
 
-// Compose middleware, then wrap in FilesContainer
-let backend = FeatureGuard::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-)
-.with_symlinks();
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::new()
+        .max_total_size(100 * 1024 * 1024))
+    .layer(RestrictionsLayer::new()
+        .deny_hard_links()
+        .deny_permissions());
 
 let mut fs = FilesContainer::new(backend);
 <span class="boring">}</span></code></pre>
@@ -2454,7 +3019,7 @@ let mut fs = FilesContainer::new(backend);
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code></td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code></td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code></td></tr>
 <tr><td>Audit logging</td><td><code>Tracing&lt;B&gt;</code></td></tr>
 <tr><td>Path containment</td><td>Backend-specific (VRootFsBackend)</td></tr>
 </tbody>
@@ -2468,7 +3033,7 @@ let mut fs = FilesContainer::new(backend);
 </span><span class="boring">fn main() {
 </span>let fs = FilesContainer::new(SqliteBackend::open("data.db")?)
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks());
+    .layer(RestrictionsLayer::new().deny_hard_links());  // Block hard_link() calls
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="direct-backend-access"><a class="header" href="#direct-backend-access">Direct Backend Access</a></h2>
@@ -2517,14 +3082,14 @@ fs.write("/data/file.txt", b"hello")?;
 <h3 id="with-middleware-quotas-sandboxing-tracing"><a class="header" href="#with-middleware-quotas-sandboxing-tracing">With middleware (quotas, sandboxing, tracing)</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, FeatureGuard, PathFilter, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, Restrictions, PathFilter, Tracing};
 use anyfs_container::FilesContainer;
 
 let backend = SqliteBackend::open("tenant.db")?;
 
 let stack = Tracing::new(
     PathFilter::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(backend)
                 .with_max_total_size(100 * 1024 * 1024)
         )
@@ -2538,12 +3103,12 @@ let mut fs = FilesContainer::new(stack);
 <h3 id="using-layer-trait-alternative-syntax"><a class="header" href="#using-layer-trait-alternative-syntax">Using Layer trait (alternative syntax)</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, QuotaLayer, FeatureGuardLayer, TracingLayer};
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 use anyfs_container::FilesContainer;
 
 let backend = SqliteBackend::open("tenant.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new())
+    .layer(RestrictionsLayer::new())
     .layer(TracingLayer::new());
 
 let mut fs = FilesContainer::new(backend);
@@ -2635,7 +3200,7 @@ impl&lt;B: VfsBackend&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <tr><td>Middleware pattern</td><td>No</td><td>Yes (Tower-style)</td></tr>
 <tr><td>Quotas/limits</td><td>No</td><td>Yes (Quota middleware)</td></tr>
 <tr><td>Path sandboxing</td><td>Backend-dependent</td><td>Yes (PathFilter middleware)</td></tr>
-<tr><td>Feature gating</td><td>No</td><td>Yes (FeatureGuard middleware)</td></tr>
+<tr><td>Feature gating</td><td>No</td><td>Yes (Restrictions middleware)</td></tr>
 <tr><td>SQLite backend</td><td>No</td><td>Yes (built-in)</td></tr>
 <tr><td>Path containment</td><td>Prefix-based (AltrootFS)</td><td>Canonicalization-based (<code>strict-path</code>)</td></tr>
 <tr><td>Third-party extensibility</td><td>Implement trait</td><td>Implement trait + Layer</td></tr>
@@ -2801,7 +3366,7 @@ fs.write(path, data)?;
 </thead>
 <tbody>
 <tr><td><strong>Path traversal</strong></td><td>Access files outside allowed paths</td><td><code>PathFilter</code></td></tr>
-<tr><td><strong>Symlink attacks</strong></td><td>Use symlinks to bypass controls</td><td><code>FeatureGuard</code> (disabled by default)</td></tr>
+<tr><td><strong>Symlink attacks</strong></td><td>Use symlinks to bypass controls</td><td>Backend-dependent (see below)</td></tr>
 <tr><td><strong>Resource exhaustion</strong></td><td>Fill storage or create excessive files</td><td><code>Quota</code></td></tr>
 <tr><td><strong>Runaway processes</strong></td><td>Excessive operations consuming resources</td><td><code>RateLimit</code></td></tr>
 <tr><td><strong>Unauthorized writes</strong></td><td>Modifications to read-only data</td><td><code>ReadOnly</code></td></tr>
@@ -2829,12 +3394,12 @@ fs.write(path, data)?;
 <p>Security policies are composable middleware layers:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, FeatureGuard, RateLimit, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
 
 let secure_backend = Tracing::new(           // Audit trail
     RateLimit::new(                          // Throttle operations
         PathFilter::new(                     // Sandbox paths
-            FeatureGuard::new(               // Block dangerous features
+            Restrictions::new(               // Block dangerous features
                 Quota::new(MemoryBackend::new())  // Limit resources
                     .with_max_total_size(100 * 1024 * 1024)
             )
@@ -2863,22 +3428,22 @@ let secure_backend = Tracing::new(           // Audit trail
 <li>No rule = denied (deny by default)</li>
 <li><code>read_dir</code> filters denied entries from results</li>
 </ul>
-<h3 id="3-feature-gating-featureguard"><a class="header" href="#3-feature-gating-featureguard">3. Feature Gating (FeatureGuard)</a></h3>
-<p>Dangerous features are disabled by default:</p>
+<h3 id="3-feature-gating-restrictions"><a class="header" href="#3-feature-gating-restrictions">3. Feature Gating (Restrictions)</a></h3>
+<p>By default, all operations work. Use <code>Restrictions</code> middleware to <strong>opt-in to restrictions</strong>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FeatureGuard::new(backend)
-    // Symlinks disabled by default
-    // Hard links disabled by default
-    // Permissions disabled by default
-    .with_symlinks()           // Opt-in if needed
-    .with_max_symlink_resolution(40)
+</span>Restrictions::new(backend)
+    .deny_hard_links()         // Block hard_link() calls
+    .deny_permissions()        // Block set_permissions() calls
+    .deny_symlinks()           // Block symlink() calls
 <span class="boring">}</span></code></pre>
-<p><strong>Guarantees:</strong></p>
+<p><strong>Use cases:</strong></p>
 <ul>
-<li>Symlinks, hard links, permission changes blocked unless enabled</li>
-<li>Symlink resolution depth is bounded</li>
+<li>Sandboxing untrusted code (block permission changes)</li>
+<li>Archive extraction (block symlink/hardlink creation)</li>
+<li>Read-only-ish environments (block permission mutations)</li>
 </ul>
+<p><strong>Note:</strong> This controls operation <strong>availability</strong>. For symlink <strong>following</strong> behavior, see “Symlink Security” below.</p>
 <h3 id="4-resource-limits-quota"><a class="header" href="#4-resource-limits-quota">4. Resource Limits (Quota)</a></h3>
 <p><code>Quota</code> middleware enforces capacity limits:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2938,18 +3503,69 @@ AnyFS virtual backend behavior (safe):
 <li><strong>No host path leakage</strong> - paths never touch the OS path resolver</li>
 </ul>
 <p>For <code>VRootFsBackend</code> (real filesystem), <code>strict-path::VirtualRoot</code> provides equivalent guarantees by validating and containing all paths before they reach the OS.</p>
+<h3 id="8-symlink-security-virtual-vs-real-backends"><a class="header" href="#8-symlink-security-virtual-vs-real-backends">8. Symlink Security: Virtual vs Real Backends</a></h3>
+<p><strong>The security concern with symlinks is <em>following</em> them, not <em>creating</em> them.</strong></p>
+<p>Symlinks are just data. Creating <code>/sandbox/link -&gt; /etc/passwd</code> is harmless. The danger is when reading <code>/sandbox/link</code> follows the symlink and accesses <code>/etc/passwd</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Type</th><th>Symlink Creation</th><th>Symlink Following</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Always supported</td><td><strong>OS controls</strong> - <code>strict-path</code> prevents escapes</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="virtual-backends-memory-sqlite"><a class="header" href="#virtual-backends-memory-sqlite">Virtual Backends (Memory, SQLite)</a></h4>
+<p>Virtual backends always support symlinks. They also provide control over symlink following:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut backend = MemoryBackend::new();
+backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolution
+<span class="boring">}</span></code></pre>
+<p>When following is disabled:</p>
+<ul>
+<li><code>read("/link")</code> on a symlink returns <code>VfsError::IsSymlink</code> (or reads link as opaque data)</li>
+<li>Path resolution treats symlinks as terminal nodes</li>
+</ul>
+<p><strong>This is the actual security feature</strong> - controlling whether symlinks are resolved.</p>
+<h4 id="real-filesystem-backend-vrootfsbackend"><a class="header" href="#real-filesystem-backend-vrootfsbackend">Real Filesystem Backend (VRootFsBackend)</a></h4>
+<p>VRootFsBackend calls OS functions (<code>std::fs::read()</code>, etc.) which follow symlinks automatically. <strong>We cannot control this</strong> - the OS does the symlink resolution, not us.</p>
+<p><code>strict-path::VirtualRoot</code> prevents <strong>escapes</strong>:</p>
+<pre><code>User requests: /sandbox/link
+link -&gt; ../../../etc/passwd
+strict-path: canonicalize(/sandbox/link) = /etc/passwd
+strict-path: /etc/passwd is NOT within /sandbox → DENIED
+</code></pre>
+<p>This is “follow and verify containment” - symlinks are followed by the OS, but escapes are blocked by strict-path.</p>
+<p><strong>Limitation:</strong> Symlinks within the jail are followed. We cannot disable this without implementing custom path resolution (TOCTOU risk) or platform-specific hacks.</p>
+<h4 id="summary-1"><a class="header" href="#summary-1">Summary</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Virtual Backend</th><th>VRootFsBackend</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlink creation</td><td>Always allowed (just data)</td><td>Always allowed (just data)</td></tr>
+<tr><td>Symlink following</td><td><code>set_follow_symlinks(bool)</code></td><td>OS controls (strict-path prevents escapes)</td></tr>
+<tr><td>Jail escape via symlink</td><td><code>set_follow_symlinks(false)</code></td><td>Prevented by strict-path</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="secure-usage-patterns"><a class="header" href="#secure-usage-patterns">Secure Usage Patterns</a></h2>
 <h3 id="ai-agent-sandbox"><a class="header" href="#ai-agent-sandbox">AI Agent Sandbox</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, FeatureGuard, RateLimit, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
 use anyfs_container::FilesContainer;
 
 let sandbox = Tracing::new(
     RateLimit::new(
         PathFilter::new(
-            FeatureGuard::new(
+            Restrictions::new(
                 Quota::new(MemoryBackend::new())
                     .with_max_total_size(50 * 1024 * 1024)
                     .with_max_file_size(5 * 1024 * 1024)
@@ -3000,7 +3616,7 @@ let readonly_fs = FilesContainer::new(
 <ul>
 <li><input disabled="" type="checkbox"> Use <code>PathFilter</code> to sandbox untrusted code</li>
 <li><input disabled="" type="checkbox"> Use <code>Quota</code> to prevent resource exhaustion</li>
-<li><input disabled="" type="checkbox"> Use <code>FeatureGuard</code> (default) to disable dangerous features</li>
+<li><input disabled="" type="checkbox"> Use <code>Restrictions</code> (default) to disable dangerous features</li>
 <li><input disabled="" type="checkbox"> Use <code>RateLimit</code> for untrusted/shared environments</li>
 <li><input disabled="" type="checkbox"> Use <code>Tracing</code> for audit trails</li>
 <li><input disabled="" type="checkbox"> Use separate backends for separate tenants</li>
@@ -3095,13 +3711,13 @@ fs.toolcall_start("tool")?;  // Auditing bundled
 <p>Tower-style middleware + pluggable backends:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, FeatureGuard, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 // Compose middleware stack
 let backend = Tracing::new(
     PathFilter::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("data.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )
@@ -3138,6 +3754,8 @@ let mut fs = FilesContainer::new(backend);
 <tr><td><strong>Tracing/logging</strong></td><td style="text-align: center">Middleware</td><td style="text-align: center">Manual</td><td style="text-align: center">Built-in</td><td style="text-align: center">Middleware</td></tr>
 <tr><td><strong>Streaming I/O</strong></td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td></tr>
 <tr><td><strong>Async API</strong></td><td style="text-align: center">Future</td><td style="text-align: center">Partial</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td></tr>
+<tr><td><strong>POSIX extension</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
+<tr><td><strong>FUSE mountable</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
 <tr><td><strong>KV store</strong></td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td style="text-align: center">No</td></tr>
 </tbody>
 </table>
@@ -3153,7 +3771,7 @@ let mut fs = FilesContainer::new(backend);
 <tbody>
 <tr><td><code>Quota</code></td><td>Writes</td><td>Reject if over limit</td></tr>
 <tr><td><code>PathFilter</code></td><td>All ops</td><td>Block denied paths</td></tr>
-<tr><td><code>FeatureGuard</code></td><td>Symlinks, etc.</td><td>Block disabled features</td></tr>
+<tr><td><code>Restrictions</code></td><td>Configurable operations</td><td>Block via <code>.deny_*()</code> methods</td></tr>
 <tr><td><code>RateLimit</code></td><td>All ops</td><td>Throttle per second</td></tr>
 <tr><td><code>ReadOnly</code></td><td>Writes</td><td>Block all writes</td></tr>
 <tr><td><code>Tracing</code></td><td>All ops</td><td>Log with tracing crate</td></tr>
@@ -3202,13 +3820,113 @@ let mut fs = FilesContainer::new(backend);
 </table>
 </div>
 <hr>
-<h2 id="6-tradeoffs"><a class="header" href="#6-tradeoffs">6. Tradeoffs</a></h2>
+<h2 id="6-deep-dive-vfs-crate-compatibility"><a class="header" href="#6-deep-dive-vfs-crate-compatibility">6. Deep Dive: <code>vfs</code> Crate Compatibility</a></h2>
+<p>The <a href="https://github.com/manuel-woelker/rust-vfs"><code>vfs</code></a> crate is the most similar project. This section details why we don’t adopt their trait and how we’ll provide interop.</p>
+<h3 id="vfsfilesystem-trait-complete"><a class="header" href="#vfsfilesystem-trait-complete"><code>vfs::FileSystem</code> Trait (Complete)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FileSystem: Send + Sync {
+    // Required (9 methods)
+    fn read_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn Iterator&lt;Item = String&gt;&gt;&gt;;
+    fn create_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn open_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndRead&gt;&gt;;
+    fn create_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndWrite&gt;&gt;;
+    fn append_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;Box&lt;dyn SeekAndWrite&gt;&gt;;
+    fn metadata(&amp;self, path: &amp;str) -&gt; VfsResult&lt;VfsMetadata&gt;;
+    fn exists(&amp;self, path: &amp;str) -&gt; VfsResult&lt;bool&gt;;
+    fn remove_file(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn remove_dir(&amp;self, path: &amp;str) -&gt; VfsResult&lt;()&gt;;
+
+    // Optional - default to NotSupported (6 methods)
+    fn set_creation_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn set_modification_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn set_access_time(&amp;self, path: &amp;str, time: SystemTime) -&gt; VfsResult&lt;()&gt;;
+    fn copy_file(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn move_file(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+    fn move_dir(&amp;self, src: &amp;str, dest: &amp;str) -&gt; VfsResult&lt;()&gt;;
+}
+<span class="boring">}</span></code></pre>
+<h3 id="feature-gap-analysis"><a class="header" href="#feature-gap-analysis">Feature Gap Analysis</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th style="text-align: center"><code>vfs</code></th><th style="text-align: center">AnyFS</th><th>Gap</th></tr>
+</thead>
+<tbody>
+<tr><td>Basic read/write</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td>Directory ops</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td>Streaming I/O</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><code>rename</code></td><td style="text-align: center"><code>move_file</code></td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><code>copy</code></td><td style="text-align: center"><code>copy_file</code></td><td style="text-align: center">Yes</td><td>-</td></tr>
+<tr><td><strong>Symlinks</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>Hard links</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>Permissions</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Critical</td></tr>
+<tr><td><strong>truncate</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>sync/fsync</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>statfs</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>read_range</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td><strong>symlink_metadata</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
+<tr><td>Path type</td><td style="text-align: center"><code>&amp;str</code></td><td style="text-align: center"><code>impl AsRef&lt;Path&gt;</code></td><td>Different</td></tr>
+<tr><td>Middleware</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Architectural</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="why-not-adopt-their-trait"><a class="header" href="#why-not-adopt-their-trait">Why Not Adopt Their Trait?</a></h3>
+<ol>
+<li><strong>No symlinks/hardlinks</strong> - Can’t virtualize real filesystem semantics</li>
+<li><strong>No permissions</strong> - Our <code>Restrictions</code> middleware needs <code>set_permissions</code> to gate</li>
+<li><strong>No durability primitives</strong> - No <code>sync</code>/<code>fsync</code> for data integrity</li>
+<li><strong>No middleware pattern</strong> - Their <code>VfsPath</code> bakes in behaviors we want composable</li>
+<li><strong><code>&amp;str</code> paths</strong> - We prefer <code>impl AsRef&lt;Path&gt;</code> for ergonomics</li>
+</ol>
+<p><strong>Our trait is a strict superset.</strong> Everything <code>vfs</code> can do, we can do. The reverse is not true.</p>
+<h3 id="vfs-backends"><a class="header" href="#vfs-backends"><code>vfs</code> Backends</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>vfs Backend</th><th>AnyFS Equivalent</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PhysicalFS</code></td><td><code>VRootFsBackend</code></td><td>Both use real filesystem</td></tr>
+<tr><td><code>MemoryFS</code></td><td><code>MemoryBackend</code></td><td>Both in-memory</td></tr>
+<tr><td><code>OverlayFS</code></td><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Both union filesystems</td></tr>
+<tr><td><code>AltrootFS</code></td><td><code>PathFilter</code> (partial)</td><td>vfs is simpler chroot</td></tr>
+<tr><td><code>EmbeddedFS</code></td><td>(none)</td><td>Read-only embedded assets</td></tr>
+<tr><td>(none)</td><td><code>SqliteBackend</code></td><td>We have SQLite</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="interoperability-plan"><a class="header" href="#interoperability-plan">Interoperability Plan</a></h3>
+<p>Future <code>anyfs-vfs-compat</code> crate provides bidirectional adapters:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs_vfs_compat::{VfsCompat, AnyFsCompat};
+
+// Use a vfs backend in AnyFS
+// Missing features return VfsError::NotSupported
+let backend = VfsCompat::new(vfs::MemoryFS::new());
+let fs = FilesContainer::new(backend);
+
+// Use an AnyFS backend in vfs-based code
+// Only exposes what vfs supports
+let anyfs_backend = MemoryBackend::new();
+let vfs_fs: Box&lt;dyn vfs::FileSystem&gt; = Box::new(AnyFsCompat::new(anyfs_backend));
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Migrate from <code>vfs</code> to AnyFS incrementally</li>
+<li>Use <code>vfs::EmbeddedFS</code> in AnyFS (read-only embedded assets)</li>
+<li>Use AnyFS backends in projects depending on <code>vfs</code></li>
+</ul>
+<hr>
+<h2 id="7-tradeoffs"><a class="header" href="#7-tradeoffs">7. Tradeoffs</a></h2>
 <h3 id="anyfs-advantages"><a class="header" href="#anyfs-advantages">AnyFS Advantages</a></h3>
 <ul>
 <li>Composable middleware pattern</li>
 <li>Backend-agnostic</li>
 <li>Third-party extensibility</li>
 <li>Clean separation of concerns</li>
+<li>Full filesystem semantics (symlinks, permissions, durability)</li>
 </ul>
 <h3 id="anyfs-limitations"><a class="header" href="#anyfs-limitations">AnyFS Limitations</a></h3>
 <ul>
@@ -3306,12 +4024,12 @@ let mut fs = FilesContainer::new(backend);
 <p>The middleware pattern (like Tower/Axum) enables composition:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, FeatureGuard, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 let backend = Tracing::new(
     PathFilter::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("tenant.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )
@@ -3441,7 +4159,21 @@ pub enum VfsError {
 <h2 id="phase-1-anyfs-backend-core-contract"><a class="header" href="#phase-1-anyfs-backend-core-contract">Phase 1: <code>anyfs-backend</code> (core contract)</a></h2>
 <p><strong>Goal:</strong> Define the stable backend interface and composition traits.</p>
 <ul>
-<li>Define <code>VfsBackend</code> trait (25 <code>std::fs</code>-aligned methods)</li>
+<li>Define <code>VfsBackend</code> trait (29 methods)
+<ul>
+<li>25 <code>std::fs</code>-aligned path-based methods (required)</li>
+<li>4 inode methods with sensible defaults (override for hardlinks/FUSE):
+<ul>
+<li><code>path_to_inode(path)</code> - default: hash path</li>
+<li><code>inode_to_path(inode)</code> - default: NotSupported</li>
+<li><code>lookup(parent_inode, name)</code> - default: path-based fallback</li>
+<li><code>metadata_by_inode(inode)</code> - default: path-based fallback</li>
+</ul>
+</li>
+<li>Include <code>const NEEDS_PATH_RESOLUTION: bool = true</code> (opt-out for real FS backends)</li>
+<li>Define <code>ROOT_INODE = 1</code> constant</li>
+</ul>
+</li>
 <li>Define <code>Layer</code> trait (Tower-style middleware composition)</li>
 <li>Define <code>VfsBackendExt</code> trait (extension methods)</li>
 <li>Define core types (<code>Metadata</code>, <code>Permissions</code>, <code>FileType</code>, <code>DirEntry</code>, <code>StatFs</code>)</li>
@@ -3451,16 +4183,46 @@ pub enum VfsError {
 <hr>
 <h2 id="phase-2-anyfs-backends--middleware"><a class="header" href="#phase-2-anyfs-backends--middleware">Phase 2: <code>anyfs</code> (backends + middleware)</a></h2>
 <p><strong>Goal:</strong> Provide reference backends and core middleware.</p>
+<h3 id="path-resolution-utility"><a class="header" href="#path-resolution-utility">Path Resolution Utility</a></h3>
+<ul>
+<li><code>resolve_path(backend, path, follow_symlinks)</code> - works on any <code>VfsBackend</code>
+<ul>
+<li>Walks path component by component using <code>metadata()</code> and <code>read_link()</code></li>
+<li>Handles <code>..</code> correctly (requires knowing what each component resolves to)</li>
+<li>Detects circular symlinks (max depth or visited set)</li>
+<li>Returns canonical resolved path</li>
+</ul>
+</li>
+<li>Applied automatically by <code>FilesContainer</code> when <code>B::NEEDS_PATH_RESOLUTION == true</code></li>
+</ul>
 <h3 id="backends-feature-gated"><a class="header" href="#backends-feature-gated">Backends (feature-gated)</a></h3>
 <ul>
-<li><code>memory</code> (default): <code>MemoryBackend</code></li>
-<li><code>sqlite</code> (optional): <code>SqliteBackend</code></li>
-<li><code>vrootfs</code> (optional): <code>VRootFsBackend</code> using <code>strict-path</code> for containment</li>
+<li><code>memory</code> (default): <code>MemoryBackend</code>
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = true</code> (uses path resolution utility)</li>
+<li>Inode source: internal node IDs (incrementing counter)</li>
+<li><code>set_follow_symlinks(bool)</code> - control symlink resolution</li>
+</ul>
+</li>
+<li><code>sqlite</code> (optional): <code>SqliteBackend</code>
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = true</code> (uses path resolution utility)</li>
+<li>Inode source: SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</li>
+<li><code>set_follow_symlinks(bool)</code> - control symlink resolution</li>
+</ul>
+</li>
+<li><code>vrootfs</code> (optional): <code>VRootFsBackend</code> using <code>strict-path</code> for containment
+<ul>
+<li><code>NEEDS_PATH_RESOLUTION = false</code> (OS handles resolution)</li>
+<li>Inode source: OS inode numbers (<code>std::fs::Metadata::ino()</code>)</li>
+<li><code>strict-path</code> prevents symlink escapes</li>
+</ul>
+</li>
 </ul>
 <h3 id="middleware-2"><a class="header" href="#middleware-2">Middleware</a></h3>
 <ul>
 <li><code>Quota&lt;B&gt;</code> + <code>QuotaLayer</code> - Resource limits</li>
-<li><code>FeatureGuard&lt;B&gt;</code> + <code>FeatureGuardLayer</code> - Feature whitelist</li>
+<li><code>Restrictions&lt;B&gt;</code> + <code>RestrictionsLayer</code> - Opt-in restrictions (<code>.deny_symlinks()</code>, <code>.deny_hard_links()</code>, etc.)</li>
 <li><code>PathFilter&lt;B&gt;</code> + <code>PathFilterLayer</code> - Path-based access control</li>
 <li><code>ReadOnly&lt;B&gt;</code> + <code>ReadOnlyLayer</code> - Block writes</li>
 <li><code>RateLimit&lt;B&gt;</code> + <code>RateLimitLayer</code> - Operation throttling</li>
@@ -3493,10 +4255,20 @@ pub enum VfsError {
 <li>Streaming I/O (<code>open_read</code>, <code>open_write</code>)</li>
 <li><code>truncate</code>, <code>sync</code>, <code>fsync</code>, <code>statfs</code></li>
 </ul>
+<h4 id="path-resolution-tests-virtual-backends-only"><a class="header" href="#path-resolution-tests-virtual-backends-only">Path Resolution Tests (virtual backends only)</a></h4>
+<ul>
+<li><code>/foo/../bar</code> resolves correctly when <code>foo</code> is a regular directory</li>
+<li><code>/foo/../bar</code> resolves correctly when <code>foo</code> is a symlink (follows symlink, then <code>..</code>)</li>
+<li>Symlink chains resolve correctly (A → B → C → target)</li>
+<li>Circular symlink detection (A → B → A returns error, not infinite loop)</li>
+<li>Max symlink depth enforced (prevent deep chains)</li>
+<li><code>set_follow_symlinks(true)</code>: reading symlink follows to target</li>
+<li><code>set_follow_symlinks(false)</code>: reading symlink returns symlink metadata, not target</li>
+</ul>
 <h4 id="path-edge-cases-learned-from-vfs-issues"><a class="header" href="#path-edge-cases-learned-from-vfs-issues">Path Edge Cases (learned from <code>vfs</code> issues)</a></h4>
 <ul>
-<li><code>/foo/../bar</code> normalizes to <code>/bar</code></li>
 <li><code>//double//slashes//</code> normalizes correctly</li>
+<li>Note: <code>/foo/../bar</code> requires resolution (see above), not simple normalization</li>
 <li>Trailing slashes handled consistently</li>
 <li>Empty path returns error (not panic)</li>
 <li>Root path <code>/</code> works correctly</li>
@@ -3528,7 +4300,7 @@ pub enum VfsError {
 <h3 id="middleware-tests"><a class="header" href="#middleware-tests">Middleware tests</a></h3>
 <ul>
 <li><code>Quota</code>: Limit enforcement, usage tracking, streaming writes</li>
-<li><code>FeatureGuard</code>: Feature blocking, error messages</li>
+<li><code>Restrictions</code>: Operation blocking via <code>.deny_*()</code> methods, error messages</li>
 <li><code>PathFilter</code>: Glob pattern matching, deny-by-default</li>
 <li><code>RateLimit</code>: Throttling behavior, burst handling</li>
 <li><code>ReadOnly</code>: All write operations blocked</li>
@@ -3616,12 +4388,176 @@ strategy:
 <ul>
 <li>Async API (<code>AsyncVfsBackend</code> trait)</li>
 <li>Import/export helpers (host path &lt;-&gt; container)</li>
-<li>Extended attributes</li>
 <li>Encryption middleware</li>
 <li>Compression middleware</li>
-<li><code>vfs</code> crate compatibility adapter</li>
 <li><code>no_std</code> support (learned from <code>vfs</code> #38)</li>
 <li>Batch operations for performance (learned from <code>agentfs</code> #130)</li>
+</ul>
+<h3 id="vfsbackendposixext---optional-posix-semantics"><a class="header" href="#vfsbackendposixext---optional-posix-semantics"><code>VfsBackendPosixExt</code> - Optional POSIX Semantics</a></h3>
+<p>Optional trait extension for backends that can support POSIX-like semantics.</p>
+<p><strong>Why optional?</strong> The core <code>VfsBackend</code> is path-based (25 methods), covering 90% of use cases. Full POSIX (41+ methods) adds complexity not all backends can support.</p>
+<p><strong>What it adds:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait VfsBackendPosixExt: VfsBackend {
+    // File handle operations (stateful)
+    fn open(&amp;mut self, path: impl AsRef&lt;Path&gt;, flags: OpenFlags) -&gt; Result&lt;Handle, VfsError&gt;;
+    fn read_handle(&amp;self, handle: Handle, buf: &amp;mut [u8]) -&gt; Result&lt;usize, VfsError&gt;;
+    fn write_handle(&amp;mut self, handle: Handle, data: &amp;[u8]) -&gt; Result&lt;usize, VfsError&gt;;
+    fn seek(&amp;mut self, handle: Handle, pos: SeekFrom) -&gt; Result&lt;u64, VfsError&gt;;
+    fn close(&amp;mut self, handle: Handle) -&gt; Result&lt;(), VfsError&gt;;
+
+    // File locking
+    fn lock(&amp;mut self, handle: Handle, lock: LockType) -&gt; Result&lt;(), VfsError&gt;;
+    fn try_lock(&amp;mut self, handle: Handle, lock: LockType) -&gt; Result&lt;bool, VfsError&gt;;
+    fn unlock(&amp;mut self, handle: Handle) -&gt; Result&lt;(), VfsError&gt;;
+
+    // Extended attributes
+    fn get_xattr(&amp;self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt;;
+    fn set_xattr(&amp;mut self, path: impl AsRef&lt;Path&gt;, name: &amp;str, value: &amp;[u8]) -&gt; Result&lt;(), VfsError&gt;;
+    fn remove_xattr(&amp;mut self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;(), VfsError&gt;;
+    fn list_xattr(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;String&gt;, VfsError&gt;;
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Applications requiring file handles (seek, partial read/write)</li>
+<li>Concurrent access with file locking</li>
+<li>Storing metadata in extended attributes</li>
+</ul>
+<h3 id="anyfs-fuse---mount-as-real-filesystem"><a class="header" href="#anyfs-fuse---mount-as-real-filesystem"><code>anyfs-fuse</code> - Mount as Real Filesystem</a></h3>
+<p>Adapter to expose any <code>VfsBackend</code> as a FUSE mount point.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// RAM drive with 1GB quota
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
+
+let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
+
+// Now it's a real mount point:
+// $ df -h /mnt/ramdisk
+// $ cp large_file.bin /mnt/ramdisk/  # fast!
+// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
+<span class="boring">}</span></code></pre>
+<p><strong>Cross-Platform Support:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Platform</th><th>FUSE Provider</th><th>Rust Crate</th><th>User Must Install</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux</td><td>Native kernel</td><td><code>fuser</code></td><td><code>fuse3</code> package</td></tr>
+<tr><td>macOS</td><td>macFUSE</td><td><code>fuser</code></td><td><a href="https://osxfuse.github.io/">macFUSE</a></td></tr>
+<tr><td>FreeBSD</td><td>Native</td><td><code>fuser</code></td><td>(built-in)</td></tr>
+<tr><td>Windows</td><td>WinFsp</td><td><code>winfsp-rs</code></td><td><a href="https://winfsp.dev/">WinFsp</a></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>anyfs-fuse</code> provides a unified API across platforms:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: VfsBackend&gt; FuseMount&lt;B&gt; {
+    #[cfg(unix)]
+    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
+        // Uses fuser crate
+    }
+
+    #[cfg(windows)]
+    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
+        // Uses winfsp-rs crate
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Creative Use Cases:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Stack</th><th>What You Get</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>RAM drive</td></tr>
+<tr><td><code>MemoryBackend</code> + <code>Quota</code></td><td>RAM drive with size limit</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Single-file portable drive</td></tr>
+<tr><td><code>Overlay&lt;SqliteBackend, MemoryBackend&gt;</code></td><td>Persistent base + RAM scratch layer</td></tr>
+<tr><td><code>Cache&lt;SqliteBackend&gt;</code></td><td>SQLite with RAM read cache</td></tr>
+<tr><td><code>Tracing&lt;MemoryBackend&gt;</code></td><td>RAM drive with full audit log</td></tr>
+<tr><td><code>ReadOnly&lt;SqliteBackend&gt;</code></td><td>Immutable snapshot mount</td></tr>
+<tr><td><code>Encryption&lt;SqliteBackend&gt;</code></td><td>Encrypted portable drive</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example: AI Agent Sandbox</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Sandboxed workspace mounted as real filesystem
+let sandbox = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/**")
+            .deny("**/..*"))           // No hidden files
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks())           // No symlink escapes
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)),
+    "/mnt/agent-workspace"
+)?;
+
+// Agent's tools can now use standard filesystem APIs
+// All operations are sandboxed, logged, and quota-limited
+<span class="boring">}</span></code></pre>
+<p><strong>Architecture:</strong></p>
+<pre><code>┌────────────────────────────────────────────────┐
+│  /mnt/myfs (FUSE mount point)                  │
+├────────────────────────────────────────────────┤
+│  anyfs-fuse                                    │
+│    - Linux/macOS/BSD: fuser                    │
+│    - Windows: winfsp-rs                        │
+├────────────────────────────────────────────────┤
+│  VfsBackendPosixExt (optional, for locks/xattr)│
+├────────────────────────────────────────────────┤
+│  Middleware stack (Quota, PathFilter, etc.)    │
+├────────────────────────────────────────────────┤
+│  VfsBackend (Memory, SQLite, etc.)             │
+└────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Backend should implement <code>VfsBackendPosixExt</code> for full functionality</li>
+<li>Falls back gracefully for backends without POSIX extension</li>
+<li>Platform-specific FUSE provider must be installed</li>
+</ul>
+<h3 id="anyfs-vfs-compat---interop-with-vfs-crate"><a class="header" href="#anyfs-vfs-compat---interop-with-vfs-crate"><code>anyfs-vfs-compat</code> - Interop with <code>vfs</code> crate</a></h3>
+<p>Adapter crate for bidirectional compatibility with the <a href="https://github.com/manuel-woelker/rust-vfs"><code>vfs</code></a> crate ecosystem.</p>
+<p><strong>Why not adopt their trait?</strong> The <code>vfs::FileSystem</code> trait is too limited:</p>
+<ul>
+<li>No symlinks, hard links, or permissions</li>
+<li>No <code>sync</code>/<code>fsync</code> for durability</li>
+<li>No <code>truncate</code>, <code>statfs</code>, or <code>read_range</code></li>
+<li>No middleware composition pattern</li>
+</ul>
+<p><strong>Our trait is a superset</strong> - we support everything they do, plus more.</p>
+<p><strong>Adapters:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Wrap a vfs::FileSystem to use as AnyFS backend
+// Missing features (symlinks, permissions, etc.) return VfsError::NotSupported
+pub struct VfsCompat&lt;F: vfs::FileSystem&gt;(F);
+impl&lt;F: vfs::FileSystem&gt; VfsBackend for VfsCompat&lt;F&gt; { ... }
+
+// Wrap an AnyFS backend to use as vfs::FileSystem
+// Only exposes the subset that vfs supports
+pub struct AnyFsCompat&lt;B: VfsBackend&gt;(B);
+impl&lt;B: VfsBackend&gt; vfs::FileSystem for AnyFsCompat&lt;B&gt; { ... }
+<span class="boring">}</span></code></pre>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Migrate from <code>vfs</code> to AnyFS incrementally</li>
+<li>Use existing <code>vfs</code> backends (EmbeddedFS) in AnyFS</li>
+<li>Use AnyFS backends in projects that depend on <code>vfs</code></li>
 </ul>
 <hr>
 <h2 id="lessons-learned-reference"><a class="header" href="#lessons-learned-reference">Lessons Learned (Reference)</a></h2>
@@ -3818,6 +4754,121 @@ fn fsync(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsErr
     max_name_len: 255,
 }
 <span class="boring">}</span></code></pre>
+<h3 id="step-9-inode-operations-optional-overrides"><a class="header" href="#step-9-inode-operations-optional-overrides">Step 9: Inode Operations (optional overrides)</a></h3>
+<p>Inode methods have <strong>sensible defaults</strong>. You only need to override them for:</p>
+<ul>
+<li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
+<li><strong>FUSE efficiency</strong>: Direct inode operations without path lookup</li>
+</ul>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Default implementations (you get these for free):
+fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+    Ok(hash(path.as_ref()))  // Hashes the path
+}
+
+fn inode_to_path(&amp;self, _inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+    Err(VfsError::NotSupported { operation: "inode_to_path" })
+}
+
+fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+    let parent = self.inode_to_path(parent_inode)?;
+    self.path_to_inode(parent.join(name))
+}
+
+fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+    self.metadata(self.inode_to_path(inode)?)
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 1: Simple backend (use defaults)</strong></p>
+<p>Don’t override anything. Hardlinks won’t work correctly, but basic operations will.</p>
+<p><strong>Level 2: Hardlink support</strong></p>
+<p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Node {
+    id: u64,          // Unique node ID (the inode)
+    nlink: u64,       // Hard link count
+    content: Vec&lt;u8&gt;,
+    // ...
+}
+
+struct MemoryBackend {
+    next_id: u64,
+    nodes: HashMap&lt;u64, Node&gt;,           // inode -&gt; Node
+    paths: HashMap&lt;PathBuf, u64&gt;,        // path -&gt; inode
+}
+
+impl VfsBackend for MemoryBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        self.paths.get(path.as_ref())
+            .copied()
+            .ok_or_else(|| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt; {
+        let inode = self.path_to_inode(&amp;original)?;
+        self.paths.insert(link.as_ref().to_path_buf(), inode);
+        self.nodes.get_mut(&amp;inode).unwrap().nlink += 1;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 3: Full FUSE efficiency</strong></p>
+<p>Override all 4 methods for O(1) inode operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VfsBackend for SqliteBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE path = ?",
+            [path.as_ref().to_string_lossy()],
+            |row| Ok(row.get::&lt;_, i64&gt;(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT path FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(PathBuf::from(row.get::&lt;_, String&gt;(0)?)),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
+            params![parent_inode as i64, name.to_string_lossy()],
+            |row| Ok(row.get::&lt;_, i64&gt;(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: name.into() })
+    }
+
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT type, size, nlink, created, modified FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(Metadata {
+                inode,
+                nlink: row.get(2)?,
+                // ...
+            }),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Summary:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Your Backend</th><th>Override</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Simple (no hardlinks)</td><td>Nothing</td><td>Works with defaults</td></tr>
+<tr><td>With hardlinks</td><td><code>path_to_inode</code></td><td>Hardlinks work correctly</td></tr>
+<tr><td>FUSE-optimized</td><td>All 4 methods</td><td>Maximum performance</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="error-handling-2"><a class="header" href="#error-handling-2">Error Handling</a></h2>
 <p>Return appropriate <code>VfsError</code> variants:</p>
@@ -3845,7 +4896,7 @@ fn fsync(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsErr
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Ergonomic API</td><td><code>FilesContainer&lt;B&gt;</code> wrapper</td></tr>
 </tbody>
@@ -4334,7 +5385,7 @@ fn test_path_with_dotdot() {
 <p><strong>Analysis of issues from <code>vfs</code> and <code>agentfs</code> to inform AnyFS design.</strong></p>
 <p>This chapter documents problems encountered by similar projects and how AnyFS addresses them. These lessons are incorporated into our <a href="#implementation-plan">Implementation Plan</a> and <a href="#backend-implementers-guide">Backend Guide</a>.</p>
 <hr>
-<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -4501,7 +5552,7 @@ let entry = self.entries.get(&amp;path)
 <p><strong>Root cause:</strong> Symlinks are complex and were deferred indefinitely.</p>
 <h3 id="anyfs-response-4"><a class="header" href="#anyfs-response-4">AnyFS Response</a></h3>
 <ul>
-<li><strong>Symlinks are opt-in</strong> via <code>FeatureGuard</code> middleware</li>
+<li><strong>Symlinks are opt-in</strong> via <code>Restrictions</code> middleware</li>
 <li><strong>Default deny is correct</strong> - most use cases don’t need symlinks</li>
 <li><strong>When enabled, bound resolution depth</strong> (default: 40 hops)</li>
 <li><strong><code>strict-path</code> prevents symlink escapes</strong> in <code>VRootFsBackend</code></li>
@@ -4710,7 +5761,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No middleware pattern</td><td>Tower-style composable middleware</td></tr>
 <tr><td>No quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Symlink complexity</td><td><code>FeatureGuard&lt;B&gt;</code> (opt-in)</td></tr>
+<tr><td>Symlink complexity</td><td><code>Restrictions&lt;B&gt;</code> (opt-in)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
 <tr><td>FUSE complexity</td><td>Pure library, no mount</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>
@@ -4854,7 +5905,7 @@ pub struct Capabilities {
 <ul>
 <li>For virtual backends: We control symlink following</li>
 <li>For VRootFsBackend: Rely on <code>strict-path</code> to prevent escapes</li>
-<li>Document that <code>FeatureGuard</code> symlink control only applies to virtual backends</li>
+<li>Document that <code>Restrictions</code> symlink control only applies to virtual backends</li>
 </ul>
 <div class="table-wrapper">
 <table>
@@ -4911,49 +5962,49 @@ strict-path: canonicalize(/root/link) = /escape
 strict-path: /escape is NOT within /root → DENIED
 </code></pre>
 <p>This is secure against escape, but it’s “follow and check” not “don’t follow”.</p>
-<h3 id="recommendation-1"><a class="header" href="#recommendation-1">Recommendation</a></h3>
-<p><strong>For v1, we should:</strong></p>
+<h3 id="v1-decision-accept-the-limitation"><a class="header" href="#v1-decision-accept-the-limitation">v1 Decision: Accept the Limitation</a></h3>
+<p>The design is straightforward:</p>
 <ol>
 <li>
-<p><strong>Remove the misleading “allow symlinks” feature from FeatureGuard</strong> - it doesn’t mean what we thought</p>
+<p><strong>Virtual backends always support symlinks</strong> - creating symlinks is just storing data.</p>
 </li>
 <li>
-<p><strong>Document the real situation:</strong></p>
-<ul>
-<li>Virtual backends: We control symlink resolution</li>
-<li>VRootFsBackend: OS controls symlink resolution, <code>strict-path</code> prevents escapes</li>
-</ul>
+<p><strong>Virtual backends provide <code>set_follow_symlinks(bool)</code></strong> - the actual security control:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut backend = MemoryBackend::new();
+backend.set_follow_symlinks(false);  // Symlinks not resolved during path operations
+<span class="boring">}</span></code></pre>
 </li>
 <li>
-<p><strong>For archive extraction safety:</strong></p>
-<ul>
-<li>Virtual backends: Can add a <code>follow_symlinks: bool</code> option to path resolution</li>
-<li>VRootFsBackend: <code>strict-path</code> provides escape protection (different model)</li>
-</ul>
+<p><strong>VRootFsBackend cannot control symlink following</strong> - the OS handles resolution. <code>strict-path</code> prevents escapes but cannot disable following entirely.</p>
 </li>
 <li>
-<p><strong>Consider for future:</strong></p>
-<ul>
-<li>Option 2 (two traits) if the abstraction mismatch becomes painful</li>
-<li>Option 3 (capabilities) for gradual feature discovery</li>
-</ul>
+<p><strong>Everything works by default</strong> - all operations (<code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code>) work out of the box. Use <code>Restrictions</code> middleware to opt-in to restrictions when needed.</p>
 </li>
 </ol>
-<h3 id="questions-for-discussion"><a class="header" href="#questions-for-discussion">Questions for Discussion</a></h3>
-<ol>
-<li>
-<p><strong>Is the two-trait approach worth the complexity?</strong> Would it actually help users, or just confuse them?</p>
-</li>
-<li>
-<p><strong>Should VRootFsBackend implement custom path resolution?</strong> The TOCTOU and complexity costs are real.</p>
-</li>
-<li>
-<p><strong>Is escape prevention (strict-path) sufficient?</strong> Or do users need “no symlink following at all”?</p>
-</li>
-<li>
-<p><strong>Should we rename <code>FeatureGuard</code>?</strong> Current name implies features we can’t reliably provide.</p>
-</li>
-</ol>
+<h3 id="summary-3"><a class="header" href="#summary-3">Summary</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Virtual Backends</th><th>VRootFsBackend</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlink creation</td><td>Always allowed (just data)</td><td>Always allowed (just data)</td></tr>
+<tr><td>Symlink following</td><td><code>set_follow_symlinks(bool)</code></td><td>OS controls (strict-path prevents escapes)</td></tr>
+<tr><td>Jail escape protection</td><td><code>set_follow_symlinks(false)</code></td><td>strict-path containment</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="why-vrootfsbackend-cannot-control-symlink-following"><a class="header" href="#why-vrootfsbackend-cannot-control-symlink-following">Why VRootFsBackend Cannot Control Symlink Following</a></h3>
+<p>VRootFsBackend calls OS functions (<code>std::fs::read()</code>, etc.) which follow symlinks automatically. We don’t implement path resolution - the OS does.</p>
+<p><strong>Theoretical alternatives (not recommended):</strong></p>
+<ul>
+<li>Walk path manually before each operation → TOCTOU race condition</li>
+<li>Use <code>O_NOFOLLOW</code> flags → Only affects final component, platform-specific</li>
+<li>FUSE mount → Way too complex for a library</li>
+</ul>
+<p><strong>The honest answer:</strong> VRootFsBackend cannot disable symlink following. <code>strict-path</code> prevents escapes, but symlinks within the jail are followed by the OS. This is a fundamental limitation of wrapping a real filesystem.</p>
 <hr>
 <h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
 <p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (VRootFsBackend)?</p>
@@ -5180,14 +6231,14 @@ strict-path: /escape is NOT within /root → DENIED
 <li>No breaking changes to existing sync API</li>
 </ul>
 <hr>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
+<h2 id="summary-1-1"><a class="header" href="#summary-1-1">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Topic</th><th>v1 Decision</th></tr>
 </thead>
 <tbody>
-<tr><td>Symlink security</td><td><strong>NEEDS REDESIGN</strong> - see discussion above</td></tr>
+<tr><td>Symlink security</td><td>Virtual backends: <code>set_follow_symlinks()</code>. VRootFsBackend: <code>strict-path</code> escapes only.</td></tr>
 <tr><td>Path resolution</td><td>Virtual = lexical; VRootFs = OS</td></tr>
 <tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
 <tr><td>Hooks/callbacks</td><td>Defer to v2</td></tr>

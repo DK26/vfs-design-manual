@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -267,12 +267,12 @@
 <p>The middleware pattern (like Tower/Axum) enables composition:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, FeatureGuard, Tracing};
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
 use anyfs_container::FilesContainer;
 
 let backend = Tracing::new(
     PathFilter::new(
-        FeatureGuard::new(
+        Restrictions::new(
             Quota::new(SqliteBackend::open("tenant.db")?)
                 .with_max_total_size(100 * 1024 * 1024)
         )

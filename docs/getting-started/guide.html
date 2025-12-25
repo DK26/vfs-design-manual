@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -230,33 +230,37 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h3 id="with-feature-guards"><a class="header" href="#with-feature-guards">With Feature Guards</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, FeatureGuard};
+<h3 id="with-restrictions"><a class="header" href="#with-restrictions">With Restrictions</a></h3>
+<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, Restrictions};
 use anyfs_container::FilesContainer;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    let backend = FeatureGuard::new(MemoryBackend::new())
-        .with_symlinks()      // Enable symlinks
-        .with_hard_links();   // Enable hard links
+    // Block specific operations for untrusted code
+    let backend = Restrictions::new(MemoryBackend::new())
+        .deny_hard_links()    // Block hard_link() calls
+        .deny_permissions();  // Block set_permissions() calls
 
     let mut fs = FilesContainer::new(backend);
 
+    // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
     fs.symlink("/original.txt", "/shortcut")?;
 
     Ok(())
 }</code></pre>
-<h3 id="full-stack-limits--feature-gates"><a class="header" href="#full-stack-limits--feature-gates">Full Stack (Limits + Feature Gates)</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, Quota, FeatureGuard};
+<h3 id="full-stack-layer-based"><a class="header" href="#full-stack-layer-based">Full Stack (Layer-based)</a></h3>
+<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 use anyfs_container::FilesContainer;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Compose: storage -&gt; limits -&gt; feature gates
-    let backend = FeatureGuard::new(
-        Quota::new(SqliteBackend::open_or_create("data.db")?)
-            .with_max_total_size(100 * 1024 * 1024)
-    )
-    .with_symlinks();
+    let backend = SqliteBackend::open_or_create("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
+        .layer(TracingLayer::new());
 
     let mut fs = FilesContainer::new(backend);
 
@@ -335,19 +339,18 @@ if !remaining.can_write {
     println!("Storage full!");
 }
 <span class="boring">}</span></code></pre>
-<h3 id="featureguard--security"><a class="header" href="#featureguard--security">FeatureGuard — Security</a></h3>
+<h3 id="restrictions--block-operations"><a class="header" href="#restrictions--block-operations">Restrictions — Block Operations</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, FeatureGuard};
+</span>use anyfs::{MemoryBackend, Restrictions};
 
-// All features disabled by default
-let backend = FeatureGuard::new(MemoryBackend::new())
-    .with_symlinks()                  // Enable symlink operations
-    .with_max_symlink_resolution(40)  // Max hops (default: 40)
-    .with_hard_links()                // Enable hard links
-    .with_permissions();              // Enable set_permissions
+// By default, all operations work. Use deny_*() to block specific ones.
+let backend = Restrictions::new(MemoryBackend::new())
+    .deny_symlinks()      // Block symlink() calls
+    .deny_hard_links()    // Block hard_link() calls
+    .deny_permissions();  // Block set_permissions() calls
 
-// Disabled operations return VfsError::FeatureNotEnabled
+// Blocked operations return VfsError::FeatureNotEnabled
 <span class="boring">}</span></code></pre>
 <h3 id="tracing--instrumentation"><a class="header" href="#tracing--instrumentation">Tracing — Instrumentation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -430,22 +433,154 @@ fn test_quota_exceeded() {
 </span>// Minimal: just storage
 let fs = FilesContainer::new(MemoryBackend::new());
 
-// With limits
+// With limits (layer-based)
 let fs = FilesContainer::new(
-    Quota::new(MemoryBackend::new())
-        .with_max_total_size(100 * 1024 * 1024)
+    MemoryBackend::new()
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
 );
 
-// Full security
+// Sandboxed (layer-based)
 let fs = FilesContainer::new(
-    FeatureGuard::new(
-        Quota::new(SqliteBackend::open("data.db")?)
-    )
-    .with_symlinks()
+    SqliteBackend::open("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
 );
 <span class="boring">}</span></code></pre>
 <h3 id="3-handle-errors-gracefully"><a class="header" href="#3-handle-errors-gracefully">3. Handle Errors Gracefully</a></h3>
 <p>Always check for quota exceeded, feature not enabled, and other errors.</p>
+<hr>
+<h2 id="advanced-use-cases-future"><a class="header" href="#advanced-use-cases-future">Advanced Use Cases (Future)</a></h2>
+<p>These use cases require <code>anyfs-fuse</code> (future crate).</p>
+<h3 id="database-backed-drive-with-live-monitoring"><a class="header" href="#database-backed-drive-with-live-monitoring">Database-Backed Drive with Live Monitoring</a></h3>
+<p>Mount a database-backed filesystem and query it directly for real-time analytics:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  Database (SQLite, PostgreSQL, etc.)                        │
+├─────────────────────────────────────────────────────────────┤
+│                         │                                   │
+│    anyfs-fuse           │         Stats Dashboard           │
+│    (write + read)       │         (direct DB queries)       │
+│         │               │               │                   │
+│         ▼               │               ▼                   │
+│  /mnt/workspace         │    SELECT SUM(size) FROM nodes    │
+│  $ cp file.txt ./       │    SELECT COUNT(*) FROM nodes     │
+│  $ mkdir projects/      │    SELECT * FROM operations_log   │
+│                         │               │                   │
+│                         │               ▼                   │
+│                         │        ┌──────────────┐           │
+│                         │        │ Live Graphs  │           │
+│                         │        │ - Disk usage │           │
+│                         │        │ - File count │           │
+│                         │        │ - Recent ops │           │
+│                         │        └──────────────┘           │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>SQLite Example:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+// Mount the drive
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(TracingLayer::new())  // Logs operations to DB
+    .layer(QuotaLayer::new().max_total_size(1_000_000_000));
+
+let mount = FuseMount::mount(backend, "/mnt/workspace")?;
+<span class="boring">}</span></code></pre>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Meanwhile, in a monitoring dashboard...
+use rusqlite::{Connection, OpenFlags};
+
+let conn = Connection::open_with_flags(
+    "tenant.db",
+    OpenFlags::SQLITE_OPEN_READ_ONLY,  // Safe concurrent reads
+)?;
+
+loop {
+    let (file_count, total_bytes): (i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM nodes WHERE type = 'file'",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+
+    let recent_ops: Vec&lt;String&gt; = conn
+        .prepare("SELECT operation, path, timestamp FROM audit_log ORDER BY timestamp DESC LIMIT 10")?
+        .query_map([], |row| Ok(format!("{}: {}", row.get::&lt;_, String&gt;(0)?, row.get::&lt;_, String&gt;(1)?)))?
+        .collect::&lt;Result&lt;_, _&gt;&gt;()?;
+
+    render_dashboard(file_count, total_bytes, &amp;recent_ops);
+    std::thread::sleep(Duration::from_secs(1));
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Works with any database backend:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Direct Query Method</th></tr>
+</thead>
+<tbody>
+<tr><td><code>SqliteBackend</code></td><td><code>rusqlite</code> with <code>SQLITE_OPEN_READ_ONLY</code></td></tr>
+<tr><td><code>PostgresBackend</code> (future)</td><td>Standard <code>postgres</code> crate connection</td></tr>
+<tr><td><code>MySqlBackend</code> (future)</td><td>Standard <code>mysql</code> crate connection</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>What you can visualize:</strong></p>
+<ul>
+<li>Real-time storage usage (gauges, bar charts)</li>
+<li>File count over time (line graphs)</li>
+<li>Operations log (live feed)</li>
+<li>Most accessed files (heatmaps)</li>
+<li>Directory tree maps (size visualization)</li>
+<li>Per-tenant usage (multi-tenant dashboards)</li>
+</ul>
+<p>This pattern is powerful because the database is the source of truth — you get filesystem semantics via FUSE and SQL analytics via direct queries, from the same data.</p>
+<h3 id="ram-drive"><a class="header" href="#ram-drive">RAM Drive</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer};
+use anyfs_fuse::FuseMount;
+
+// 4GB RAM drive
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(QuotaLayer::new().max_total_size(4 * 1024 * 1024 * 1024)),
+    "/mnt/ramdisk"
+)?;
+
+// Use for fast compilation, temp files, etc.
+// $ TMPDIR=/mnt/ramdisk cargo build
+<span class="boring">}</span></code></pre>
+<h3 id="sandboxed-ai-agent-workspace"><a class="header" href="#sandboxed-ai-agent-workspace">Sandboxed AI Agent Workspace</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer};
+use anyfs_fuse::FuseMount;
+
+let mount = FuseMount::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::new()
+            .allow("/workspace/**")
+            .deny("**/..*")           // No hidden files
+            .deny("**/.*"))           // No dotfiles
+        .layer(RestrictionsLayer::new()
+            .deny_symlinks()          // Prevent symlink attacks
+            .deny_hard_links())
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024))
+        .layer(TracingLayer::new()),  // Full audit trail
+    "/mnt/agent"
+)?;
+
+// Agent uses standard filesystem APIs
+// All operations are sandboxed, quota-limited, and logged
+<span class="boring">}</span></code></pre>
 <hr>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
 <ul>

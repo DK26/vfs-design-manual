@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-c8e37e0f.js";
+            window.path_to_searchindex_js = "../searchindex-70e84558.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-49a6e0ad.js"></script>
@@ -352,6 +352,121 @@ fn fsync(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsErr
     max_name_len: 255,
 }
 <span class="boring">}</span></code></pre>
+<h3 id="step-9-inode-operations-optional-overrides"><a class="header" href="#step-9-inode-operations-optional-overrides">Step 9: Inode Operations (optional overrides)</a></h3>
+<p>Inode methods have <strong>sensible defaults</strong>. You only need to override them for:</p>
+<ul>
+<li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
+<li><strong>FUSE efficiency</strong>: Direct inode operations without path lookup</li>
+</ul>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Default implementations (you get these for free):
+fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+    Ok(hash(path.as_ref()))  // Hashes the path
+}
+
+fn inode_to_path(&amp;self, _inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+    Err(VfsError::NotSupported { operation: "inode_to_path" })
+}
+
+fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+    let parent = self.inode_to_path(parent_inode)?;
+    self.path_to_inode(parent.join(name))
+}
+
+fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+    self.metadata(self.inode_to_path(inode)?)
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 1: Simple backend (use defaults)</strong></p>
+<p>Don’t override anything. Hardlinks won’t work correctly, but basic operations will.</p>
+<p><strong>Level 2: Hardlink support</strong></p>
+<p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Node {
+    id: u64,          // Unique node ID (the inode)
+    nlink: u64,       // Hard link count
+    content: Vec&lt;u8&gt;,
+    // ...
+}
+
+struct MemoryBackend {
+    next_id: u64,
+    nodes: HashMap&lt;u64, Node&gt;,           // inode -&gt; Node
+    paths: HashMap&lt;PathBuf, u64&gt;,        // path -&gt; inode
+}
+
+impl VfsBackend for MemoryBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        self.paths.get(path.as_ref())
+            .copied()
+            .ok_or_else(|| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn hard_link(&amp;mut self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsError&gt; {
+        let inode = self.path_to_inode(&amp;original)?;
+        self.paths.insert(link.as_ref().to_path_buf(), inode);
+        self.nodes.get_mut(&amp;inode).unwrap().nlink += 1;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Level 3: Full FUSE efficiency</strong></p>
+<p>Override all 4 methods for O(1) inode operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl VfsBackend for SqliteBackend {
+    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE path = ?",
+            [path.as_ref().to_string_lossy()],
+            |row| Ok(row.get::&lt;_, i64&gt;(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: path.as_ref().into() })
+    }
+
+    fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT path FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(PathBuf::from(row.get::&lt;_, String&gt;(0)?)),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+
+    fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT id FROM nodes WHERE parent_id = ? AND name = ?",
+            params![parent_inode as i64, name.to_string_lossy()],
+            |row| Ok(row.get::&lt;_, i64&gt;(0)? as u64),
+        ).map_err(|_| VfsError::NotFound { path: name.into() })
+    }
+
+    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, VfsError&gt; {
+        self.conn.query_row(
+            "SELECT type, size, nlink, created, modified FROM nodes WHERE id = ?",
+            [inode as i64],
+            |row| Ok(Metadata {
+                inode,
+                nlink: row.get(2)?,
+                // ...
+            }),
+        ).map_err(|_| VfsError::NotFound { path: format!("inode:{}", inode).into() })
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Summary:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Your Backend</th><th>Override</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Simple (no hardlinks)</td><td>Nothing</td><td>Works with defaults</td></tr>
+<tr><td>With hardlinks</td><td><code>path_to_inode</code></td><td>Hardlinks work correctly</td></tr>
+<tr><td>FUSE-optimized</td><td>All 4 methods</td><td>Maximum performance</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <p>Return appropriate <code>VfsError</code> variants:</p>
@@ -379,7 +494,7 @@ fn fsync(&amp;mut self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), VfsErr
 </thead>
 <tbody>
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Feature gating</td><td><code>FeatureGuard&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Ergonomic API</td><td><code>FilesContainer&lt;B&gt;</code> wrapper</td></tr>
 </tbody>
