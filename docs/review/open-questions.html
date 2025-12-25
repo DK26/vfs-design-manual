@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -409,7 +409,7 @@ backend.set_follow_symlinks(false);  // Symlinks not resolved during path operat
 <p><strong>The honest answer:</strong> VRootFsBackend cannot disable symlink following. <code>strict-path</code> prevents escapes, but symlinks within the jail are followed by the OS. This is a fundamental limitation of wrapping a real filesystem.</p>
 <hr>
 <h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
-<p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (VRootFsBackend)?</p>
+<p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?</p>
 <p><strong>Analysis:</strong></p>
 <div class="table-wrapper">
 <table>
@@ -419,11 +419,12 @@ backend.set_follow_symlinks(false);  // Symlinks not resolved during path operat
 <tbody>
 <tr><td>MemoryBackend</td><td>Pure lexical (our code)</td><td>We control everything</td></tr>
 <tr><td>SqliteBackend</td><td>Pure lexical (our code)</td><td>We control everything</td></tr>
-<tr><td>VRootFsBackend</td><td>OS handles it</td><td>OS follows symlinks</td></tr>
+<tr><td>StdFsBackend</td><td>OS handles it</td><td>OS follows symlinks</td></tr>
+<tr><td>VRootFsBackend</td><td>OS handles it</td><td>OS follows symlinks (strict-path prevents escapes)</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Current design:</strong> For virtual backends, we perform lexical path resolution ourselves. For VRootFsBackend, we delegate to the OS via <code>std::fs</code>, with <code>strict-path::VirtualRoot</code> ensuring containment.</p>
+<p><strong>Current design:</strong> For virtual backends, we perform lexical path resolution ourselves. For filesystem backends (StdFsBackend, VRootFsBackend), we delegate to the OS via <code>std::fs</code>. VRootFsBackend additionally uses <code>strict-path::VirtualRoot</code> for containment.</p>
 <p><strong>Open question:</strong> Should we abstract this difference, accept it, or use two traits?</p>
 <hr>
 <h2 id="compression-and-encryption"><a class="header" href="#compression-and-encryption">Compression and Encryption</a></h2>
@@ -593,12 +594,12 @@ backend.set_follow_symlinks(false);  // Symlinks not resolved during path operat
 </thead>
 <tbody>
 <tr><td><code>anyfs-traits</code></td><td>“traits” is vague</td><td><code>anyfs-backend</code> (adopted)</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Could imply Docker</td><td><code>anyfs-storage</code>, <code>anyfs-fs</code>, <code>fsContainer</code></td></tr>
+<tr><td><code>anyfs-container</code></td><td>Could imply Docker</td><td>Merged into <code>anyfs</code> (adopted)</td></tr>
 <tr><td><code>anyfs</code></td><td>Sounds like Hebrew “ani efes” (I am zero)</td><td><code>anyfs</code> retained for simplicity</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Decision:</strong> Renamed <code>anyfs-traits</code> to <code>anyfs-backend</code>. Other names retained.</p>
+<p><strong>Decision:</strong> Renamed <code>anyfs-traits</code> to <code>anyfs-backend</code>. Merged <code>anyfs-container</code> into <code>anyfs</code>.</p>
 <hr>
 <h2 id="posix-behavior"><a class="header" href="#posix-behavior">POSIX Behavior</a></h2>
 <p><strong>Question:</strong> How POSIX-compatible should AnyFS be?</p>
@@ -655,7 +656,7 @@ backend.set_follow_symlinks(false);  // Symlinks not resolved during path operat
 <tr><td>Extension methods</td><td>VfsBackendExt (ADR-013)</td></tr>
 <tr><td>Zero-copy bytes</td><td>Optional <code>bytes</code> feature (ADR-014)</td></tr>
 <tr><td>Error context</td><td>Contextual VfsError (ADR-015)</td></tr>
-<tr><td>BackendStack builder</td><td>Fluent API in anyfs-container</td></tr>
+<tr><td>BackendStack builder</td><td>Fluent API in anyfs</td></tr>
 <tr><td>Path-based access control</td><td>PathFilter middleware (ADR-016)</td></tr>
 <tr><td>Read-only mode</td><td>ReadOnly middleware (ADR-017)</td></tr>
 <tr><td>Rate limiting</td><td>RateLimit middleware (ADR-018)</td></tr>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>FileStorage (anyfs-container) - AnyFS Ecosystem Manual</title>
+        <title>FileStorage&lt;B, M&gt; (anyfs) - AnyFS Ecosystem Manual</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,12 +180,16 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="filestorage-anyfs-container"><a class="header" href="#filestorage-anyfs-container">FileStorage<m> (anyfs-container)</m></a></h1>
-<p><strong>Type-safe ergonomic wrapper for std::fs-aligned API</strong></p>
+                        <h1 id="filestorageb-m-anyfs"><a class="header" href="#filestorageb-m-anyfs">FileStorage&lt;B, M&gt; (anyfs)</a></h1>
+<p><strong>Zero-cost ergonomic wrapper for std::fs-aligned API</strong></p>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p><code>FileStorage&lt;M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with an optional <strong>marker type</strong> for compile-time safety.</p>
-<p>The backend is type-erased (<code>Box&lt;dyn Fs&gt;</code>) for a clean API.</p>
+<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with:</p>
+<ul>
+<li><strong><code>B</code></strong> - Backend type (generic, zero-cost)</li>
+<li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
+</ul>
+<p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in.</p>
 <p><strong>It does TWO things:</strong></p>
 <ol>
 <li>Ergonomics (std::fs-aligned API)</li>
@@ -196,56 +200,76 @@
 <h2 id="creating-a-container"><a class="header" href="#creating-a-container">Creating a Container</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::MemoryBackend;
-use anyfs_container::FileStorage;
+</span>use anyfs::{MemoryBackend, FileStorage};
 
-// Simple: just ergonomics
+// Simple: just ergonomics (type inferred)
 let mut fs = FileStorage::new(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
 <p>With middleware (layer-based):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FileStorage;
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, FileStorage};
 
-let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new()
-        .max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new()
-        .deny_hard_links()
-        .deny_permissions());
-
-let mut fs = FileStorage::new(backend);
+// Type is inferred - no need to write it out
+let mut fs = FileStorage::new(
+    SqliteBackend::open("data.db")?
+        .layer(QuotaLayer::new()
+            .max_total_size(100 * 1024 * 1024))
+        .layer(RestrictionsLayer::new()
+            .deny_hard_links()
+            .deny_permissions())
+);
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="marker-types-compile-time-safety"><a class="header" href="#marker-types-compile-time-safety">Marker Types (Compile-Time Safety)</a></h2>
-<p>The type parameter <code>M</code> (default: <code>()</code>) enables compile-time container differentiation:</p>
+<p>Use <code>_</code> to infer the backend type while specifying the marker:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend};
-use anyfs_container::FileStorage;
+</span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage};
 
 // Define marker types for your domains
 struct Sandbox;
 struct UserData;
-struct TempFiles;
 
-// Create typed containers - backend type is erased!
-let sandbox: FileStorage&lt;Sandbox&gt; = FileStorage::with_marker(MemoryBackend::new());
-let userdata: FileStorage&lt;UserData&gt; = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+// Specify marker in type annotation, infer backend with _
+let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;mut FileStorage&lt;UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;mut FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
 // Compile-time safety:
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error! Type mismatch
+<span class="boring">}</span></code></pre>
+<h3 id="self-documenting-types"><a class="header" href="#self-documenting-types">Self-Documenting Types</a></h3>
+<p>Both dimensions are meaningful:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+<span class="boring">}</span></code></pre>
+<h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Define your standard secure stack
+type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
+
+// Type aliases for common combinations
+type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
+type TenantFs&lt;T&gt; = FileStorage&lt;SecureBackend, T&gt;;
+
+// Now signatures are clean AND informative
+fn run_agent(fs: &amp;mut SandboxFs) { ... }
+fn save_document(fs: &amp;mut UserDataFs, doc: &amp;Document) { ... }
 <span class="boring">}</span></code></pre>
 <h3 id="when-to-use-markers"><a class="header" href="#when-to-use-markers">When to Use Markers</a></h3>
 <div class="table-wrapper">
@@ -254,7 +278,7 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <tr><th>Scenario</th><th>Use Markers?</th><th>Why</th></tr>
 </thead>
 <tbody>
-<tr><td>Single container</td><td>No</td><td><code>FileStorage</code> is sufficient</td></tr>
+<tr><td>Single container</td><td>No</td><td><code>FileStorage&lt;B&gt;</code> is sufficient</td></tr>
 <tr><td>Multiple containers, same type</td><td><strong>Yes</strong></td><td>Prevent accidental mixing</td></tr>
 <tr><td>Multi-tenant systems</td><td><strong>Yes</strong></td><td>Compile-time tenant isolation</td></tr>
 <tr><td>Sandbox + user data</td><td><strong>Yes</strong></td><td>Never write user data to sandbox</td></tr>
@@ -312,34 +336,62 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 </span>use std::marker::PhantomData;
 use anyfs_backend::Fs;
 
-/// Ergonomic filesystem wrapper with optional type marker.
-/// Backend is type-erased to `Box&lt;dyn Fs&gt;` for a clean API.
-pub struct FileStorage&lt;M = ()&gt; {
-    backend: Box&lt;dyn Fs&gt;,
+/// Zero-cost ergonomic wrapper.
+/// Generic over backend (B) and marker (M).
+pub struct FileStorage&lt;B, M = ()&gt; {
+    backend: B,
     _marker: PhantomData&lt;M&gt;,
 }
 
-impl&lt;M&gt; FileStorage&lt;M&gt; {
-    /// Create a new FileStorage (no marker).
-    pub fn new(backend: impl Fs + 'static) -&gt; FileStorage {
-        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+    /// Create a new FileStorage.
+    /// Marker type is specified via type annotation:
+    /// `let fs: FileStorage&lt;_, MyMarker&gt; = FileStorage::new(backend);`
+    pub fn new(backend: B) -&gt; Self {
+        FileStorage { backend, _marker: PhantomData }
     }
 
-    /// Create a new FileStorage with a specific marker type.
-    pub fn with_marker&lt;N&gt;(backend: impl Fs + 'static) -&gt; FileStorage&lt;N&gt; {
-        FileStorage { backend: Box::new(backend), _marker: PhantomData }
-    }
-
-    /// Change the marker type (zero-cost, compile-time only).
-    pub fn retype&lt;N&gt;(self) -&gt; FileStorage&lt;N&gt; {
-        FileStorage { backend: self.backend, _marker: PhantomData }
+    /// Type-erase the backend for simpler types (opt-in boxing).
+    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt; {
+        FileStorage { backend: Box::new(self.backend), _marker: PhantomData }
     }
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Note:</strong> <code>FileStorage</code> uses <code>Box&lt;dyn Fs&gt;</code> which provides Layer 1 operations (read, write, dirs). If you need <code>FsFull</code>, <code>FsFuse</code>, or <code>FsPosix</code> operations, use the backend directly without type erasure.</p>
+<hr>
+<h2 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure (Opt-in)</a></h2>
+<p>When you need simpler types (e.g., storing in collections), use <code>.boxed()</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage, Fs};
+
+// Type-erased for uniform storage
+let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
+    FileStorage::new(MemoryBackend::new()).boxed(),
+    FileStorage::new(SqliteBackend::open("a.db")?).boxed(),
+    FileStorage::new(SqliteBackend::open("b.db")?).boxed(),
+];
+
+// Or use type alias
+type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
+<span class="boring">}</span></code></pre>
+<p><strong>When to use <code>.boxed()</code>:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Situation</th><th>Use Generic</th><th>Use <code>.boxed()</code></th></tr>
+</thead>
+<tbody>
+<tr><td>Local variables</td><td>Yes</td><td>No</td></tr>
+<tr><td>Function params</td><td>Yes (<code>impl Fs</code>)</td><td>No</td></tr>
+<tr><td>Return types</td><td>Yes (<code>impl Fs</code>)</td><td>No</td></tr>
+<tr><td>Collections of mixed backends</td><td>No</td><td><strong>Yes</strong></td></tr>
+<tr><td>Struct fields (want simple type)</td><td>Maybe</td><td><strong>Yes</strong></td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="direct-backend-access"><a class="header" href="#direct-backend-access">Direct Backend Access</a></h2>
-<p>If you don’t need ergonomics, want zero-cost abstractions, or need higher-level traits (<code>FsFull</code>, <code>FsFuse</code>), use backends directly:</p>
+<p>If you don’t need the wrapper, use backends directly:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, Quota, Fs};
@@ -350,16 +402,7 @@ let mut backend = Quota::new(MemoryBackend::new())
 // Use Fs trait methods directly
 backend.write("/file.txt", b"data")?;
 <span class="boring">}</span></code></pre>
-<p>For FUSE mounting (requires <code>FsFuse</code>):</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, FsFuse};
-use anyfs_fuse::FuseMount;
-
-let backend = SqliteBackend::open("data.db")?;
-// backend implements FsFuse, so we can mount it
-FuseMount::mount(backend, "/mnt/myfs")?;
-<span class="boring">}</span></code></pre>
+<p><code>FileStorage&lt;B, M&gt;</code> is part of the <code>anyfs</code> crate, not a separate crate.</p>
 
                     </main>
 

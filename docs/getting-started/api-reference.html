@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -186,7 +186,6 @@
 <h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
 <pre><code class="language-toml">[dependencies]
 anyfs = "0.1"
-anyfs-container = "0.1"  # Optional
 </code></pre>
 <p>With backends and optional features:</p>
 <pre><code class="language-toml">anyfs = { version = "0.1", features = ["sqlite", "vrootfs", "bytes"] }
@@ -195,8 +194,7 @@ anyfs-container = "0.1"  # Optional
 <h2 id="creating-a-backend-stack"><a class="header" href="#creating-a-backend-stack">Creating a Backend Stack</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing};
-use anyfs_container::FileStorage;
+</span>use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing, FileStorage};
 
 // Simple
 let fs = FileStorage::new(MemoryBackend::new());
@@ -228,7 +226,7 @@ let backend = SqliteBackend::open("data.db")?
     .layer(TracingLayer::new());
 
 // BackendStack builder (fluent API)
-use anyfs_container::BackendStack;
+use anyfs::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
@@ -504,7 +502,8 @@ match result {
 <tbody>
 <tr><td><code>MemoryBackend</code></td><td><code>memory</code> (default)</td><td>In-memory</td></tr>
 <tr><td><code>SqliteBackend</code></td><td><code>sqlite</code></td><td>Persistent</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem</td></tr>
+<tr><td><code>StdFsBackend</code></td><td><code>stdfs</code></td><td>Direct <code>std::fs</code> (no containment)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem (with containment)</td></tr>
 </tbody>
 </table>
 </div>
@@ -644,7 +643,8 @@ match result {
 <tbody>
 <tr><td><code>MemoryBackend</code></td><td>In-memory backend</td></tr>
 <tr><td><code>SqliteBackend</code></td><td>SQLite backend</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td>Host FS backend</td></tr>
+<tr><td><code>StdFsBackend</code></td><td>Direct <code>std::fs</code> backend (no containment)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Host FS backend (with containment)</td></tr>
 <tr><td><code>Quota&lt;B&gt;</code></td><td>Quota middleware</td></tr>
 <tr><td><code>Restrictions&lt;B&gt;</code></td><td>Feature gate middleware</td></tr>
 <tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path access control middleware</td></tr>
@@ -666,15 +666,16 @@ match result {
 </tbody>
 </table>
 </div>
-<h3 id="from-anyfs-container"><a class="header" href="#from-anyfs-container">From <code>anyfs-container</code></a></h3>
+<p><strong>Ergonomic Wrappers (in <code>anyfs</code>):</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>FileStorage&lt;M&gt;</code></td><td>Ergonomic wrapper (type-erased backend)</td></tr>
+<tr><td><code>FileStorage&lt;B, M&gt;</code></td><td>Zero-cost ergonomic wrapper (generic backend, optional marker)</td></tr>
 <tr><td><code>BackendStack</code></td><td>Fluent builder for middleware stacks</td></tr>
+<tr><td><code>.boxed()</code></td><td>Opt-in type erasure for <code>FileStorage</code></td></tr>
 </tbody>
 </table>
 </div>

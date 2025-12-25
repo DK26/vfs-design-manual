@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,7 +189,7 @@
 <tr><th>You want to…</th><th>Use</th></tr>
 </thead>
 <tbody>
-<tr><td>Build an application</td><td><code>anyfs</code> + <code>anyfs-container</code></td></tr>
+<tr><td>Build an application</td><td><code>anyfs</code></td></tr>
 <tr><td>Use built-in backends (Memory, SQLite, VRootFs)</td><td><code>anyfs</code></td></tr>
 <tr><td>Use built-in middleware (Quota, PathFilter, etc.)</td><td><code>anyfs</code></td></tr>
 <tr><td>Implement a custom backend</td><td><code>anyfs-backend</code> only</td></tr>
@@ -203,7 +203,7 @@
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
-use anyfs_container::FileStorage;
+use anyfs::FileStorage;
 
 let mut fs = FileStorage::new(MemoryBackend::new());
 fs.create_dir_all("/data")?;
@@ -213,7 +213,7 @@ fs.write("/data/file.txt", b"hello")?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, Quota, Restrictions, PathFilter, Tracing};
-use anyfs_container::FileStorage;
+use anyfs::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?;
 
@@ -234,7 +234,7 @@ let mut fs = FileStorage::new(stack);
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs_container::FileStorage;
+use anyfs::FileStorage;
 
 let backend = SqliteBackend::open("tenant.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))

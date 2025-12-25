@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -518,7 +518,7 @@ let traced = Tracing::new(filtered);
 <h3 id="with-filestorage-wrapper"><a class="header" href="#with-filestorage-wrapper">With FileStorage wrapper</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::FileStorage;
+</span>use anyfs::FileStorage;
 
 let mut fs = FileStorage::new(backend);
 fs.write("/file.txt", b"hello")?;
@@ -530,10 +530,11 @@ let data = fs.read("/file.txt")?;
 </span>struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage&lt;Sandbox&gt; = FileStorage::with_marker(MemoryBackend::new());
-let userdata: FileStorage&lt;UserData&gt; = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+// Specify marker in type annotation, infer backend with _
+let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
-fn process(fs: &amp;FileStorage&lt;Sandbox&gt;) { /* only accepts Sandbox */ }
+fn process(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { /* only accepts Sandbox */ }
 <span class="boring">}</span></code></pre>
 
                     </main>

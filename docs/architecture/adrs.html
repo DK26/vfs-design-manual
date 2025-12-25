@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -191,7 +191,7 @@
 </thead>
 <tbody>
 <tr><td>ADR-001</td><td>Path-based <code>VfsBackend</code> trait</td><td>Accepted</td></tr>
-<tr><td>ADR-002</td><td>Three-crate structure</td><td>Accepted</td></tr>
+<tr><td>ADR-002</td><td>Two-crate structure</td><td>Accepted</td></tr>
 <tr><td>ADR-003</td><td><code>impl AsRef&lt;Path&gt;</code> for all path parameters</td><td>Accepted</td></tr>
 <tr><td>ADR-004</td><td>Tower-style middleware pattern</td><td>Accepted</td></tr>
 <tr><td>ADR-005</td><td><code>std::fs</code>-aligned method names</td><td>Accepted</td></tr>
@@ -219,7 +219,7 @@
 <p><strong>Decision:</strong> Backends implement a path-based trait aligned with <code>std::fs</code> method naming.</p>
 <p><strong>Why:</strong> Filesystem operations are naturally path-oriented; a single, familiar trait surface is easier to implement and adopt than graph-store or inode models.</p>
 <hr>
-<h2 id="adr-002-three-crate-structure"><a class="header" href="#adr-002-three-crate-structure">ADR-002: Three-crate structure</a></h2>
+<h2 id="adr-002-two-crate-structure"><a class="header" href="#adr-002-two-crate-structure">ADR-002: Two-crate structure</a></h2>
 <p><strong>Decision:</strong></p>
 <div class="table-wrapper">
 <table>
@@ -227,9 +227,8 @@
 <tr><th>Crate</th><th>Purpose</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>VfsBackend</code> trait, <code>Layer</code> trait, <code>VfsBackendExt</code>, types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware (Quota, Restrictions, Tracing)</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Ergonomic wrapper: <code>FilesContainer&lt;B&gt;</code>, <code>BackendStack</code> builder</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait, <code>Layer</code> trait, <code>FsExt</code>, types</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics (<code>FileStorage&lt;M&gt;</code>, <code>BackendStack</code>)</td></tr>
 </tbody>
 </table>
 </div>
@@ -237,7 +236,7 @@
 <ul>
 <li>Backend authors only need <code>anyfs-backend</code> (no heavy dependencies).</li>
 <li>Middleware is composable and lives with backends in <code>anyfs</code>.</li>
-<li><code>FilesContainer</code> is purely ergonomic - no policy logic.</li>
+<li><code>FileStorage</code> is purely ergonomic - no policy logic - included in <code>anyfs</code> for convenience.</li>
 </ul>
 <hr>
 <h2 id="adr-003-impl-asrefpath-for-all-path-parameters"><a class="header" href="#adr-003-impl-asrefpath-for-all-path-parameters">ADR-003: <code>impl AsRef&lt;Path&gt;</code> for all path parameters</a></h2>
@@ -411,7 +410,7 @@ pub trait AsyncVfsBackend: Send + Sync {
 <ul>
 <li>Standardized composition pattern familiar to Tower/Axum users.</li>
 <li>IDE autocomplete for available layers.</li>
-<li>Enables <code>BackendStack</code> fluent builder in anyfs-container.</li>
+<li>Enables <code>BackendStack</code> fluent builder in anyfs.</li>
 <li>Each middleware provides a corresponding <code>*Layer</code> type.</li>
 </ul>
 <p><strong>Example:</strong></p>

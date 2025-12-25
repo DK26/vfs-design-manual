@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -270,12 +270,12 @@
 <p><strong>Example: Secure AI Agent Sandbox</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::FileStorage;
+</span>use anyfs::FileStorage;
 
 struct AiSandbox;  // Marker type
 
-// Application composes secure defaults
-let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::with_marker(
+// Application composes secure defaults (marker in type annotation)
+let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
     PathFilter::new(
         Restrictions::new(
             Quota::new(MemoryBackend::new())
@@ -298,18 +298,15 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::with_marker(
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract</td><td>Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>), <code>Layer</code> trait, types, <code>FsExt</code></td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware</td><td>Built-in backends, all middleware layers</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Ergonomic wrapper</td><td><code>FileStorage&lt;M&gt;</code>, <code>BackendStack</code> builder</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;M&gt;</code>, <code>BackendStack</code> builder</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="dependency-graph"><a class="header" href="#dependency-graph">Dependency Graph</a></h3>
 <pre><code>anyfs-backend (trait + types)
      ^
-     |-- anyfs (backends + middleware)
-     |     ^-- vrootfs feature may use strict-path
-     |
-     +-- anyfs-container (ergonomic wrapper)
+     |-- anyfs (backends + middleware + ergonomics)
+           ^-- vrootfs feature may use strict-path
 </code></pre>
 <hr>
 <h2 id="trait-architecture-in-anyfs-backend"><a class="header" href="#trait-architecture-in-anyfs-backend">Trait Architecture (in <code>anyfs-backend</code>)</a></h2>
@@ -753,14 +750,19 @@ let backend = Overlay::new(base, upper);
 <li>Testing with rollback capability</li>
 </ul>
 <hr>
-<h2 id="filestorage-in-anyfs-container"><a class="header" href="#filestorage-in-anyfs-container">FileStorage<m> (in <code>anyfs-container</code>)</m></a></h2>
-<p><code>FileStorage&lt;M&gt;</code> is a <strong>thin ergonomic wrapper</strong> with an optional <strong>marker type</strong> for compile-time safety. It type-erases the backend for a clean API. All policy is handled by middleware.</p>
+<h2 id="filestorageb-m-in-anyfs"><a class="header" href="#filestorageb-m-in-anyfs">FileStorage&lt;B, M&gt; (in <code>anyfs</code>)</a></h2>
+<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
+<ul>
+<li><strong><code>B</code></strong> - Backend type (generic, no boxing)</li>
+<li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
+</ul>
+<p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in via <code>.boxed()</code>.</p>
 <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::MemoryBackend;
-use anyfs_container::FileStorage;
+</span>use anyfs::{MemoryBackend, FileStorage};
 
+// Type is inferred - no need to write it out
 let mut fs = FileStorage::new(MemoryBackend::new());
 
 fs.create_dir_all("/documents")?;
@@ -768,27 +770,25 @@ fs.write("/documents/hello.txt", b"Hello!")?;
 let content = fs.read("/documents/hello.txt")?;
 <span class="boring">}</span></code></pre>
 <h3 id="marker-types-type-safe-containers"><a class="header" href="#marker-types-type-safe-containers">Marker Types (Type-Safe Containers)</a></h3>
-<p>The second type parameter <code>M</code> (default: <code>()</code>) enables compile-time container differentiation:</p>
+<p>Use <code>_</code> to infer backend while specifying marker:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend};
-use anyfs_container::FileStorage;
+</span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage};
 
 // Define marker types for your domains
 struct Sandbox;
 struct UserData;
-struct TempFiles;
 
-// Create typed containers - backend type is erased!
-let sandbox: FileStorage&lt;Sandbox&gt; = FileStorage::with_marker(MemoryBackend::new());
-let userdata: FileStorage&lt;UserData&gt; = FileStorage::with_marker(SqliteBackend::open("data.db")?);
+// Specify marker, infer backend with _
+let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;mut FileStorage&lt;UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;mut FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -796,51 +796,62 @@ fn save_user_file(fs: &amp;mut FileStorage&lt;UserData&gt;, name: &amp;str, data
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <span class="boring">}</span></code></pre>
-<h3 id="when-to-use-markers"><a class="header" href="#when-to-use-markers">When to Use Markers</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Scenario</th><th>Use Markers?</th><th>Why</th></tr>
-</thead>
-<tbody>
-<tr><td>Single container</td><td>No</td><td><code>FileStorage</code> is sufficient</td></tr>
-<tr><td>Multiple containers, same type</td><td><strong>Yes</strong></td><td>Prevent accidental mixing</td></tr>
-<tr><td>Multi-tenant systems</td><td><strong>Yes</strong></td><td>Compile-time tenant isolation</td></tr>
-<tr><td>Sandbox + user data</td><td><strong>Yes</strong></td><td>Never write user data to sandbox</td></tr>
-<tr><td>Testing</td><td>Maybe</td><td>Tag test vs production containers</td></tr>
-</tbody>
-</table>
-</div>
+<h3 id="self-documenting-types"><a class="header" href="#self-documenting-types">Self-Documenting Types</a></h3>
+<p>Both type parameters are meaningful:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+<span class="boring">}</span></code></pre>
+<h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Define your standard secure stack
+type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
+
+// Type aliases for common combinations
+type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
+
+// Clean function signatures
+fn run_agent(fs: &amp;mut SandboxFs) { ... }
+<span class="boring">}</span></code></pre>
 <h3 id="filestorage-implementation"><a class="header" href="#filestorage-implementation">FileStorage Implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::marker::PhantomData;
 
-/// Ergonomic filesystem wrapper with optional type marker.
-/// Backend is type-erased to `Box&lt;dyn Fs&gt;` for a clean API.
-pub struct FileStorage&lt;M = ()&gt; {
-    backend: Box&lt;dyn Fs&gt;,
+/// Zero-cost ergonomic wrapper.
+/// Generic over backend (B) and marker (M).
+pub struct FileStorage&lt;B, M = ()&gt; {
+    backend: B,
     _marker: PhantomData&lt;M&gt;,
 }
 
-impl&lt;M&gt; FileStorage&lt;M&gt; {
-    /// Create a new FileStorage (no marker).
-    pub fn new(backend: impl Fs + 'static) -&gt; FileStorage {
-        FileStorage { backend: Box::new(backend), _marker: PhantomData }
+impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+    /// Marker type is specified via type annotation:
+    /// `let fs: FileStorage&lt;_, MyMarker&gt; = FileStorage::new(backend);`
+    pub fn new(backend: B) -&gt; Self {
+        FileStorage { backend, _marker: PhantomData }
     }
 
-    /// Create a new FileStorage with a specific marker type.
-    pub fn with_marker&lt;N&gt;(backend: impl Fs + 'static) -&gt; FileStorage&lt;N&gt; {
-        FileStorage { backend: Box::new(backend), _marker: PhantomData }
-    }
-
-    /// Change the marker type (zero-cost, compile-time only).
-    pub fn retype&lt;N&gt;(self) -&gt; FileStorage&lt;N&gt; {
-        FileStorage { backend: self.backend, _marker: PhantomData }
+    /// Type-erase the backend (opt-in boxing).
+    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt; {
+        FileStorage { backend: Box::new(self.backend), _marker: PhantomData }
     }
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Note:</strong> <code>FileStorage</code> uses <code>Box&lt;dyn Fs&gt;</code> which provides Layer 1 operations. If you need <code>FsFull</code>, <code>FsFuse</code>, or <code>FsPosix</code> operations, use the backend directly without type erasure.</p>
+<h3 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure (Opt-in)</a></h3>
+<p>When you need uniform types (e.g., collections), use <code>.boxed()</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Type-erased for uniform storage
+let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
+    FileStorage::new(MemoryBackend::new()).boxed(),
+    FileStorage::new(SqliteBackend::open("a.db")?).boxed(),
+];
+<span class="boring">}</span></code></pre>
 <hr>
 <h2 id="layer-trait-in-anyfs-backend"><a class="header" href="#layer-trait-in-anyfs-backend">Layer Trait (in <code>anyfs-backend</code>)</a></h2>
 <p>The <code>Layer</code> trait (inspired by Tower) standardizes middleware composition:</p>
@@ -872,8 +883,7 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for QuotaLayer {
 <h3 id="manual-composition"><a class="header" href="#manual-composition">Manual Composition</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, Restrictions, Tracing};
-use anyfs_container::FileStorage;
+</span>use anyfs::{SqliteBackend, Quota, Restrictions, Tracing, FileStorage};
 
 // Build from inside out:
 let backend = SqliteBackend::open("data.db")?;
@@ -904,7 +914,7 @@ let backend = SqliteBackend::open("data.db")?
 <p>For complex stacks, use <code>BackendStack</code> for a fluent API:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs_container::BackendStack;
+</span>use anyfs::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l
@@ -926,7 +936,8 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 <tbody>
 <tr><td><code>MemoryBackend</code></td><td><code>memory</code> (default)</td><td>In-memory storage</td></tr>
 <tr><td><code>SqliteBackend</code></td><td><code>sqlite</code></td><td>Single-file portable database</td></tr>
-<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem via strict-path</td></tr>
+<tr><td><code>StdFsBackend</code></td><td><code>stdfs</code></td><td>Direct <code>std::fs</code> delegation (no containment)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem with path containment (via strict-path)</td></tr>
 </tbody>
 </table>
 </div>

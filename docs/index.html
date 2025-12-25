@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-1f24c6e5.js"></script>
+        <script src="toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -207,7 +207,7 @@
 </code></pre>
 <p><strong>Each layer has one job.</strong> Compose only what you need.</p>
 <hr>
-<h2 id="three-crate-structure"><a class="header" href="#three-crate-structure">Three-Crate Structure</a></h2>
+<h2 id="two-crate-structure"><a class="header" href="#two-crate-structure">Two-Crate Structure</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -215,8 +215,7 @@
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait + types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Ergonomic <code>FileStorage&lt;M&gt;</code> wrapper</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomic <code>FileStorage&lt;M&gt;</code> wrapper</td></tr>
 </tbody>
 </table>
 </div>
@@ -224,8 +223,7 @@
 <h2 id="quick-example"><a class="header" href="#quick-example">Quick Example</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer};
-use anyfs_container::FileStorage;
+</span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, FileStorage};
 
 // Layer-based composition
 let backend = SqliteBackend::open("data.db")?

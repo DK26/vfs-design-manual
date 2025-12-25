@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -246,8 +246,7 @@ fs.toolcall_start("tool")?;  // Auditing bundled
 <p>Tower-style middleware + pluggable backends:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing, FileStorage};
 
 // Compose middleware stack
 let backend = Tracing::new(
@@ -261,7 +260,7 @@ let backend = Tracing::new(
     .deny("**/.env")
 );
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 <span class="boring">}</span></code></pre>
 <p><strong>Advantages:</strong></p>
 <ul>
@@ -422,10 +421,10 @@ let mut fs = FilesContainer::new(backend);
 <tr><th>vfs Backend</th><th>AnyFS Equivalent</th><th>Notes</th></tr>
 </thead>
 <tbody>
-<tr><td><code>PhysicalFS</code></td><td><code>VRootFsBackend</code></td><td>Both use real filesystem</td></tr>
+<tr><td><code>PhysicalFS</code></td><td><code>StdFsBackend</code></td><td>Both use real filesystem directly</td></tr>
 <tr><td><code>MemoryFS</code></td><td><code>MemoryBackend</code></td><td>Both in-memory</td></tr>
 <tr><td><code>OverlayFS</code></td><td><code>Overlay&lt;B1,B2&gt;</code></td><td>Both union filesystems</td></tr>
-<tr><td><code>AltrootFS</code></td><td><code>PathFilter</code> (partial)</td><td>vfs is simpler chroot</td></tr>
+<tr><td><code>AltrootFS</code></td><td><code>VRootFsBackend</code></td><td>Both provide path containment</td></tr>
 <tr><td><code>EmbeddedFS</code></td><td>(none)</td><td>Read-only embedded assets</td></tr>
 <tr><td>(none)</td><td><code>SqliteBackend</code></td><td>We have SQLite</td></tr>
 </tbody>
@@ -438,9 +437,9 @@ let mut fs = FilesContainer::new(backend);
 </span>use anyfs_vfs_compat::{VfsCompat, AnyFsCompat};
 
 // Use a vfs backend in AnyFS
-// Missing features return VfsError::NotSupported
+// Missing features return FsError::NotSupported
 let backend = VfsCompat::new(vfs::MemoryFS::new());
-let fs = FilesContainer::new(backend);
+let fs = FileStorage::new(backend);
 
 // Use an AnyFS backend in vfs-based code
 // Only exposes what vfs supports

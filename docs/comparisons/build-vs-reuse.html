@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -258,17 +258,15 @@
 <tr><th>Crate</th><th>Responsibility</th></tr>
 </thead>
 <tbody>
-<tr><td><code>anyfs-backend</code></td><td>Trait (<code>VfsBackend</code>, <code>Layer</code>) + types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware implementations</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Ergonomic wrapper (<code>FilesContainer</code>)</td></tr>
+<tr><td><code>anyfs-backend</code></td><td>Trait (<code>Fs</code>, <code>Layer</code>) + types</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomic wrapper (<code>FileStorage&lt;M&gt;</code>)</td></tr>
 </tbody>
 </table>
 </div>
 <p>The middleware pattern (like Tower/Axum) enables composition:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing, FileStorage};
 
 let backend = Tracing::new(
     PathFilter::new(
@@ -280,7 +278,7 @@ let backend = Tracing::new(
     .allow("/workspace/**")
 );
 
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 fs.write("/workspace/doc.txt", b"hello")?;
 <span class="boring">}</span></code></pre>
 <hr>
@@ -315,8 +313,8 @@ fs.write("/workspace/doc.txt", b"hello")?;
 </ul>
 <hr>
 <h2 id="recommendation"><a class="header" href="#recommendation">Recommendation</a></h2>
-<p>Build AnyFS with reusable primitives (<code>rusqlite</code>, <code>strict-path</code>, <code>thiserror</code>, <code>tracing</code>) but maintain the three-crate split. The middleware pattern is what makes the design both flexible and safe.</p>
-<p><strong>Compatibility option:</strong> Later, provide an adapter that implements <code>vfs</code> traits on top of <code>VfsBackend</code> for projects that need <code>vfs</code> compatibility.</p>
+<p>Build AnyFS with reusable primitives (<code>rusqlite</code>, <code>strict-path</code>, <code>thiserror</code>, <code>tracing</code>) but maintain the two-crate split. The middleware pattern is what makes the design both flexible and safe.</p>
+<p><strong>Compatibility option:</strong> Later, provide an adapter that implements <code>vfs</code> traits on top of <code>Fs</code> for projects that need <code>vfs</code> compatibility.</p>
 
                     </main>
 

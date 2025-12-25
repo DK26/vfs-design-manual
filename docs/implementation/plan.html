@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,8 +184,7 @@
 <p>This plan describes a phased rollout of the AnyFS ecosystem:</p>
 <ul>
 <li><code>anyfs-backend</code>: Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>) + <code>Layer</code> + types</li>
-<li><code>anyfs</code>: Built-in backends + middleware (feature-gated)</li>
-<li><code>anyfs-container</code>: <code>FileStorage&lt;M&gt;</code> ergonomic wrapper</li>
+<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;M&gt;</code> ergonomic wrapper</li>
 </ul>
 <hr>
 <h2 id="implementation-guidelines"><a class="header" href="#implementation-guidelines">Implementation Guidelines</a></h2>
@@ -378,6 +377,15 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li><code>set_follow_symlinks(bool)</code> - control symlink resolution</li>
 </ul>
 </li>
+<li><code>stdfs</code> (optional): <code>StdFsBackend</code> - direct <code>std::fs</code> delegation
+<ul>
+<li>Implements: <code>FsPosix</code> (all traits including Layer 4)</li>
+<li><code>NEEDS_PATH_RESOLUTION = false</code> (OS handles resolution)</li>
+<li>Inode source: OS inode numbers (<code>std::fs::Metadata::ino()</code>)</li>
+<li>No path containment - full filesystem access</li>
+<li>Use when you only need middleware layers without sandboxing</li>
+</ul>
+</li>
 <li><code>vrootfs</code> (optional): <code>VRootFsBackend</code> using <code>strict-path</code> for containment
 <ul>
 <li>Implements: <code>FsPosix</code> (all traits including Layer 4)</li>
@@ -399,24 +407,24 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li><code>Cache&lt;B&gt;</code> + <code>CacheLayer</code> - LRU read cache</li>
 <li><code>Overlay&lt;B1,B2&gt;</code> + <code>OverlayLayer</code> - Union filesystem</li>
 </ul>
-<p><strong>Exit criteria:</strong> Each backend implements the appropriate trait level (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>) and passes conformance suite. Each middleware wraps backends implementing the same traits.</p>
-<hr>
-<h2 id="phase-3-anyfs-container-ergonomics"><a class="header" href="#phase-3-anyfs-container-ergonomics">Phase 3: <code>anyfs-container</code> (ergonomics)</a></h2>
-<p><strong>Goal:</strong> Provide user-facing ergonomic wrapper.</p>
+<h3 id="filestorageb-m-ergonomic-wrapper"><a class="header" href="#filestorageb-m-ergonomic-wrapper">FileStorage&lt;B, M&gt; (Ergonomic Wrapper)</a></h3>
 <ul>
-<li><code>FileStorage&lt;M&gt;</code> - Thin wrapper with <code>std::fs</code>-aligned API
+<li><code>FileStorage&lt;B, M&gt;</code> - Zero-cost wrapper with <code>std::fs</code>-aligned API
 <ul>
-<li>Type-erased backend (<code>Box&lt;dyn Fs&gt;</code>) for clean API</li>
+<li>Generic backend <code>B</code> (no boxing, static dispatch)</li>
 <li>Optional marker type <code>M</code> for compile-time container differentiation</li>
+<li><code>.boxed()</code> method for opt-in type erasure when needed</li>
 </ul>
 </li>
+<li><code>BackendStack</code> builder for fluent middleware composition</li>
 <li>Accepts <code>impl AsRef&lt;Path&gt;</code> for convenience</li>
 <li>Delegates all operations to wrapped backend</li>
 </ul>
+<p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in.</p>
 <p><strong>Note:</strong> <code>FileStorage</code> contains NO policy logic. Policy is handled by middleware.</p>
-<p><strong>Exit criteria:</strong> Applications can use <code>FileStorage</code> as drop-in for <code>std::fs</code> patterns.</p>
+<p><strong>Exit criteria:</strong> Each backend implements the appropriate trait level (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>) and passes conformance suite. Each middleware wraps backends implementing the same traits. Applications can use <code>FileStorage</code> as drop-in for <code>std::fs</code> patterns.</p>
 <hr>
-<h2 id="phase-4-conformance-test-suite"><a class="header" href="#phase-4-conformance-test-suite">Phase 4: Conformance test suite</a></h2>
+<h2 id="phase-3-conformance-test-suite"><a class="header" href="#phase-3-conformance-test-suite">Phase 3: Conformance test suite</a></h2>
 <p><strong>Goal:</strong> Prevent backend divergence and validate middleware behavior.</p>
 <h3 id="backend-conformance-tests"><a class="header" href="#backend-conformance-tests">Backend conformance tests</a></h3>
 <p>Conformance tests are organized by trait layer:</p>
@@ -528,7 +536,7 @@ fn memory_backend_works_in_wasm() {
 <span class="boring">}</span></code></pre>
 <p><strong>Exit criteria:</strong> All backends pass same suite; middleware tests are backend-agnostic; zero panics in any test.</p>
 <hr>
-<h2 id="phase-5-documentation--examples"><a class="header" href="#phase-5-documentation--examples">Phase 5: Documentation + examples</a></h2>
+<h2 id="phase-4-documentation--examples"><a class="header" href="#phase-4-documentation--examples">Phase 4: Documentation + examples</a></h2>
 <ul>
 <li>Keep <code>AGENTS.md</code> and <code>src/architecture/design-overview.md</code> authoritative</li>
 <li>Provide example per backend</li>
@@ -539,7 +547,7 @@ fn memory_backend_works_in_wasm() {
 <li>Document platform-specific behavior</li>
 </ul>
 <hr>
-<h2 id="phase-6-cicd-pipeline"><a class="header" href="#phase-6-cicd-pipeline">Phase 6: CI/CD Pipeline</a></h2>
+<h2 id="phase-5-cicd-pipeline"><a class="header" href="#phase-5-cicd-pipeline">Phase 5: CI/CD Pipeline</a></h2>
 <p><strong>Goal:</strong> Ensure quality across platforms and prevent regressions.</p>
 <h3 id="cross-platform-testing"><a class="header" href="#cross-platform-testing">Cross-Platform Testing</a></h3>
 <pre><code class="language-yaml"># .github/workflows/ci.yml
@@ -789,7 +797,7 @@ aws s3 cp s3://user-files/document.pdf ./local.pdf --endpoint-url http://yourser
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_remote::RemoteBackend;
-use anyfs_container::FileStorage;
+use anyfs::FileStorage;
 
 // Connect to your cloud service
 let remote = RemoteBackend::connect("https://api.yourservice.com")

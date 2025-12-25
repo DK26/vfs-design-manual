@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,47 +189,41 @@
   Cargo.toml
   src/
     lib.rs
-    backend.rs              # Fs trait
+    backend.rs              # Fs traits (FsRead, FsWrite, FsDir, etc.)
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
-anyfs/                      # Crate 2: backends + middleware
+anyfs/                      # Crate 2: backends + middleware + ergonomics
   Cargo.toml
   src/
     lib.rs
     backends/
       memory.rs             # MemoryBackend [feature: memory, default]
       sqlite.rs             # SqliteBackend [feature: sqlite]
+      stdfs.rs              # StdFsBackend [feature: stdfs]
       vrootfs.rs            # VRootFsBackend [feature: vrootfs]
     middleware/
       quota.rs              # Quota&lt;B&gt;
       tracing.rs            # Tracing&lt;B&gt;
       feature_guard.rs      # Restrictions&lt;B&gt;
-
-anyfs-container/            # Crate 3: ergonomic wrapper
-  Cargo.toml
-  src/
-    lib.rs
-    container.rs            # FilesContainer&lt;B&gt;
+    container.rs            # FileStorage&lt;M&gt;
+    stack.rs                # BackendStack builder
 </code></pre>
 <hr>
 <h2 id="dependency-model"><a class="header" href="#dependency-model">Dependency Model</a></h2>
 <pre><code>anyfs-backend (trait + types)
      ^
-     |-- anyfs (backends + middleware)
-     |     ^-- vrootfs feature uses strict-path
-     |
-     +-- anyfs-container (ergonomic wrapper)
+     |-- anyfs (backends + middleware + ergonomics)
+           ^-- vrootfs feature uses strict-path
 </code></pre>
 <p><strong>Key points:</strong></p>
 <ul>
 <li>Custom backends depend only on <code>anyfs-backend</code></li>
-<li><code>anyfs</code> provides built-in backends and middleware</li>
-<li><code>anyfs-container</code> provides the ergonomic <code>FilesContainer</code> wrapper</li>
+<li><code>anyfs</code> provides built-in backends, middleware, and the ergonomic <code>FileStorage&lt;M&gt;</code> wrapper</li>
 </ul>
 <hr>
 <h2 id="middleware-pattern"><a class="header" href="#middleware-pattern">Middleware Pattern</a></h2>
-<pre><code>FilesContainer&lt;B&gt;
+<pre><code>FileStorage&lt;B&gt;
     wraps -&gt; Tracing&lt;B&gt;
         wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;
@@ -242,14 +236,15 @@ anyfs-container/            # Crate 3: ergonomic wrapper
 <ul>
 <li><code>memory</code> — In-memory storage (default)</li>
 <li><code>sqlite</code> — SQLite-backed persistent storage</li>
-<li><code>vrootfs</code> — Host filesystem backend (uses <code>strict-path</code>)</li>
+<li><code>stdfs</code> — Direct <code>std::fs</code> delegation (no containment)</li>
+<li><code>vrootfs</code> — Host filesystem backend with path containment (uses <code>strict-path</code>)</li>
 </ul>
 <p>Middleware is always available (no feature flags).</p>
 <hr>
 <h2 id="where-to-start"><a class="header" href="#where-to-start">Where To Start</a></h2>
 <ul>
 <li>Application usage: <code>book/src/getting-started/guide.md</code></li>
-<li>Trait details: <code>book/src/traits/vfs-trait.md</code></li>
+<li>Trait details: <code>book/src/traits/layered-traits.md</code></li>
 <li>Middleware: <code>book/src/architecture/design-overview.md</code></li>
 <li>Decisions: <code>book/src/architecture/adrs.md</code></li>
 </ul>

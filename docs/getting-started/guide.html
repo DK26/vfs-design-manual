@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -187,26 +187,25 @@
 <p>Add to your <code>Cargo.toml</code>:</p>
 <pre><code class="language-toml">[dependencies]
 anyfs = "0.1"
-anyfs-container = "0.1"  # Optional: for ergonomic wrapper
 </code></pre>
 <p>For additional backends:</p>
 <pre><code class="language-toml">[dependencies]
-anyfs = { version = "0.1", features = ["sqlite", "vrootfs"] }
+anyfs = { version = "0.1", features = ["sqlite", "stdfs", "vrootfs"] }
 </code></pre>
 <p>Available features:</p>
 <ul>
 <li><code>memory</code> — In-memory storage (default)</li>
 <li><code>sqlite</code> — SQLite-backed persistent storage</li>
-<li><code>vrootfs</code> — Host filesystem backend</li>
+<li><code>stdfs</code> — Direct <code>std::fs</code> delegation (no containment)</li>
+<li><code>vrootfs</code> — Host filesystem backend with path containment</li>
 </ul>
 <hr>
 <h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
 <h3 id="hello-world"><a class="header" href="#hello-world">Hello World</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, FileStorage};
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    let mut fs = FilesContainer::new(MemoryBackend::new());
+    let mut fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/hello.txt", b"Hello, AnyFS!")?;
     let content = fs.read("/hello.txt")?;
@@ -215,15 +214,14 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre>
 <h3 id="with-quotas"><a class="header" href="#with-quotas">With Quotas</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, Quota};
-use anyfs_container::FilesContainer;
+<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, Quota, FileStorage};
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let backend = Quota::new(SqliteBackend::open_or_create("data.db")?)
         .with_max_total_size(100 * 1024 * 1024)  // 100 MB
         .with_max_file_size(10 * 1024 * 1024);   // 10 MB per file
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     fs.create_dir_all("/documents")?;
     fs.write("/documents/notes.txt", b"Meeting notes")?;
@@ -231,8 +229,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre>
 <h3 id="with-restrictions"><a class="header" href="#with-restrictions">With Restrictions</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, Restrictions};
-use anyfs_container::FilesContainer;
+<pre class="playground"><code class="language-rust">use anyfs::{MemoryBackend, Restrictions, FileStorage};
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // Block specific operations for untrusted code
@@ -240,7 +237,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
         .deny_hard_links()    // Block hard_link() calls
         .deny_permissions();  // Block set_permissions() calls
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
@@ -249,8 +246,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre>
 <h3 id="full-stack-layer-based"><a class="header" href="#full-stack-layer-based">Full Stack (Layer-based)</a></h3>
-<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs_container::FilesContainer;
+<pre class="playground"><code class="language-rust">use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer, FileStorage};
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let backend = SqliteBackend::open_or_create("data.db")?
@@ -262,7 +258,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
             .deny_permissions())
         .layer(TracingLayer::new());
 
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     fs.create_dir_all("/data")?;
     fs.write("/data/file.txt", b"hello")?;
@@ -381,12 +377,11 @@ match fs.write("/file.txt", &amp;large_data) {
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::MemoryBackend;
-use anyfs_container::FilesContainer;
+</span>use anyfs::{MemoryBackend, FileStorage};
 
 #[test]
 fn test_write_and_read() {
-    let mut fs = FilesContainer::new(MemoryBackend::new());
+    let mut fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/test.txt", b"test data").unwrap();
     let content = fs.read("/test.txt").unwrap();
@@ -397,14 +392,13 @@ fn test_write_and_read() {
 <p>With limits:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{MemoryBackend, Quota, FileStorage};
 
 #[test]
 fn test_quota_exceeded() {
     let backend = Quota::new(MemoryBackend::new())
         .with_max_total_size(1024);  // 1 KB
-    let mut fs = FilesContainer::new(backend);
+    let mut fs = FileStorage::new(backend);
 
     let big_data = vec![0u8; 2048];  // 2 KB
     let result = fs.write("/big.bin", &amp;big_data);
@@ -422,8 +416,9 @@ fn test_quota_exceeded() {
 </thead>
 <tbody>
 <tr><td>Testing</td><td><code>MemoryBackend</code></td></tr>
-<tr><td>Production</td><td><code>SqliteBackend</code></td></tr>
-<tr><td>Host filesystem</td><td><code>VRootFsBackend</code></td></tr>
+<tr><td>Production (portable)</td><td><code>SqliteBackend</code></td></tr>
+<tr><td>Host filesystem (with containment)</td><td><code>VRootFsBackend</code></td></tr>
+<tr><td>Host filesystem (direct access)</td><td><code>StdFsBackend</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -431,17 +426,17 @@ fn test_quota_exceeded() {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Minimal: just storage
-let fs = FilesContainer::new(MemoryBackend::new());
+let fs = FileStorage::new(MemoryBackend::new());
 
 // With limits (layer-based)
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::new()
             .max_total_size(100 * 1024 * 1024))
 );
 
 // Sandboxed (layer-based)
-let fs = FilesContainer::new(
+let fs = FileStorage::new(
     SqliteBackend::open("data.db")?
         .layer(QuotaLayer::new()
             .max_total_size(100 * 1024 * 1024))

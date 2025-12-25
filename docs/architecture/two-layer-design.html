@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,12 +185,12 @@
 <ol>
 <li><strong>Backends</strong>: Pure storage + filesystem semantics</li>
 <li><strong>Middleware</strong>: Composable policy layers</li>
-<li><strong>FilesContainer</strong>: Ergonomic wrapper</li>
+<li><strong>FileStorage</strong>: Ergonomic wrapper</li>
 </ol>
 <hr>
 <h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FilesContainer                         │  ← Ergonomics only
+│  FileStorage                         │  ← Ergonomics only
 ├─────────────────────────────────────────┤
 │  Middleware Stack (composable):         │  ← Policy enforcement
 │    Tracing → PathFilter → Restrictions  │
@@ -208,7 +208,7 @@
 <tr><th>Layer</th><th>Responsibility</th><th>Path Handling</th></tr>
 </thead>
 <tbody>
-<tr><td><code>FilesContainer</code></td><td>Ergonomic API</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code></td></tr>
+<tr><td><code>FileStorage</code></td><td>Ergonomic API</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code></td></tr>
 <tr><td>Middleware</td><td>Policy enforcement</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code></td></tr>
 <tr><td>Backend</td><td>Storage + FS semantics</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code></td></tr>
 </tbody>
@@ -217,7 +217,7 @@
 <p>All layers use <code>impl AsRef&lt;Path&gt;</code> for consistency with <code>std::fs</code>.</p>
 <hr>
 <h2 id="policy-via-middleware"><a class="header" href="#policy-via-middleware">Policy via Middleware</a></h2>
-<p><strong>Old design (rejected):</strong> FilesContainer contained quota/feature logic.</p>
+<p><strong>Old design (rejected):</strong> FileStorage contained quota/feature logic.</p>
 <p><strong>Current design:</strong> Policy is handled by composable middleware:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -229,8 +229,8 @@ let backend = PathFilter::new(
 )
 .allow("/workspace/**");
 
-// FilesContainer is just ergonomics
-let fs = FilesContainer::new(backend);
+// FileStorage is just ergonomics
+let fs = FileStorage::new(backend);
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="path-containment"><a class="header" href="#path-containment">Path Containment</a></h2>
@@ -238,7 +238,7 @@ let fs = FilesContainer::new(backend);
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl Fs for VRootFsBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, VfsError&gt; {
+    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         // VirtualRoot ensures paths can't escape
         let safe_path = self.root.join(path)?;
         std::fs::read(safe_path).map_err(Into::into)

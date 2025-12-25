@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-27c89d38.js";
+            window.path_to_searchindex_js = "../searchindex-69e25fcb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-1f24c6e5.js"></script>
+        <script src="../toc-18c48b55.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -312,6 +312,7 @@ let secure_backend = Tracing::new(           // Audit trail
 <tbody>
 <tr><td><code>MemoryBackend</code></td><td>Isolated in process memory</td></tr>
 <tr><td><code>SqliteBackend</code></td><td>Each container is a separate <code>.db</code> file</td></tr>
+<tr><td><code>StdFsBackend</code></td><td><strong>None</strong> - full filesystem access (use <code>PathFilter</code> for sandboxing)</td></tr>
 <tr><td><code>VRootFsBackend</code></td><td>Uses <code>strict-path::VirtualRoot</code> to contain paths</td></tr>
 </tbody>
 </table>
@@ -356,7 +357,7 @@ backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolu
 <span class="boring">}</span></code></pre>
 <p>When following is disabled:</p>
 <ul>
-<li><code>read("/link")</code> on a symlink returns <code>VfsError::IsSymlink</code> (or reads link as opaque data)</li>
+<li><code>read("/link")</code> on a symlink returns <code>FsError::IsSymlink</code> (or reads link as opaque data)</li>
 <li>Path resolution treats symlinks as terminal nodes</li>
 </ul>
 <p><strong>This is the actual security feature</strong> - controlling whether symlinks are resolved.</p>
@@ -388,8 +389,7 @@ strict-path: /etc/passwd is NOT within /sandbox → DENIED
 <h3 id="ai-agent-sandbox"><a class="header" href="#ai-agent-sandbox">AI Agent Sandbox</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing, FileStorage};
 
 let sandbox = Tracing::new(
     RateLimit::new(
@@ -408,21 +408,20 @@ let sandbox = Tracing::new(
     .per_second()
 );
 
-let mut fs = FilesContainer::new(sandbox);
+let mut fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
 <span class="boring">}</span></code></pre>
 <h3 id="multi-tenant-isolation"><a class="header" href="#multi-tenant-isolation">Multi-Tenant Isolation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Quota};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{SqliteBackend, Quota, FileStorage};
 
-fn create_tenant_storage(tenant_id: &amp;str, quota_bytes: u64) -&gt; FilesContainer&lt;...&gt; {
+fn create_tenant_storage(tenant_id: &amp;str, quota_bytes: u64) -&gt; FileStorage&lt;impl Fs&gt; {
     let db_path = format!("tenants/{}.db", tenant_id);
     let backend = Quota::new(SqliteBackend::open(&amp;db_path).unwrap())
         .with_max_total_size(quota_bytes);
 
-    FilesContainer::new(backend)
+    FileStorage::new(backend)
 }
 
 // Complete isolation: separate database files
@@ -430,14 +429,13 @@ fn create_tenant_storage(tenant_id: &amp;str, quota_bytes: u64) -&gt; FilesConta
 <h3 id="read-only-browsing"><a class="header" href="#read-only-browsing">Read-Only Browsing</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, ReadOnly};
-use anyfs_container::FilesContainer;
+</span>use anyfs::{SqliteBackend, ReadOnly, FileStorage};
 
-let readonly_fs = FilesContainer::new(
+let readonly_fs = FileStorage::new(
     ReadOnly::new(SqliteBackend::open("archive.db")?)
 );
 
-// All write operations return VfsError::ReadOnly
+// All write operations return FsError::ReadOnly
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="security-checklist"><a class="header" href="#security-checklist">Security Checklist</a></h2>
