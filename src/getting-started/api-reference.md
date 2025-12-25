@@ -53,7 +53,7 @@ use anyfs::{QuotaLayer, FeatureGuardLayer, TracingLayer};
 
 let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(FeatureGuardLayer::new().allow_symlinks())
+    .layer(FeatureGuardLayer::new().allow_symlinks())  // Allows symlink() operation
     .layer(TracingLayer::new());
 
 // BackendStack builder (fluent API)
@@ -61,10 +61,12 @@ use anyfs_container::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .feature_gated(|g| g.allow_symlinks())
+    .feature_gated(|g| g.allow_symlinks())  // Allows symlink() operation
     .traced()
     .into_container();
 ```
+
+> **Note:** `allow_symlinks()` permits calling the `symlink()` method. For virtual backends, use `backend.set_follow_symlinks(bool)` to control whether symlinks are followed during path resolution.
 
 ---
 

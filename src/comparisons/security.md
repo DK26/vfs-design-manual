@@ -17,7 +17,7 @@ AnyFS is designed with security as a primary concern. Security policies are enfo
 | Threat | Description | Middleware |
 |--------|-------------|------------|
 | **Path traversal** | Access files outside allowed paths | `PathFilter` |
-| **Symlink attacks** | Use symlinks to bypass controls | `FeatureGuard` (disabled by default) |
+| **Symlink attacks** | Use symlinks to bypass controls | Backend-dependent (see below) |
 | **Resource exhaustion** | Fill storage or create excessive files | `Quota` |
 | **Runaway processes** | Excessive operations consuming resources | `RateLimit` |
 | **Unauthorized writes** | Modifications to read-only data | `ReadOnly` |
@@ -79,20 +79,21 @@ PathFilter::new(backend)
 
 ### 3. Feature Gating (FeatureGuard)
 
-Dangerous features are disabled by default:
+Certain operations can be blocked by policy:
 
 ```rust
 FeatureGuard::new(backend)
-    // Symlinks disabled by default
     // Hard links disabled by default
-    // Permissions disabled by default
-    .with_symlinks()           // Opt-in if needed
-    .with_max_symlink_resolution(40)
+    // Permission changes disabled by default
+    .with_hard_links()         // Opt-in if needed
+    .with_permissions()        // Opt-in if needed
 ```
 
 **Guarantees:**
-- Symlinks, hard links, permission changes blocked unless enabled
-- Symlink resolution depth is bounded
+- Hard links, permission changes blocked unless enabled
+- Blocks `symlink()` and `hard_link()` creation by default
+
+**Note:** `FeatureGuard` controls which *operations* are allowed, not how paths are resolved. See "Symlink Security" below for path resolution.
 
 ### 4. Resource Limits (Quota)
 
@@ -155,6 +156,54 @@ This means:
 - **No host path leakage** - paths never touch the OS path resolver
 
 For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equivalent guarantees by validating and containing all paths before they reach the OS.
+
+### 8. Symlink Security: Virtual vs Real Backends
+
+**The security concern with symlinks is *following* them, not *creating* them.**
+
+A symlink is just data. Creating `/sandbox/link -> /etc/passwd` is harmless. The danger is when reading `/sandbox/link` follows the symlink and reads `/etc/passwd` instead.
+
+| Backend Type | Who Controls Symlink Following? | Escape Protection |
+|--------------|--------------------------------|-------------------|
+| `MemoryBackend` | **We do** (symlinks are stored data) | Full control |
+| `SqliteBackend` | **We do** (symlinks are stored data) | Full control |
+| `VRootFsBackend` | **The OS does** | `strict-path` canonicalization |
+
+#### Virtual Backends (Memory, SQLite)
+
+Virtual backends can offer a `follow_symlinks` option:
+
+```rust
+let mut mem = MemoryBackend::new();
+mem.set_follow_symlinks(false);  // Symlinks become opaque data
+```
+
+When disabled, reading a symlink returns the link target as data, not the file it points to.
+
+#### Real Filesystem Backend (VRootFsBackend)
+
+For real filesystems, the OS controls symlink resolution. We cannot tell `std::fs::read()` to not follow symlinks.
+
+**However, `strict-path::VirtualRoot` provides escape protection:**
+
+```
+User requests: /sandbox/link
+link -> ../../../etc/passwd
+strict-path: canonicalize(/sandbox/link) = /etc/passwd
+strict-path: /etc/passwd is NOT within /sandbox → DENIED
+```
+
+This is "follow and check containment" rather than "don't follow at all."
+
+#### What This Means in Practice
+
+| Use Case | Virtual Backend | VRootFsBackend |
+|----------|-----------------|----------------|
+| Jail escape via symlink | Preventable (don't follow) | Prevented (strict-path) |
+| Symlink within jail to unexpected location | Preventable (don't follow) | Allowed (OS follows, stays in jail) |
+| Archive extraction safety | Full control | Escape-protected only |
+
+For most security use cases, "follow and check containment" (VRootFsBackend) is sufficient. Only specialized cases (archive extraction with strict symlink policy) need "don't follow at all" (virtual backends only).
 
 ---
 

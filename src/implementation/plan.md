@@ -109,13 +109,16 @@ Every backend and middleware must document:
 ### Backends (feature-gated)
 
 - `memory` (default): `MemoryBackend`
+  - `set_follow_symlinks(bool)` - control symlink resolution
 - `sqlite` (optional): `SqliteBackend`
+  - `set_follow_symlinks(bool)` - control symlink resolution
 - `vrootfs` (optional): `VRootFsBackend` using `strict-path` for containment
+  - Symlink resolution controlled by OS; `strict-path` prevents escapes
 
 ### Middleware
 
 - `Quota<B>` + `QuotaLayer` - Resource limits
-- `FeatureGuard<B>` + `FeatureGuardLayer` - Feature whitelist
+- `FeatureGuard<B>` + `FeatureGuardLayer` - Operation whitelist (blocks `symlink()`, `hard_link()`, etc.)
 - `PathFilter<B>` + `PathFilterLayer` - Path-based access control
 - `ReadOnly<B>` + `ReadOnlyLayer` - Block writes
 - `RateLimit<B>` + `RateLimitLayer` - Operation throttling
@@ -156,6 +159,12 @@ Every backend and middleware must document:
 - Streaming I/O (`open_read`, `open_write`)
 - `truncate`, `sync`, `fsync`, `statfs`
 
+#### Symlink Resolution Tests (virtual backends only)
+- `set_follow_symlinks(true)`: reading symlink follows to target
+- `set_follow_symlinks(false)`: reading symlink returns link target as data
+- Symlink chains with follow enabled
+- Circular symlink detection when following
+
 #### Path Edge Cases (learned from `vfs` issues)
 - `/foo/../bar` normalizes to `/bar`
 - `//double//slashes//` normalizes correctly
@@ -187,7 +196,7 @@ Every backend and middleware must document:
 ### Middleware tests
 
 - `Quota`: Limit enforcement, usage tracking, streaming writes
-- `FeatureGuard`: Feature blocking, error messages
+- `FeatureGuard`: Operation blocking (`symlink()`, `hard_link()`, etc.), error messages
 - `PathFilter`: Glob pattern matching, deny-by-default
 - `RateLimit`: Throttling behavior, burst handling
 - `ReadOnly`: All write operations blocked

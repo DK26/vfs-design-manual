@@ -163,33 +163,40 @@ strict-path: /escape is NOT within /root → DENIED
 
 This is secure against escape, but it's "follow and check" not "don't follow".
 
-### Recommendation
+### v1 Decision: Option 4 (Accept the Limitation)
 
-**For v1, we should:**
+After analysis, **Option 4** is the pragmatic choice for v1:
 
-1. **Remove the misleading "allow symlinks" feature from FeatureGuard** - it doesn't mean what we thought
+1. **Remove misleading "allow symlinks" from FeatureGuard** - `FeatureGuard` controls *operations* (can you call `symlink()`?), not path resolution behavior.
 
-2. **Document the real situation:**
-   - Virtual backends: We control symlink resolution
-   - VRootFsBackend: OS controls symlink resolution, `strict-path` prevents escapes
+2. **Add `set_follow_symlinks(bool)` to virtual backends only:**
+   ```rust
+   impl MemoryBackend {
+       pub fn set_follow_symlinks(&mut self, follow: bool);
+   }
+   impl SqliteBackend {
+       pub fn set_follow_symlinks(&mut self, follow: bool);
+   }
+   ```
 
-3. **For archive extraction safety:**
-   - Virtual backends: Can add a `follow_symlinks: bool` option to path resolution
-   - VRootFsBackend: `strict-path` provides escape protection (different model)
+3. **Document the difference clearly** in security docs (done - see `security.md` section 8).
 
-4. **Consider for future:**
-   - Option 2 (two traits) if the abstraction mismatch becomes painful
-   - Option 3 (capabilities) for gradual feature discovery
+4. **Accept that VRootFsBackend works differently** - `strict-path` provides escape protection, which is sufficient for most security use cases.
 
-### Questions for Discussion
+### Rationale
 
-1. **Is the two-trait approach worth the complexity?** Would it actually help users, or just confuse them?
+- **Both approaches are secure against jail escapes** - just via different mechanisms
+- **Two traits adds complexity** most users won't benefit from
+- **Custom path resolution has TOCTOU vulnerabilities** - worse than accepting the limitation
+- **The narrow use case** ("no symlink following at all" on real filesystem) is rare enough to defer
 
-2. **Should VRootFsBackend implement custom path resolution?** The TOCTOU and complexity costs are real.
+### Future Considerations
 
-3. **Is escape prevention (strict-path) sufficient?** Or do users need "no symlink following at all"?
+If demand emerges for "no symlink following" on real filesystems:
 
-4. **Should we rename `FeatureGuard`?** Current name implies features we can't reliably provide.
+1. **Option 1 (custom path resolution)** could be added as opt-in, with documented TOCTOU tradeoffs
+2. **Option 3 (capabilities)** could be added to let middleware query backend behavior
+3. **A separate `SafeArchiveExtractor`** utility could implement the strict semantics needed for archive extraction
 
 ---
 
@@ -421,7 +428,7 @@ Based on review feedback, the following naming concerns were raised:
 
 | Topic | v1 Decision |
 |-------|-------------|
-| Symlink security | **NEEDS REDESIGN** - see discussion above |
+| Symlink security | Virtual backends: `set_follow_symlinks()`. VRootFsBackend: `strict-path` escapes only. |
 | Path resolution | Virtual = lexical; VRootFs = OS |
 | Compression/encryption | Backend responsibility |
 | Hooks/callbacks | Defer to v2 |

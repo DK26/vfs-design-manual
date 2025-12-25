@@ -123,19 +123,20 @@ let backend = Tracing::new(
 
 ## ADR-007: FeatureGuard for least-privilege
 
-**Decision:** Dangerous features (symlinks, hard links, permission mutation) are disabled by default via `FeatureGuard<B>` middleware.
+**Decision:** Dangerous operations (symlink creation, hard links, permission mutation) are disabled by default via `FeatureGuard<B>` middleware.
 
 **Configuration:**
-- `.with_symlinks()` - enable symlink creation/following
-- `.with_hard_links()` - enable hard link creation
-- `.with_permissions()` - enable `set_permissions`
-- `.with_max_symlink_resolution(n)` - limit symlink hops (default: 40)
+- `.with_symlinks()` - enable `symlink()` operation (creating symlinks)
+- `.with_hard_links()` - enable `hard_link()` operation
+- `.with_permissions()` - enable `set_permissions()` operation
 
 When disabled, operations return `VfsError::FeatureNotEnabled`.
 
+**Note:** `FeatureGuard` controls which *operations* are allowed, not path resolution behavior. For virtual backends (Memory, SQLite), use `set_follow_symlinks()` on the backend to control whether symlinks are followed during path resolution.
+
 **Why:**
 - Reduces attack surface by default.
-- Explicit opt-in for dangerous features.
+- Explicit opt-in for dangerous operations.
 - Separate from backend - works with any backend.
 
 ---
