@@ -4,7 +4,7 @@ This plan describes a phased rollout of the AnyFS ecosystem:
 
 - `anyfs-backend`: Core trait (`VfsBackend`, `Layer`) + types
 - `anyfs`: Built-in backends + middleware (feature-gated)
-- `anyfs-container`: `FilesContainer<B>` ergonomic wrapper
+- `anyfs-container`: `FileStorage<M>` ergonomic wrapper
 
 ---
 
@@ -121,7 +121,7 @@ Every backend and middleware must document:
   - Handles `..` correctly (requires knowing what each component resolves to)
   - Detects circular symlinks (max depth or visited set)
   - Returns canonical resolved path
-- Applied automatically by `FilesContainer` when `B::NEEDS_PATH_RESOLUTION == true`
+- Applied automatically by `FileStorage` when backend's `NEEDS_PATH_RESOLUTION == true`
 
 ### Backends (feature-gated)
 
@@ -158,13 +158,15 @@ Every backend and middleware must document:
 
 **Goal:** Provide user-facing ergonomic wrapper.
 
-- `FilesContainer<B>` - Thin wrapper with `std::fs`-aligned API
+- `FileStorage<M>` - Thin wrapper with `std::fs`-aligned API
+  - Type-erased backend (`Box<dyn VfsBackend>`) for clean API
+  - Optional marker type `M` for compile-time container differentiation
 - Accepts `impl AsRef<Path>` for convenience
 - Delegates all operations to wrapped backend
 
-**Note:** `FilesContainer` contains NO policy logic. Policy is handled by middleware.
+**Note:** `FileStorage` contains NO policy logic. Policy is handled by middleware.
 
-**Exit criteria:** Applications can use `FilesContainer` as drop-in for `std::fs` patterns.
+**Exit criteria:** Applications can use `FileStorage` as drop-in for `std::fs` patterns.
 
 ---
 
@@ -491,6 +493,316 @@ impl<B: VfsBackend> vfs::FileSystem for AnyFsCompat<B> { ... }
 - Migrate from `vfs` to AnyFS incrementally
 - Use existing `vfs` backends (EmbeddedFS) in AnyFS
 - Use AnyFS backends in projects that depend on `vfs`
+
+### Cloud Storage & Remote Access
+
+The `VfsBackend` abstraction enables building cloud storage services with multiple access patterns.
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          YOUR SERVER                                │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  Quota<Tracing<SqliteBackend>>  (or any backend stack)        │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│         ▲              ▲              ▲              ▲              │
+│         │              │              │              │              │
+│    ┌────┴────┐   ┌─────┴─────┐  ┌─────┴─────┐  ┌─────┴─────┐       │
+│    │ S3 API  │   │ gRPC/REST │  │    NFS    │  │  WebDAV   │       │
+│    │ adapter │   │  adapter  │  │   server  │  │  server   │       │
+│    └────┬────┘   └─────┬─────┘  └─────┬─────┘  └─────┬─────┘       │
+└─────────┼──────────────┼──────────────┼──────────────┼─────────────┘
+          │              │              │              │
+          ▼              ▼              ▼              ▼
+    AWS SDK/CLI    Your SDK/app    mount /cloud   mount /webdav
+```
+
+**Future crates for remote access:**
+
+| Crate | Purpose |
+|-------|---------|
+| `anyfs-s3-server` | Expose VfsBackend as S3-compatible API |
+| `anyfs-sftp-server` | SFTP server - shell-like file access |
+| `anyfs-ssh-shell` | SSH server with sandboxed home directories |
+| `anyfs-remote` | `RemoteBackend` client for remote VfsBackend access |
+| `anyfs-grpc` | gRPC protocol adapter for VfsBackend |
+| `anyfs-webdav` | WebDAV server adapter |
+| `anyfs-nfs` | NFS server adapter |
+
+#### `anyfs-s3-server` - S3-Compatible Object Storage
+
+Expose any `VfsBackend` as an S3-compatible API. Users access your storage with standard AWS SDKs.
+
+```rust
+use anyfs::{SqliteBackend, Quota, Tracing};
+use anyfs_s3_server::S3Server;
+
+// Your storage backend with quotas and audit logging
+let backend = Quota::new(Tracing::new(SqliteBackend::open("storage.db")?))
+    .with_max_total_size(100 * 1024 * 1024 * 1024);  // 100GB
+
+S3Server::new(backend)
+    .with_auth(auth_provider)       // Your auth implementation
+    .with_bucket("user-files")      // Virtual bucket name
+    .bind("0.0.0.0:9000")
+    .run()
+    .await?;
+```
+
+**Client usage (standard AWS CLI/SDK):**
+
+```bash
+# Upload a file
+aws s3 cp document.pdf s3://user-files/ --endpoint-url http://yourserver:9000
+
+# List files
+aws s3 ls s3://user-files/ --endpoint-url http://yourserver:9000
+
+# Download a file
+aws s3 cp s3://user-files/document.pdf ./local.pdf --endpoint-url http://yourserver:9000
+```
+
+#### `anyfs-remote` - Remote Backend Client
+
+A `VfsBackend` implementation that connects to a remote server. Works with `FileStorage` or `anyfs-fuse`.
+
+```rust
+use anyfs_remote::RemoteBackend;
+use anyfs_container::FileStorage;
+
+// Connect to your cloud service
+let remote = RemoteBackend::connect("https://api.yourservice.com")
+    .with_auth(api_key)
+    .await?;
+
+// Use like any other backend
+let mut fs = FileStorage::new(remote);
+fs.write("/documents/report.pdf", data)?;
+```
+
+**Combined with FUSE for transparent mount:**
+
+```rust
+use anyfs_remote::RemoteBackend;
+use anyfs_fuse::FuseMount;
+
+// Mount remote storage as local directory
+let remote = RemoteBackend::connect("https://yourserver.com")?;
+FuseMount::mount(remote, "/mnt/cloud")?;
+
+// Now use standard filesystem tools:
+// $ cp file.txt /mnt/cloud/
+// $ ls /mnt/cloud/
+// $ cat /mnt/cloud/file.txt
+```
+
+#### `anyfs-grpc` - gRPC Protocol
+
+Efficient binary protocol for VfsBackend remote access.
+
+**Server side:**
+
+```rust
+use anyfs_grpc::GrpcServer;
+
+let backend = SqliteBackend::open("storage.db")?;
+GrpcServer::new(backend)
+    .bind("[::1]:50051")
+    .serve()
+    .await?;
+```
+
+**Client side:**
+
+```rust
+use anyfs_grpc::GrpcBackend;
+
+let backend = GrpcBackend::connect("http://[::1]:50051").await?;
+let mut fs = FileStorage::new(backend);
+```
+
+#### Multi-Tenant Cloud Storage Example
+
+```rust
+use anyfs::{SqliteBackend, Quota, PathFilter, Tracing};
+use anyfs_s3_server::S3Server;
+
+// Per-tenant backend factory
+fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> impl VfsBackend {
+    let db_path = format!("/data/tenants/{}.db", tenant_id);
+
+    Quota::new(
+        PathFilter::new(
+            Tracing::new(SqliteBackend::open(&db_path).unwrap())
+                .with_target(&format!("tenant.{}", tenant_id))
+        )
+        .allow("/**")
+        .deny("../**")  // No path traversal
+    )
+    .with_max_total_size(quota_bytes)
+}
+
+// Tenant-aware S3 server
+S3Server::new_multi_tenant(|request| {
+    let tenant_id = extract_tenant(request)?;
+    let quota = get_tenant_quota(tenant_id)?;
+    Ok(create_tenant_storage(tenant_id, quota))
+})
+.bind("0.0.0.0:9000")
+.run()
+.await?;
+```
+
+#### `anyfs-sftp-server` - SFTP Access with Shell Commands
+
+Expose VfsBackend as an SFTP server. Users connect with standard SSH/SFTP clients and navigate with familiar shell commands.
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      YOUR SERVER                                │
+│                                                                 │
+│  ┌───────────────┐    ┌───────────────────────────────────────┐ │
+│  │ SFTP Server   │───▶│ User's isolated FileStorage           │ │
+│  │ (anyfs-sftp)  │    │   └─▶ Quota<SqliteBackend>            │ │
+│  └───────────────┘    │       └─▶ /data/users/alice.db        │ │
+│         ▲             └───────────────────────────────────────┘ │
+└─────────┼───────────────────────────────────────────────────────┘
+          │
+          │ sftp://
+          │
+    ┌─────┴─────┐
+    │  Remote   │  $ cd /documents
+    │  User     │  $ ls
+    │  (shell)  │  $ put file.txt
+    └───────────┘
+```
+
+**Server implementation:**
+
+```rust
+use anyfs::{SqliteBackend, Quota, Tracing};
+use anyfs_sftp_server::SftpServer;
+
+// Per-user isolated backend factory
+fn get_user_storage(username: &str) -> impl VfsBackend {
+    let db_path = format!("/data/users/{}.db", username);
+
+    Quota::new(
+        Tracing::new(SqliteBackend::open(&db_path).unwrap())
+            .with_target(&format!("user.{}", username))
+    )
+    .with_max_total_size(10 * 1024 * 1024 * 1024)  // 10GB per user
+}
+
+SftpServer::new(get_user_storage)
+    .with_host_key("/etc/ssh/host_key")
+    .bind("0.0.0.0:22")
+    .run()
+    .await?;
+```
+
+**User experience (standard SFTP client):**
+
+```bash
+$ sftp alice@yourserver.com
+Connected to yourserver.com.
+sftp> pwd
+/
+sftp> ls
+documents/  photos/  backup/
+sftp> cd documents
+sftp> ls
+report.pdf  notes.txt
+sftp> put local_file.txt
+Uploading local_file.txt to /documents/local_file.txt
+sftp> get notes.txt
+Downloading /documents/notes.txt
+sftp> mkdir projects
+sftp> rm old_file.txt
+```
+
+All operations happen on the user's isolated SQLite database on your server.
+
+#### `anyfs-ssh-shell` - Full Shell Access with Sandboxed Home
+
+Give users a real SSH shell where their home directory is backed by VfsBackend.
+
+**Server implementation:**
+
+```rust
+use anyfs::{SqliteBackend, Quota};
+use anyfs_fuse::FuseMount;
+use anyfs_ssh_shell::SshShellServer;
+
+// On user login, mount their isolated storage as $HOME
+fn on_user_login(username: &str) -> Result<(), Error> {
+    let db_path = format!("/data/users/{}.db", username);
+    let backend = Quota::new(SqliteBackend::open(&db_path)?)
+        .with_max_total_size(10 * 1024 * 1024 * 1024);
+
+    let mount_point = format!("/home/{}", username);
+    FuseMount::mount(backend, &mount_point)?;
+    Ok(())
+}
+
+SshShellServer::new()
+    .on_login(on_user_login)
+    .bind("0.0.0.0:22")
+    .run()
+    .await?;
+```
+
+**User experience (full shell):**
+
+```bash
+$ ssh alice@yourserver.com
+Welcome to YourServer!
+
+alice@server:~$ pwd
+/home/alice
+alice@server:~$ ls -la
+total 3
+drwxr-xr-x  4 alice alice 4096 Dec 25 10:00 .
+drwxr-xr-x  2 alice alice 4096 Dec 25 10:00 documents
+drwxr-xr-x  2 alice alice 4096 Dec 25 10:00 photos
+
+alice@server:~$ cat documents/notes.txt
+Hello world!
+
+alice@server:~$ echo "new content" > documents/new_file.txt
+
+alice@server:~$ du -sh .
+150M    .
+
+# Everything they do is actually stored in /data/users/alice.db on the server!
+# They can use vim, gcc, python - all working on their isolated VfsBackend
+```
+
+#### Isolated Shell Hosting Use Cases
+
+| Use Case | Backend Stack | What Users Get |
+|----------|---------------|----------------|
+| Shared hosting | `Quota<SqliteBackend>` | Shell + isolated home in SQLite |
+| Dev containers | `Overlay<BaseImage, MemoryBackend>` | Shared base + ephemeral scratch |
+| Coding education | `Quota<MemoryBackend>` | Temporary sandboxed environment |
+| CI/CD runners | `Tracing<MemoryBackend>` | Audited ephemeral workspace |
+| Secure file drop | `PathFilter<SqliteBackend>` | Write-only inbox directory |
+
+#### Access Pattern Summary
+
+| Access Method | Crate | Client Requirement | Best For |
+|---------------|-------|-------------------|----------|
+| S3 API | `anyfs-s3-server` | AWS SDK (any language) | Object storage, web apps |
+| SFTP | `anyfs-sftp-server` | Any SFTP client | Shell-like file access |
+| SSH Shell | `anyfs-ssh-shell` + `anyfs-fuse` | SSH client | Full shell with sandboxed home |
+| gRPC | `anyfs-grpc` | Generated client | High-performance apps |
+| REST | Custom adapter | HTTP client | Simple integrations |
+| FUSE mount | `anyfs-fuse` + `anyfs-remote` | FUSE installed | Transparent local access |
+| WebDAV | `anyfs-webdav` | WebDAV client/OS | File manager access |
+| NFS | `anyfs-nfs` | NFS client | Unix network shares |
 
 ---
 
