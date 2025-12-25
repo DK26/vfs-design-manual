@@ -134,6 +134,7 @@ Different backends achieve containment differently:
 |---------|----------------------|
 | `MemoryBackend` | Isolated in process memory |
 | `SqliteBackend` | Each container is a separate `.db` file |
+| `StdFsBackend` | **None** - full filesystem access (use `PathFilter` for sandboxing) |
 | `VRootFsBackend` | Uses `strict-path::VirtualRoot` to contain paths |
 
 ### 7. Why Virtual Backends Are Inherently Safe

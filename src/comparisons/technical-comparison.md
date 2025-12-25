@@ -231,10 +231,10 @@ pub trait FileSystem: Send + Sync {
 
 | vfs Backend | AnyFS Equivalent | Notes |
 |-------------|------------------|-------|
-| `PhysicalFS` | `VRootFsBackend` | Both use real filesystem |
+| `PhysicalFS` | `StdFsBackend` | Both use real filesystem directly |
 | `MemoryFS` | `MemoryBackend` | Both in-memory |
 | `OverlayFS` | `Overlay<B1,B2>` | Both union filesystems |
-| `AltrootFS` | `PathFilter` (partial) | vfs is simpler chroot |
+| `AltrootFS` | `VRootFsBackend` | Both provide path containment |
 | `EmbeddedFS` | (none) | Read-only embedded assets |
 | (none) | `SqliteBackend` | We have SQLite |
 

@@ -202,7 +202,7 @@ VRootFsBackend calls OS functions (`std::fs::read()`, etc.) which follow symlink
 
 ## Virtual vs Real Backends: Path Resolution
 
-**Question:** Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (VRootFsBackend)?
+**Question:** Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?
 
 **Analysis:**
 
@@ -210,9 +210,10 @@ VRootFsBackend calls OS functions (`std::fs::read()`, etc.) which follow symlink
 |--------------|-----------------|------------------|
 | MemoryBackend | Pure lexical (our code) | We control everything |
 | SqliteBackend | Pure lexical (our code) | We control everything |
-| VRootFsBackend | OS handles it | OS follows symlinks |
+| StdFsBackend | OS handles it | OS follows symlinks |
+| VRootFsBackend | OS handles it | OS follows symlinks (strict-path prevents escapes) |
 
-**Current design:** For virtual backends, we perform lexical path resolution ourselves. For VRootFsBackend, we delegate to the OS via `std::fs`, with `strict-path::VirtualRoot` ensuring containment.
+**Current design:** For virtual backends, we perform lexical path resolution ourselves. For filesystem backends (StdFsBackend, VRootFsBackend), we delegate to the OS via `std::fs`. VRootFsBackend additionally uses `strict-path::VirtualRoot` for containment.
 
 **Open question:** Should we abstract this difference, accept it, or use two traits?
 

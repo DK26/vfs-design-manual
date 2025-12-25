@@ -17,13 +17,14 @@ For additional backends:
 
 ```toml
 [dependencies]
-anyfs = { version = "0.1", features = ["sqlite", "vrootfs"] }
+anyfs = { version = "0.1", features = ["sqlite", "stdfs", "vrootfs"] }
 ```
 
 Available features:
 - `memory` — In-memory storage (default)
 - `sqlite` — SQLite-backed persistent storage
-- `vrootfs` — Host filesystem backend
+- `stdfs` — Direct `std::fs` delegation (no containment)
+- `vrootfs` — Host filesystem backend with path containment
 
 ---
 
@@ -277,8 +278,9 @@ fn test_quota_exceeded() {
 | Use Case | Backend |
 |----------|---------|
 | Testing | `MemoryBackend` |
-| Production | `SqliteBackend` |
-| Host filesystem | `VRootFsBackend` |
+| Production (portable) | `SqliteBackend` |
+| Host filesystem (with containment) | `VRootFsBackend` |
+| Host filesystem (direct access) | `StdFsBackend` |
 
 ### 2. Compose Middleware for Your Needs
 

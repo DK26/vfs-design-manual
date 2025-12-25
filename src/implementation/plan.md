@@ -203,6 +203,12 @@ Each backend implements the traits it supports:
   - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
   - Inode source: SQLite row IDs (`INTEGER PRIMARY KEY`)
   - `set_follow_symlinks(bool)` - control symlink resolution
+- `stdfs` (optional): `StdFsBackend` - direct `std::fs` delegation
+  - Implements: `FsPosix` (all traits including Layer 4)
+  - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)
+  - Inode source: OS inode numbers (`std::fs::Metadata::ino()`)
+  - No path containment - full filesystem access
+  - Use when you only need middleware layers without sandboxing
 - `vrootfs` (optional): `VRootFsBackend` using `strict-path` for containment
   - Implements: `FsPosix` (all traits including Layer 4)
   - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)

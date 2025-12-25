@@ -23,6 +23,7 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
     backends/
       memory.rs             # MemoryBackend [feature: memory, default]
       sqlite.rs             # SqliteBackend [feature: sqlite]
+      stdfs.rs              # StdFsBackend [feature: stdfs]
       vrootfs.rs            # VRootFsBackend [feature: vrootfs]
     middleware/
       quota.rs              # Quota<B>
@@ -69,7 +70,8 @@ Features in `anyfs` select which backends to include:
 
 - `memory` — In-memory storage (default)
 - `sqlite` — SQLite-backed persistent storage
-- `vrootfs` — Host filesystem backend (uses `strict-path`)
+- `stdfs` — Direct `std::fs` delegation (no containment)
+- `vrootfs` — Host filesystem backend with path containment (uses `strict-path`)
 
 Middleware is always available (no feature flags).
 

@@ -805,7 +805,8 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 |---------|---------|-------------|
 | `MemoryBackend` | `memory` (default) | In-memory storage |
 | `SqliteBackend` | `sqlite` | Single-file portable database |
-| `VRootFsBackend` | `vrootfs` | Host filesystem via strict-path |
+| `StdFsBackend` | `stdfs` | Direct `std::fs` delegation (no containment) |
+| `VRootFsBackend` | `vrootfs` | Host filesystem with path containment (via strict-path) |
 
 ---
 

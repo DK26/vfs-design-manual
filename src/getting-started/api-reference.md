@@ -352,7 +352,8 @@ match result {
 |------|---------|-------------|
 | `MemoryBackend` | `memory` (default) | In-memory |
 | `SqliteBackend` | `sqlite` | Persistent |
-| `VRootFsBackend` | `vrootfs` | Host filesystem |
+| `StdFsBackend` | `stdfs` | Direct `std::fs` (no containment) |
+| `VRootFsBackend` | `vrootfs` | Host filesystem (with containment) |
 
 ---
 
@@ -452,7 +453,8 @@ match result {
 |------|-------------|
 | `MemoryBackend` | In-memory backend |
 | `SqliteBackend` | SQLite backend |
-| `VRootFsBackend` | Host FS backend |
+| `StdFsBackend` | Direct `std::fs` backend (no containment) |
+| `VRootFsBackend` | Host FS backend (with containment) |
 | `Quota<B>` | Quota middleware |
 | `Restrictions<B>` | Feature gate middleware |
 | `PathFilter<B>` | Path access control middleware |
