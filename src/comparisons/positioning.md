@@ -177,4 +177,4 @@ fs.write(path, data)?;
 
 AnyFS is positioned as the **Tower/Axum of filesystems**: composable middleware over pluggable backends. It fills the gap between simple VFS abstractions (no policies) and complete runtimes (too much bundled together).
 
-*For technical details, see [Design Overview](../architecture/design-overview.md) and [AGENTS.md](../../AGENTS.md).*
+*For technical details, see [Design Overview](../architecture/design-overview.md).*
