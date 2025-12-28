@@ -910,6 +910,130 @@ impl<M> FileStorage<M> {
 
 ---
 
+## Path Canonicalization Utilities
+
+`FileStorage` provides path canonicalization methods modeled after the [soft-canonicalize](https://crates.io/crates/soft-canonicalize) crate, adapted to work on the virtual filesystem abstraction.
+
+### Why We Need Our Own Canonicalization
+
+`std::fs::canonicalize` operates on the **real** filesystem. For virtual backends (`MemoryBackend`, `SqliteBackend`), there is no real filesystem - we need canonicalization that queries the virtual structure via `metadata()` and `read_link()`.
+
+### Core Methods
+
+```rust
+impl<B: Fs + FsLink, M> FileStorage<B, M> {
+    /// Strict canonicalization - entire path must exist.
+    ///
+    /// Resolves all symlinks and normalizes the path.
+    /// Returns error if any component doesn't exist.
+    pub fn canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError>;
+
+    /// Soft canonicalization - resolves existing components,
+    /// appends non-existent remainder lexically.
+    ///
+    /// Walks path component-by-component:
+    /// 1. For existing components → resolve symlinks, follow them
+    /// 2. When hitting non-existent component → append remainder lexically
+    ///
+    /// Inspired by Python's `pathlib.Path.resolve(strict=False)`.
+    pub fn soft_canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError>;
+
+    /// Anchored soft canonicalization - like soft_canonicalize but
+    /// clamps result within a boundary directory.
+    ///
+    /// Useful for sandboxing: ensures the resolved path never escapes
+    /// the anchor directory, even via symlinks or `..` traversal.
+    pub fn anchored_canonicalize(
+        &self,
+        path: impl AsRef<Path>,
+        anchor: impl AsRef<Path>
+    ) -> Result<PathBuf, FsError>;
+}
+
+/// Standalone lexical normalization (no backend needed).
+///
+/// Pure string manipulation:
+/// - Collapses `//` to `/`
+/// - Removes trailing slashes
+/// - Does NOT resolve `.` or `..` (those require filesystem context)
+/// - Does NOT follow symlinks
+pub fn normalize(path: impl AsRef<Path>) -> PathBuf;
+```
+
+### Algorithm: Component-by-Component Resolution
+
+The canonicalization algorithm walks the path one component at a time:
+
+```
+Input: /a/b/c/d/e
+
+1. Start at root (/)
+2. Check /a exists?
+   - Yes, and it's a symlink → follow to target
+   - Yes, and it's a directory → continue
+3. Check /a/b exists?
+   - Yes → continue
+4. Check /a/b/c exists?
+   - No → stop resolution, append "c/d/e" lexically
+5. Result: /resolved/path/to/b/c/d/e
+```
+
+**Key behaviors:**
+- **Symlink following**: Existing symlinks are resolved to their targets
+- **Non-existent handling**: When a component doesn't exist, the remainder is appended as-is
+- **Cycle detection**: Bounded depth tracking prevents infinite loops from circular symlinks
+- **Root boundary**: Never ascends past the filesystem root
+
+### Comparison with std::fs
+
+| Function | `std::fs` | `FileStorage` |
+|----------|-----------|---------------|
+| `canonicalize` | Requires all components exist | Same - returns error if path doesn't exist |
+| N/A | N/A | `soft_canonicalize` - handles non-existent paths |
+| N/A | N/A | `anchored_canonicalize` - sandboxed resolution |
+
+### Security Considerations
+
+**For virtual backends:** Canonicalization happens entirely within the virtual structure. There is no host filesystem to escape to.
+
+**For `VRootFsBackend`:** Delegates to OS canonicalization + `strict-path` containment. The `anchored_canonicalize` provides additional safety by clamping paths within a boundary.
+
+### Platform Notes (VRootFsBackend only)
+
+When delegating to OS canonicalization:
+- **Windows**: Returns extended-length UNC paths (`\\?\C:\path`) by default
+- **Linux/macOS**: Standard canonical paths
+
+#### Windows UNC Path Simplification
+
+The `dunce` crate provides `simplified()` - a **lexical** function that converts UNC paths to regular paths without filesystem access:
+
+```rust
+use dunce::simplified;
+
+// \\?\C:\Users\foo\bar.txt → C:\Users\foo\bar.txt
+let path = simplified(Path::new(r"\\?\C:\Users\foo\bar.txt"));
+```
+
+**Why this matters for `soft_canonicalize`:**
+- `soft_canonicalize` works with non-existent paths
+- We can't use `dunce::canonicalize` (requires path to exist)
+- `dunce::simplified` is pure string manipulation - works on any path
+
+**When UNC can be simplified:**
+- Path is on a local drive (C:, D:, etc.)
+- Path doesn't exceed MAX_PATH (260 chars)
+- No reserved names (CON, PRN, etc.)
+
+**When UNC must be kept:**
+- Network paths (`\\?\UNC\server\share`)
+- Paths exceeding MAX_PATH
+- Paths with reserved device names
+
+Virtual backends have no platform differences - paths are just strings.
+
+---
+
 ## Security Model
 
 Security is achieved through composition:
