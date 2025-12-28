@@ -298,11 +298,349 @@ let readonly_fs = FileStorage::new(
 
 ---
 
+## Encryption and Integrity Protection
+
+AnyFS's design enables encryption at multiple levels. Understanding the difference between **container-level** and **file-level** protection is crucial for choosing the right approach.
+
+### Container-Level vs File-Level Protection
+
+| Level | What's Protected | Integrity | Implementation |
+|-------|------------------|-----------|----------------|
+| **Container-level** | Entire storage medium (`.db` file, serialized state) | Full structure protected | Encrypted backend |
+| **File-level** | Individual file contents | File contents only | Encryption middleware |
+
+**Key insight:** File-level encryption alone is NOT sufficient. If an attacker can modify the container structure (directory tree, metadata, file names), they can sabotage integrity even without decrypting file contents.
+
+### Threat Analysis
+
+| Threat | File-Level Encryption | Container-Level Encryption |
+|--------|----------------------|---------------------------|
+| Read file contents | Protected | Protected |
+| Modify file contents | Detected (with AEAD) | Detected |
+| Delete files | **NOT protected** | Protected |
+| Rename/move files | **NOT protected** | Protected |
+| Corrupt directory structure | **NOT protected** | Protected |
+| Replay old file versions | **NOT protected** | Protected (with versioning) |
+| Metadata exposure (filenames, sizes) | **NOT protected** | Protected |
+
+**Recommendation:** For sensitive data, prefer container-level encryption. Use file-level encryption when you need selective access (some files encrypted, others not).
+
+### Container-Level Encryption
+
+#### Option 1: SQLCipher Backend
+
+[SQLCipher](https://www.zetetic.net/sqlcipher/) provides transparent AES-256 encryption for SQLite:
+
+```rust
+/// SQLite backend with full database encryption via SQLCipher.
+pub struct SqliteCipherBackend {
+    conn: rusqlite::Connection,  // Built with sqlcipher feature
+}
+
+impl SqliteCipherBackend {
+    pub fn open(path: &str, password: &str) -> Result<Self, FsError> {
+        let conn = Connection::open(path)?;
+        // SQLCipher: derive key from password, encrypt everything
+        conn.pragma_update(None, "key", password)?;
+        Ok(Self { conn })
+    }
+
+    pub fn open_with_key(path: &str, key: &[u8; 32]) -> Result<Self, FsError> {
+        let conn = Connection::open(path)?;
+        // Use raw key instead of password
+        conn.pragma_update(None, "key", &format!("x'{}'", hex::encode(key)))?;
+        Ok(Self { conn })
+    }
+}
+
+impl Fs for SqliteCipherBackend { /* same as SqliteBackend */ }
+```
+
+**What's protected:**
+- All file contents
+- All metadata (names, sizes, timestamps, permissions)
+- Directory structure
+- Inode mappings
+- Everything in the `.db` file
+
+**Usage:**
+```rust
+let backend = SqliteCipherBackend::open("secure.db", "correct-horse-battery-staple")?;
+let fs = FileStorage::new(backend);
+
+// If someone gets secure.db without the password, they see random bytes
+```
+
+#### Option 2: Encrypted Serialization (MemoryBackend)
+
+For in-memory backends that need persistence:
+
+```rust
+impl MemoryBackend {
+    /// Serialize entire state to encrypted blob.
+    pub fn serialize_encrypted(&self, key: &[u8; 32]) -> Result<Vec<u8>, FsError> {
+        let plaintext = bincode::serialize(&self.state)?;
+        let nonce = generate_nonce();
+        let ciphertext = aes_gcm_encrypt(key, &nonce, &plaintext)?;
+        Ok([nonce.as_slice(), &ciphertext].concat())
+    }
+
+    /// Deserialize from encrypted blob.
+    pub fn deserialize_encrypted(data: &[u8], key: &[u8; 32]) -> Result<Self, FsError> {
+        let (nonce, ciphertext) = data.split_at(12);
+        let plaintext = aes_gcm_decrypt(key, nonce, ciphertext)?;
+        let state = bincode::deserialize(&plaintext)?;
+        Ok(Self { state })
+    }
+}
+```
+
+**Use case:** Periodically save encrypted snapshots, load on startup.
+
+### File-Level Encryption (Middleware)
+
+When you need selective encryption or per-file keys:
+
+```rust
+/// Middleware that encrypts file contents on write, decrypts on read.
+/// Does NOT protect metadata, filenames, or directory structure.
+pub struct FileEncryption<B> {
+    inner: B,
+    key: Secret<[u8; 32]>,
+}
+
+impl<B: Fs> FsWrite for FileEncryption<B> {
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+        // Encrypt content with authenticated encryption (AES-GCM)
+        let nonce = generate_nonce();
+        let ciphertext = aes_gcm_encrypt(&self.key, &nonce, data)?;
+        let encrypted = [nonce.as_slice(), &ciphertext].concat();
+        self.inner.write(path, &encrypted)
+    }
+}
+
+impl<B: Fs> FsRead for FileEncryption<B> {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+        let encrypted = self.inner.read(path)?;
+        let (nonce, ciphertext) = encrypted.split_at(12);
+        aes_gcm_decrypt(&self.key, nonce, ciphertext)
+            .map_err(|_| FsError::IntegrityError { path: path.as_ref().to_path_buf() })
+    }
+}
+```
+
+**Limitations:**
+- Filenames visible
+- Directory structure visible
+- File sizes visible (roughly - ciphertext slightly larger)
+- Metadata unprotected
+
+**When to use:**
+- Some files need encryption, others don't
+- Different files need different keys
+- Interop with systems that expect plaintext structure
+
+### Integrity Without Encryption
+
+Sometimes you need tamper detection without hiding contents:
+
+```rust
+/// Middleware that adds HMAC to each file for integrity verification.
+pub struct IntegrityVerified<B> {
+    inner: B,
+    key: Secret<[u8; 32]>,
+}
+
+impl<B: Fs> FsWrite for IntegrityVerified<B> {
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+        let mac = hmac_sha256(&self.key, data);
+        let protected = [data, mac.as_slice()].concat();
+        self.inner.write(path, &protected)
+    }
+}
+
+impl<B: Fs> FsRead for IntegrityVerified<B> {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+        let protected = self.inner.read(path)?;
+        let (data, mac) = protected.split_at(protected.len() - 32);
+        if !hmac_verify(&self.key, data, mac) {
+            return Err(FsError::IntegrityError { path: path.as_ref().to_path_buf() });
+        }
+        Ok(data.to_vec())
+    }
+}
+```
+
+### RAM Encryption and Secure Memory
+
+For high-security scenarios where memory dumps are a threat:
+
+#### Threat Levels
+
+| Threat | Mitigation | Library-Level? |
+|--------|------------|----------------|
+| Memory inspection after process exit | `zeroize` on drop | Yes |
+| Core dumps | Disable via `setrlimit` | Yes (process config) |
+| Swap file exposure | `mlock()` to pin pages | Yes (OS permitting) |
+| Live memory scanning (same user) | OS process isolation | No |
+| Cold boot attack | Hardware RAM encryption | No (Intel TME/AMD SME) |
+| Hypervisor/DMA attack | SGX/SEV enclaves | No (hardware) |
+
+#### Encrypted Memory Backend
+
+Keep data encrypted even in RAM - decrypt only during active use:
+
+```rust
+use zeroize::{Zeroize, ZeroizeOnDrop};
+use secrecy::Secret;
+
+/// Memory backend that stores all data encrypted in RAM.
+/// Plaintext exists only briefly during read operations.
+pub struct EncryptedMemoryBackend {
+    /// All nodes stored as encrypted blobs
+    nodes: HashMap<PathBuf, EncryptedNode>,
+    /// Encryption key - auto-zeroized on drop
+    key: Secret<[u8; 32]>,
+}
+
+struct EncryptedNode {
+    /// Encrypted file content (nonce || ciphertext)
+    encrypted_data: Vec<u8>,
+    /// Metadata can be encrypted too, or stored in the encrypted blob
+    metadata: EncryptedMetadata,
+}
+
+impl FsRead for EncryptedMemoryBackend {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+        let node = self.nodes.get(path.as_ref())
+            .ok_or_else(|| FsError::NotFound { path: path.as_ref().to_path_buf() })?;
+
+        // Decrypt - plaintext briefly in RAM
+        let plaintext = self.decrypt(&node.encrypted_data)?;
+
+        // Return owned Vec - caller responsible for zeroizing if sensitive
+        Ok(plaintext)
+    }
+}
+
+impl FsWrite for EncryptedMemoryBackend {
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+        // Encrypt immediately - plaintext never stored
+        let encrypted = self.encrypt(data)?;
+
+        self.nodes.insert(path.as_ref().to_path_buf(), EncryptedNode {
+            encrypted_data: encrypted,
+            metadata: self.encrypt_metadata(...)?,
+        });
+        Ok(())
+    }
+}
+
+impl Drop for EncryptedMemoryBackend {
+    fn drop(&mut self) {
+        // Zeroize all encrypted data (defense in depth)
+        for node in self.nodes.values_mut() {
+            node.encrypted_data.zeroize();
+        }
+        // Key is auto-zeroized via Secret<>
+    }
+}
+```
+
+#### Serialization of Encrypted RAM
+
+When persisting an encrypted memory backend:
+
+```rust
+impl EncryptedMemoryBackend {
+    /// Serialize to disk - data stays encrypted throughout.
+    /// RAM encrypted → Serialized encrypted → Disk encrypted
+    pub fn save_to_file(&self, path: &Path) -> Result<(), FsError> {
+        // Data is already encrypted in self.nodes
+        // Serialize the encrypted blobs directly - no decryption needed
+        let serialized = bincode::serialize(&self.nodes)?;
+
+        // Optionally add another encryption layer with different key
+        // (defense in depth: compromise of runtime key doesn't expose persisted data)
+        std::fs::write(path, &serialized)?;
+        Ok(())
+    }
+
+    /// Load from disk - data stays encrypted throughout.
+    /// Disk encrypted → Deserialized encrypted → RAM encrypted
+    pub fn load_from_file(path: &Path, key: Secret<[u8; 32]>) -> Result<Self, FsError> {
+        let serialized = std::fs::read(path)?;
+        let nodes = bincode::deserialize(&serialized)?;
+
+        Ok(Self { nodes, key })
+    }
+}
+```
+
+**Key property:** Plaintext NEVER exists during save/load. Data flows:
+```
+Write: plaintext → encrypt → RAM (encrypted) → serialize → disk (encrypted)
+Read:  disk (encrypted) → deserialize → RAM (encrypted) → decrypt → plaintext
+```
+
+#### Secure Allocator Considerations
+
+```rust
+// In Cargo.toml - mimalloc secure mode zeros on free
+mimalloc = { version = "0.1", features = ["secure"] }
+
+// Note: This prevents USE-AFTER-FREE info leaks, but does NOT:
+// - Encrypt RAM contents
+// - Prevent live memory scanning
+// - Protect against cold boot attacks
+```
+
+For true defense against memory scanning, combine:
+1. `EncryptedMemoryBackend` (data encrypted at rest in RAM)
+2. `zeroize` (immediate cleanup of temporary plaintext)
+3. `mlock()` (prevent swapping sensitive pages)
+4. Minimize plaintext lifetime (decrypt → use → zeroize immediately)
+
+### Encryption Summary
+
+| Approach | Protects Contents | Protects Structure | RAM Security | Persistence |
+|----------|-------------------|--------------------|--------------| ------------|
+| `SqliteCipherBackend` | Yes | Yes | No (SQLite uses plaintext RAM) | Encrypted `.db` file |
+| `FileEncryption<B>` middleware | Yes | No | Depends on B | Depends on B |
+| `EncryptedMemoryBackend` | Yes | Yes | Yes (encrypted in RAM) | Via `save_to_file()` |
+| `IntegrityVerified<B>` middleware | No | No (files only) | No | Depends on B |
+
+### Recommended Configurations
+
+#### Sensitive Data Storage
+```rust
+// Full protection: encrypted container + secure memory practices
+let backend = SqliteCipherBackend::open("secure.db", password)?;
+let fs = FileStorage::new(backend);
+```
+
+#### High-Security RAM Processing
+```rust
+// Data never plaintext at rest (RAM or disk)
+let backend = EncryptedMemoryBackend::new(derive_key(password));
+// ... use fs ...
+backend.save_to_file("snapshot.enc")?;  // Persists encrypted
+```
+
+#### Selective File Encryption
+```rust
+// Some files encrypted, structure visible
+let backend = FileEncryption::new(SqliteBackend::open("data.db")?)
+    .with_key(key);
+```
+
+---
+
 ## Known Limitations
 
-1. **No encryption at rest**: Use OS-level encryption or implement `Encrypted` middleware
-2. **No ACLs**: Simple permissions only (Unix mode bits)
-3. **TOCTOU**: Check-then-act patterns may race (like all filesystems)
+1. **No ACLs**: Simple permissions only (Unix mode bits)
+2. **TOCTOU**: Check-then-act patterns may race (like all filesystems)
+3. **Side channels**: Timing attacks, cache attacks require OS/hardware mitigations
 
 ---
 
