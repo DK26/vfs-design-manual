@@ -28,14 +28,14 @@ AnyFS separates **what** you store from **how** you store it and **what rules** 
 ┌─────────────────────────────────────────┐
 │  Your Application                       │
 ├─────────────────────────────────────────┤
-│  FilesContainer (std::fs-like API)      │
+│  FileStorage<B, M> (std::fs-like API)   │
 ├─────────────────────────────────────────┤
 │  Middleware Stack (composable):         │
 │    Quota, PathFilter, RateLimit,        │
-│    Tracing, Cache, Encryption...        │
+│    Tracing, Cache, Overlay...           │
 ├─────────────────────────────────────────┤
-│  VfsBackend (pluggable):                │
-│    Memory, SQLite, Real FS, S3, ...     │
+│  Backend (implements Fs trait):         │
+│    Memory, SQLite, VRootFs, custom...   │
 └─────────────────────────────────────────┘
 ```
 
@@ -65,7 +65,7 @@ let backend = MemoryBackend::new();
 Stack capabilities like building blocks:
 
 ```rust
-let fs = MemoryBackend::new()
+let backend = MemoryBackend::new()
     .layer(QuotaLayer::new()
         .max_total_size(100 * 1024 * 1024)
         .max_file_size(10 * 1024 * 1024))
@@ -73,9 +73,44 @@ let fs = MemoryBackend::new()
         .allow("/workspace/**")
         .deny("**/.env"))
     .layer(RestrictionsLayer::new()
-        .deny_hard_links()
-        .deny_permissions())
+        .deny_symlinks()
+        .deny_hard_links())
     .layer(TracingLayer::new());
+
+let mut fs = FileStorage::new(backend);
+```
+
+### Layered Trait System
+
+Implement only what you need:
+
+```
+FsPosix  ← Full POSIX (handles, locks, xattr)
+    ↑
+FsFuse   ← FUSE-mountable (+ inodes)
+    ↑
+FsFull   ← std::fs features (+ links, permissions, sync)
+    ↑
+   Fs    ← Basic filesystem (90% of use cases)
+    ↑
+FsRead + FsWrite + FsDir  ← Core traits
+```
+
+### Type-Safe Containers
+
+Marker types prevent mixing containers at compile time:
+
+```rust
+struct Sandbox;
+struct UserData;
+
+let sandbox: FileStorage<_, Sandbox> = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage<_, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
+
+fn process_sandbox(fs: &FileStorage<impl Fs, Sandbox>) { /* only accepts Sandbox */ }
+
+process_sandbox(&sandbox);   // OK
+process_sandbox(&userdata);  // Compile error!
 ```
 
 ### Not Just Monitoring - Intervention
@@ -94,32 +129,54 @@ Unlike logging-only solutions, AnyFS middleware can **transform and control**:
 | `DryRun` | Log what would happen without executing |
 | Custom | Implement encryption, compression, deduplication... |
 
-### Security by Design
-
-AnyFS treats security as a first-class concern, not an afterthought:
-
-**Path Containment**: The `VRootFsBackend` uses [`strict-path`](https://github.com/DK26/strict-path-rs) for real filesystem containment. Unlike simple path-prefix approaches, `strict-path` performs full canonicalization with symlink resolution, preventing escape via:
-- Symlink traversal attacks (`/allowed/link` → `../../../etc/passwd`)
-- TOCTOU (time-of-check-to-use) race conditions
-- Windows edge cases (8.3 short names, NTFS alternate data streams, junctions)
-
-**Virtual Backends Are Inherently Safe**: `MemoryBackend` and `SqliteBackend` treat paths as keys, not OS paths. There's no underlying filesystem to exploit - path traversal attacks are structurally impossible.
-
-**Opt-in Restrictions**: Use `Restrictions` middleware to block operations like symlink creation, hard links, or permission changes when sandboxing untrusted code.
-
-### Data Portability
-
-Same data, different backends:
+### Snapshots & Persistence
 
 ```rust
-// Read from SQLite
-let source = SqliteBackend::open("old.db")?;
-let data = source.read("/config.json")?;
+// MemoryBackend implements Clone - that's the snapshot
+let checkpoint = fs.clone();
 
-// Write to new backend
-let dest = MemoryBackend::new();
-dest.write("/config.json", &data)?;
+// Rollback
+fs = checkpoint;
+
+// Persist to disk
+fs.save_to("state.bin")?;
+let fs = MemoryBackend::load_from("state.bin")?;
 ```
+
+### Cross-Platform Virtual Drive Mounting
+
+Mount any backend as a real filesystem drive:
+
+```rust
+use anyfs_mount::MountHandle;
+
+let mount = MountHandle::mount(backend, "/mnt/virtual")?;
+// Now any application can access /mnt/virtual
+```
+
+| Platform | Technology |
+|----------|------------|
+| Linux | FUSE (native) |
+| macOS | macFUSE |
+| Windows | WinFsp |
+
+### Security by Design
+
+**Path Containment**: `VRootFsBackend` uses [`strict-path`](https://github.com/nickelpack/strict-path) for real filesystem containment with full canonicalization and symlink resolution.
+
+**Virtual Backends Are Inherently Safe**: `MemoryBackend` and `SqliteBackend` treat paths as keys. Path traversal attacks are structurally impossible.
+
+**Opt-in Restrictions**: Use `Restrictions` middleware to block dangerous operations when sandboxing untrusted code.
+
+### Fully Cross-Platform
+
+| Backend | Windows | Linux | macOS | WASM |
+|---------|:-------:|:-----:|:-----:|:----:|
+| `MemoryBackend` | ✅ | ✅ | ✅ | ✅ |
+| `SqliteBackend` | ✅ | ✅ | ✅ | ✅ |
+| `VRootFsBackend` | ✅ | ✅ | ✅ | ❌ |
+
+Virtual backends work identically everywhere - paths are just keys, symlinks are stored data.
 
 ---
 
@@ -140,8 +197,7 @@ dest.write("/config.json", &data)?;
 ## Quick Start
 
 ```rust
-use anyfs::{MemoryBackend, Quota, Tracing};
-use anyfs_container::FilesContainer;
+use anyfs::{MemoryBackend, Quota, Tracing, FileStorage};
 
 // Build a middleware stack
 let backend = Tracing::new(
@@ -150,7 +206,7 @@ let backend = Tracing::new(
 );
 
 // Use familiar std::fs-like API
-let mut fs = FilesContainer::new(backend);
+let mut fs = FileStorage::new(backend);
 fs.create_dir_all("/docs")?;
 fs.write("/docs/hello.txt", b"Hello, AnyFS!")?;
 let content = fs.read_to_string("/docs/hello.txt")?;
@@ -162,14 +218,16 @@ let content = fs.read_to_string("/docs/hello.txt")?;
 
 | Crate | Purpose |
 |-------|---------|
-| `anyfs-backend` | Core trait (`VfsBackend`), `Layer` trait, types, errors |
-| `anyfs` | Built-in backends + middleware (feature-gated) |
-| `anyfs-container` | `FilesContainer` ergonomic wrapper, `BackendStack` builder |
+| `anyfs-backend` | Core traits (`Fs`, `FsFull`, `FsFuse`, `FsPosix`), `Layer` trait, types, errors |
+| `anyfs` | Built-in backends, middleware, `FileStorage<B, M>` wrapper |
+| `anyfs-mount` | Cross-platform virtual drive mounting (optional) |
 
 ```toml
 [dependencies]
 anyfs = { version = "0.1", features = ["sqlite"] }
-anyfs-container = "0.1"
+
+# Optional: for mounting as virtual drive
+anyfs-mount = "0.1"
 ```
 
 ---
@@ -178,67 +236,33 @@ anyfs-container = "0.1"
 
 | Feature | AnyFS | `vfs` crate | AgentFS | `std::fs` |
 |---------|:-----:|:-----------:|:-------:|:---------:|
-| Composable middleware | Yes | No | No | No |
-| Multiple backends | Yes | Yes | No (SQLite) | No |
-| SQLite backend | Yes | No | Yes | No |
-| Quota enforcement | Yes | No | No | No |
-| Path sandboxing | Yes | Partial | No | No |
-| Symlink-safe containment | Yes | No | N/A | N/A |
-| Rate limiting | Yes | No | No | No |
-
-### vs `vfs` Crate
-
-The [vfs](https://crates.io/crates/vfs) crate is a solid VFS abstraction. AnyFS builds on similar concepts with additional capabilities:
-
-| Aspect | `vfs` | AnyFS |
-|--------|-------|-------|
-| **Design pattern** | Path wrapper (`VfsPath`) | Backend trait + middleware |
-| **Middleware** | Not supported | Tower-style composable layers |
-| **Policy enforcement** | Application responsibility | Built-in (Quota, PathFilter, etc.) |
-| **Path containment** | Prefix-based (AltrootFS) | Canonicalization-based (`strict-path`) |
-| **Path type** | Custom `VfsPath` | `impl AsRef<Path>` (std-compatible) |
-
-**When to use `vfs`:** Simple VFS abstraction without policy requirements.
-
-**When to use AnyFS:** You need middleware (quotas, sandboxing, rate limiting) or security-hardened path containment.
-
-### vs AgentFS
-
-[AgentFS](https://github.com/tursodatabase/agentfs) is an **agent runtime** (filesystem + KV store + tool auditing). AnyFS is a **filesystem abstraction**. They solve different problems:
-
-| Aspect | AgentFS | AnyFS |
-|--------|---------|-------|
-| **Scope** | Complete agent runtime | Filesystem abstraction only |
-| **Backend choice** | SQLite only | Memory, SQLite, RealFS, custom |
-| **Middleware** | Fixed capabilities | Composable, extensible |
-| **KV store** | Included | Not included (different concern) |
-
-**When to use AgentFS:** You need a complete AI agent runtime with built-in KV and auditing.
-
-**When to use AnyFS:** You need just filesystem with backend flexibility and composable policies.
-
-### vs Direct `std::fs`
-
-`std::fs` is great for simple cases. AnyFS adds:
-- Backend swapping without code changes
-- Policy enforcement via middleware
-- Consistent API across storage types
-- Isolated/sandboxed storage
+| Composable middleware | ✅ | ❌ | ❌ | ❌ |
+| Multiple backends | ✅ | ✅ | ❌ | ❌ |
+| SQLite backend | ✅ | ❌ | ✅ | ❌ |
+| Quota enforcement | ✅ | ❌ | ❌ | ❌ |
+| Path sandboxing | ✅ | Partial | ❌ | ❌ |
+| Symlink-safe containment | ✅ | ❌ | N/A | N/A |
+| Rate limiting | ✅ | ❌ | ❌ | ❌ |
+| FUSE mounting | ✅ | ❌ | ✅ | N/A |
+| Cross-platform | ✅ | ✅ | Linux | ✅ |
+| Type-safe markers | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
 ## Documentation
 
-Full documentation in `book/`:
+Full documentation available as mdbook in `src/`:
 
 ```bash
-mdbook serve book
+mdbook serve
 ```
 
 Key documents:
-- `src/architecture/design-overview.md` - Architecture and middleware
-- `src/architecture/adrs.md` - Design decisions (21 ADRs)
+- `src/architecture/design-overview.md` - Architecture and traits
+- `src/guides/llm-context.md` - Quick implementation patterns
+- `src/guides/mounting.md` - Virtual drive mounting
 - `src/implementation/backend-guide.md` - Implement custom backends
+- `src/implementation/testing-guide.md` - Test suite design
 - `AGENTS.md` - Quick reference for AI assistants
 
 ---
@@ -247,7 +271,7 @@ Key documents:
 
 **Design complete. Implementation in progress.**
 
-The design manual documents the full API, middleware patterns, and implementation guidance. Core implementation is underway.
+The design manual documents the full API, middleware patterns, and implementation guidance.
 
 ---
 
