@@ -204,20 +204,25 @@ VRootFsBackend calls OS functions (`std::fs::read()`, etc.) which follow symlink
 
 ## Virtual vs Real Backends: Path Resolution
 
+**Status:** Resolved
+
 **Question:** Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?
 
-**Analysis:**
+**Resolution:** `FileStorage` handles symlink-aware path resolution for ALL backends by default. Backends do NOT perform path resolution - they receive already-resolved paths.
 
 | Backend Type | Path Resolution | Symlink Handling |
 |--------------|-----------------|------------------|
-| MemoryBackend | Pure lexical (our code) | We control everything |
-| SqliteBackend | Pure lexical (our code) | We control everything |
-| StdFsBackend | OS handles it | OS follows symlinks |
-| VRootFsBackend | OS handles it | OS follows symlinks (strict-path prevents escapes) |
+| MemoryBackend | **FileStorage** (symlink-aware) | `set_follow_symlinks(bool)` |
+| SqliteBackend | **FileStorage** (symlink-aware) | `set_follow_symlinks(bool)` |
+| VRootFsBackend | **OS** (implements `SelfResolving`) | OS follows symlinks (strict-path prevents escapes) |
 
-**Current design:** For virtual backends, we perform lexical path resolution ourselves. For filesystem backends (StdFsBackend, VRootFsBackend), we delegate to the OS via `std::fs`. VRootFsBackend additionally uses `strict-path::VirtualRoot` for containment.
+**Key design decision:** Backends that wrap a real filesystem implement the `SelfResolving` marker trait to tell `FileStorage` to skip resolution:
 
-**Open question:** Should we abstract this difference, accept it, or use two traits?
+```rust
+impl SelfResolving for VRootFsBackend {}
+```
+
+This ensures consistent behavior: all virtual backends get symlink-aware resolution from `FileStorage`, while real filesystem backends delegate to the OS.
 
 ---
 
@@ -400,7 +405,7 @@ Based on review feedback, the following naming concerns were raised:
 
 **Answer:** AnyFS is **not** a POSIX emulator. We use `std::fs`-like naming and semantics for familiarity, but we don't aim for full POSIX compliance. Specific differences:
 
-- Lexical path resolution (not runtime symlink following during normalization)
+- Symlink-aware path resolution (FileStorage walks the virtual structure using `metadata()` and `read_link()`)
 - No file descriptors or open file handles in the basic API
 - Simplified permissions model
 - No device files, FIFOs, or sockets
@@ -436,7 +441,7 @@ Based on review feedback, the following naming concerns were raised:
 | Topic | v1 Decision |
 |-------|-------------|
 | Symlink security | Virtual backends: `set_follow_symlinks()`. VRootFsBackend: `strict-path` escapes only. |
-| Path resolution | Virtual = lexical; VRootFs = OS |
+| Path resolution | FileStorage (symlink-aware); VRootFs = OS via `SelfResolving` |
 | Compression/encryption | Backend responsibility |
 | Hooks/callbacks | `Tracing` middleware |
 | FUSE mount | `anyfs-mount` crate (cross-platform) |
