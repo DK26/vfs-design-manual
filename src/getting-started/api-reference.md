@@ -269,6 +269,46 @@ fs.fsync("/path")?;                      // Flush writes for one file
 
 ---
 
+## Path Canonicalization
+
+`FileStorage` provides path canonicalization that works on the virtual filesystem:
+
+```rust
+// Strict canonicalization - path must exist
+let canonical = fs.canonicalize("/some/../path/./file.txt")?;
+// Returns fully resolved absolute path, follows symlinks
+
+// Soft canonicalization - handles non-existent paths
+let resolved = fs.soft_canonicalize("/existing/dir/new_file.txt")?;
+// Resolves existing components, appends non-existent remainder lexically
+
+// Anchored canonicalization - sandboxed resolution
+let safe = fs.anchored_canonicalize("/workspace/../etc/passwd", "/workspace")?;
+// Clamps result within anchor directory (returns error if escape attempted)
+```
+
+**Standalone utility (no backend needed):**
+
+```rust
+use anyfs::normalize;
+
+// Lexical path cleanup only
+let clean = normalize("//foo///bar//");  // -> "/foo/bar"
+// Does NOT resolve . or .. (those require filesystem context)
+// Does NOT follow symlinks
+```
+
+**Comparison:**
+
+| Function | Path Must Exist? | Follows Symlinks? | Resolves `..`? |
+|----------|------------------|-------------------|----------------|
+| `canonicalize` | Yes (all components) | Yes | Yes (symlink-aware) |
+| `soft_canonicalize` | No (appends non-existent) | Yes (for existing) | Yes (symlink-aware) |
+| `anchored_canonicalize` | No | Yes (for existing) | Yes (clamped to anchor) |
+| `normalize` | N/A (lexical only) | No | No |
+
+---
+
 ## Inode Operations (`FsInode` trait)
 
 Backends implementing `FsInode` track inodes internally for hardlink support and FUSE mounting:

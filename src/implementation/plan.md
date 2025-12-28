@@ -45,8 +45,16 @@ FileStorage handles path resolution (symlink-aware, not just lexical normalizati
 
 - Always absolute paths internally
 - Always `/` separator (even on Windows)
-- Normalize `..` and `.` components
+- Resolve `..` and `.` via canonicalization (symlink-aware, not lexical)
 - Handle edge cases: `//`, trailing `/`, empty string
+
+**Public canonicalization API on FileStorage:**
+- `canonicalize(path)` - strict, all components must exist
+- `soft_canonicalize(path)` - resolves existing, appends non-existent lexically
+- `anchored_canonicalize(path, anchor)` - sandboxed resolution
+
+**Standalone utility:**
+- `normalize(path)` - lexical cleanup only (collapses `//`, removes trailing `/`). Does NOT resolve `.` or `..`.
 
 ### 4. Error Type Design
 

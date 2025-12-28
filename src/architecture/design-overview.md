@@ -860,12 +860,14 @@ We simulate inodes - that's the whole point of virtualizing a filesystem. Path r
 - Resolution requires following the actual directory structure (inodes)
 - The `Fs` traits have the needed methods: `metadata()`, `read_link()`, `read_dir()`
 
-### Resolution Utility (in `anyfs`)
+### Internal Resolution (Private)
+
+`FileStorage` uses an internal resolution function to walk paths before passing them to backends:
 
 ```rust
-/// Resolve a path, optionally following symlinks.
-/// Works on any Fs + FsLink backend.
-pub fn resolve_path(
+/// Internal: Resolve a path, optionally following symlinks.
+/// Used by FileStorage before delegating to backend.
+fn resolve_path_internal(
     backend: &(impl Fs + FsLink),
     path: impl AsRef<Path>,
     follow_symlinks: bool,
@@ -877,6 +879,8 @@ pub fn resolve_path(
     // Return fully resolved canonical path
 }
 ```
+
+**This is NOT a public API.** The public API for path resolution is the `canonicalize` family of methods on `FileStorage` (see "Path Canonicalization Utilities" below).
 
 ### When Resolution Is Needed
 
@@ -1031,6 +1035,80 @@ let path = simplified(Path::new(r"\\?\C:\Users\foo\bar.txt"));
 - Paths with reserved device names
 
 Virtual backends have no platform differences - paths are just strings.
+
+---
+
+## Filesystem Semantics: Linux-like by Default
+
+**Design principle:** Simple, secure defaults. Don't close doors for alternative semantics.
+
+### Default Behavior (Built-in Backends)
+
+| Aspect | Behavior | Rationale |
+|--------|----------|-----------|
+| Case sensitivity | **Case-sensitive** | Simpler, more secure, Unix standard |
+| Path separator | **`/` internally** | Cross-platform consistency |
+| Reserved names | **None** | No artificial restrictions |
+| Max path length | **No limit** | Virtual, no OS constraints |
+| ADS (`:stream`) | **Not supported** | Security risk, complexity |
+
+### Trait is Agnostic
+
+The `Fs` trait doesn't enforce filesystem semantics - backends decide their behavior:
+
+```rust
+// Built-in backends: Linux-like
+let linux_fs = MemoryBackend::new();
+assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
+
+// Someone wants NTFS-like behavior? Middleware or custom backend:
+let ntfs_like = CaseInsensitive::new(
+    NtfsValidation::new(MemoryBackend::new())  // Blocks CON, NUL, ADS
+);
+
+// Or full custom implementation
+impl Fs for NtfsEmulatingBackend {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+        let normalized = self.case_fold(path);  // Case-insensitive lookup
+        // ...
+    }
+}
+```
+
+### FUSE Mount: Report What You Support
+
+When mounting, the FUSE layer reports backend capabilities to the OS:
+
+```rust
+impl FuseOps for AnyFsFuse<B> {
+    fn get_volume_params(&self) -> VolumeParams {
+        VolumeParams {
+            case_sensitive: self.backend.is_case_sensitive(),
+            supports_hard_links: /* check if B: FsLink */,
+            supports_symlinks: /* check if B: FsLink */,
+            // ...
+        }
+    }
+}
+```
+
+Windows respects these flags - a case-sensitive mounted filesystem works correctly (modern Windows/WSL handle this).
+
+### Optional Middleware for Windows Compatibility
+
+For users who need Windows-safe paths in virtual backends:
+
+```rust
+/// Middleware that validates paths are Windows-compatible.
+/// Rejects: CON, PRN, NUL, COM1-9, LPT1-9, trailing dots/spaces, ADS.
+pub struct NtfsValidation<B> { /* ... */ }
+
+/// Middleware that makes a backend case-insensitive.
+/// Stores canonical (lowercase) keys, preserves original case in metadata.
+pub struct CaseInsensitive<B> { /* ... */ }
+```
+
+**Not included by default** - opt-in for users who need it.
 
 ---
 
