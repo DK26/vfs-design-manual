@@ -41,7 +41,7 @@ All backends must be safe for concurrent access:
 
 ### 3. Consistent Path Handling
 
-Normalize paths in ONE place (FileStorage or dedicated normalizer):
+FileStorage handles path resolution (symlink-aware, not just lexical normalization):
 
 - Always absolute paths internally
 - Always `/` separator (even on Windows)
@@ -170,7 +170,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 - Define core types (`Metadata`, `Permissions`, `FileType`, `DirEntry`, `StatFs`)
 - Define `FsError` with contextual variants (see guidelines above)
 - Define `ROOT_INODE = 1` constant
-- Include `const NEEDS_PATH_RESOLUTION: bool = true` (opt-out for real FS backends)
+- Define `SelfResolving` marker trait (opt-in for backends that handle their own path resolution, e.g., VRootFsBackend)
 
 **Exit criteria:** `anyfs-backend` stands alone with minimal dependencies (`thiserror`).
 
@@ -180,14 +180,17 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 
 **Goal:** Provide reference backends and core middleware.
 
-### Path Resolution Utility
+### Path Resolution (FileStorage's Responsibility)
 
-- `resolve_path(backend, path, follow_symlinks)` - works on any `Fs`
-  - Walks path component by component using `metadata()` and `read_link()`
-  - Handles `..` correctly (requires knowing what each component resolves to)
-  - Detects circular symlinks (max depth or visited set)
-  - Returns canonical resolved path
-- Applied automatically by `FileStorage` when backend's `NEEDS_PATH_RESOLUTION == true`
+FileStorage handles path resolution for ALL backends (unless they implement `SelfResolving`):
+
+- Walks path component by component using `metadata()` and `read_link()`
+- Handles `..` correctly after symlink resolution (symlink-aware, not lexical)
+- Respects `set_follow_symlinks(bool)` setting
+- Detects circular symlinks (max depth or visited set)
+- Returns canonical resolved path to the backend
+
+**Backends receive already-resolved paths** - they just store/retrieve bytes.
 
 ### Backends (feature-gated)
 
@@ -195,25 +198,24 @@ Each backend implements the traits it supports:
 
 - `memory` (default): `MemoryBackend`
   - Implements: `Fs` + `FsLink` + `FsPermissions` + `FsSync` + `FsStats` + `FsInode` = `FsFuse`
-  - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
+  - FileStorage handles path resolution (symlink-aware)
   - Inode source: internal node IDs (incrementing counter)
-  - `set_follow_symlinks(bool)` - control symlink resolution
+  - `set_follow_symlinks(bool)` - control symlink following during resolution
 - `sqlite` (optional): `SqliteBackend`
   - Implements: `FsFuse` (all traits through Layer 3)
-  - `NEEDS_PATH_RESOLUTION = true` (uses path resolution utility)
+  - FileStorage handles path resolution (symlink-aware)
   - Inode source: SQLite row IDs (`INTEGER PRIMARY KEY`)
-  - `set_follow_symlinks(bool)` - control symlink resolution
+  - `set_follow_symlinks(bool)` - control symlink following during resolution
 - `stdfs` (optional): `StdFsBackend` - direct `std::fs` delegation
-  - Implements: `FsPosix` (all traits including Layer 4)
-  - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)
+  - Implements: `FsPosix` (all traits including Layer 4) + `SelfResolving`
+  - Implements `SelfResolving` (OS handles resolution)
   - Inode source: OS inode numbers (`std::fs::Metadata::ino()`)
   - No path containment - full filesystem access
   - Use when you only need middleware layers without sandboxing
 - `vrootfs` (optional): `VRootFsBackend` using `strict-path` for containment
-  - Implements: `FsPosix` (all traits including Layer 4)
-  - `NEEDS_PATH_RESOLUTION = false` (OS handles resolution)
+  - Implements: `FsPosix` (all traits including Layer 4) + `SelfResolving`
+  - Implements `SelfResolving` (OS handles resolution, `strict-path` prevents escapes)
   - Inode source: OS inode numbers (`std::fs::Metadata::ino()`)
-  - `strict-path` prevents symlink escapes
 
 ### Middleware
 

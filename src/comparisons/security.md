@@ -139,22 +139,23 @@ Different backends achieve containment differently:
 
 ### 7. Why Virtual Backends Are Inherently Safe
 
-For `MemoryBackend` and `SqliteBackend`, paths are **just keys** (strings or normalized path components). There is no underlying OS filesystem to exploit.
+For `MemoryBackend` and `SqliteBackend`, the underlying storage is isolated from the host filesystem. There is no OS filesystem to exploit - paths operate entirely within the virtual structure.
 
-**Lexical path resolution**: Unlike POSIX filesystems, virtual backends resolve paths **lexically** without consulting any filesystem:
+**Path resolution is symlink-aware but contained**: FileStorage resolves paths by walking the *virtual* directory structure (using `metadata()` and `read_link()` on the backend), not the OS filesystem:
 
 ```
-POSIX behavior (dangerous):
-  /foo/bar/..  where bar → /etc  resolves to /etc/../ → /
+Virtual backend symlink example:
+  /foo/bar  where bar → /other/place
+  /foo/bar/..  resolves to /other (following the symlink target's parent)
 
-AnyFS virtual backend behavior (safe):
-  /foo/bar/..  always resolves to /foo (pure string manipulation)
+This is correct filesystem semantics - but it happens entirely within
+the virtual structure. There is no host filesystem to escape to.
 ```
 
 This means:
-- **No symlink-based escapes** - symlinks are data, not OS-resolved references
-- **No TOCTOU via filesystem state** - resolution is deterministic
-- **No host path leakage** - paths never touch the OS path resolver
+- **No host filesystem access** - symlinks point to paths within the virtual structure only
+- **No TOCTOU via OS state** - resolution uses the backend's own data
+- **Controllable via `set_follow_symlinks()`** - disable symlink following entirely if needed
 
 For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equivalent guarantees by validating and containing all paths before they reach the OS.
 

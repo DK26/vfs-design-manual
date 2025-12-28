@@ -22,7 +22,8 @@ FsRead + FsWrite + FsDir (core)
 
 Key properties:
 - Backends accept `impl AsRef<Path>` for all path parameters
-- Backends handle **storage + filesystem semantics only**
+- **Backends receive already-resolved paths** - FileStorage handles path resolution (symlinks, `..`, normalization)
+- Backends handle **storage only** - just store/retrieve bytes at given paths
 - Policy (limits, feature gates) is handled by middleware, not backends
 - Implement only the traits your backend supports
 
@@ -1028,51 +1029,31 @@ impl Fs for MemoryBackend {
 - `read_dir` while directory is being modified
 - `rename` with concurrent access to source or destination
 
-### 3. Path Normalization
+### 3. Path Resolution - NOT Your Job
 
-Normalize paths consistently. Recommended approach:
+**Backends do NOT handle path resolution.** FileStorage handles:
+- Resolving `..` and `.` components
+- Following symlinks (when `set_follow_symlinks(true)`)
+- Normalizing paths (`//` → `/`, trailing slashes, etc.)
+- Walking the virtual directory structure
+
+Your backend receives **already-resolved, clean paths**. Just store and retrieve bytes at those paths.
 
 ```rust
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = Vec::new();
-
-    for component in path.components() {
-        match component {
-            Component::RootDir => {
-                components.clear();
-                components.push(Component::RootDir);
-            }
-            Component::CurDir => {
-                // Skip "."
-            }
-            Component::ParentDir => {
-                // Go up, but don't go past root
-                if components.len() > 1 {
-                    components.pop();
-                }
-            }
-            Component::Normal(name) => {
-                components.push(Component::Normal(name));
-            }
-            Component::Prefix(_) => {
-                // Windows prefix - handle appropriately
-            }
-        }
+impl FsRead for MyBackend {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+        // Path is already resolved - just use it directly
+        let path = path.as_ref();
+        self.storage.get(path).ok_or_else(|| FsError::NotFound { path: path.to_path_buf() })
     }
-
-    components.iter().collect()
 }
 ```
 
-**Path edge cases to test:**
-| Input | Expected Output |
-|-------|-----------------|
-| `/foo/../bar` | `/bar` |
-| `/foo/./bar` | `/foo/bar` |
-| `//double//slash` | `/double/slash` |
-| `/` | `/` |
-| `` (empty) | Error |
-| `/foo/bar/` | `/foo/bar` (or keep trailing, be consistent) |
+**Exception:** If your backend wraps a real filesystem (like `VRootFsBackend`), implement `SelfResolving` to tell FileStorage to skip resolution - the OS handles it.
+
+```rust
+impl SelfResolving for VRootFsBackend {}
+```
 
 ### 4. Error Messages
 
