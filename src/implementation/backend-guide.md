@@ -1230,3 +1230,88 @@ fn test_path_with_dotdot() {
     assert_eq!(backend.read("/foo/./bar/test.txt").unwrap(), b"data");
 }
 ```
+
+---
+
+## MemoryBackend Snapshot & Restore
+
+`MemoryBackend` supports cloning its entire state (snapshot) and serializing to bytes for persistence.
+
+### Core Concept
+
+**Snapshot = Clone the storage.** That's it.
+
+```rust
+// MemoryBackend implements Clone
+#[derive(Clone)]
+pub struct MemoryBackend { ... }
+
+// Snapshot is just .clone()
+let snapshot = fs.clone();
+
+// Restore is just assignment
+fs = snapshot;
+```
+
+### API
+
+```rust
+impl MemoryBackend {
+    /// Clone the entire filesystem state.
+    /// This is a deep copy - modifications to the clone don't affect the original.
+    pub fn clone(&self) -> Self { ... }  // via #[derive(Clone)]
+
+    /// Serialize to bytes for persistence/transfer.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, FsError>;
+
+    /// Deserialize from bytes.
+    pub fn from_bytes(data: &[u8]) -> Result<Self, FsError>;
+
+    /// Save to file.
+    pub fn save_to(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+
+    /// Load from file.
+    pub fn load_from(path: impl AsRef<Path>) -> Result<Self, FsError>;
+}
+```
+
+### Usage
+
+```rust
+let mut fs = MemoryBackend::new();
+fs.write("/data.txt", b"important")?;
+
+// Snapshot = clone
+let checkpoint = fs.clone();
+
+// Do risky work...
+fs.write("/data.txt", b"corrupted")?;
+
+// Rollback = replace with clone
+fs = checkpoint;
+assert_eq!(fs.read("/data.txt")?, b"important");
+```
+
+### Persistence
+
+```rust
+// Save to disk
+fs.save_to("state.bin")?;
+
+// Load from disk
+let fs = MemoryBackend::load_from("state.bin")?;
+```
+
+### SqliteBackend
+
+SQLite already has persistence - the database file IS the snapshot. For explicit snapshots:
+
+```rust
+impl SqliteBackend {
+    /// Create an in-memory copy of the database.
+    pub fn clone_to_memory(&self) -> Result<Self, FsError>;
+
+    /// Backup to another file.
+    pub fn backup_to(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+}
+```

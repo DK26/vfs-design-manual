@@ -1112,7 +1112,81 @@ proptest! {
 
 ---
 
-## 13. Running Tests
+## 13. Snapshot & Restore Tests
+
+```rust
+// MemoryBackend implements Clone - that's the snapshot mechanism
+#[test]
+fn test_clone_creates_independent_copy() {
+    let mut original = MemoryBackend::new();
+    original.write("/file.txt", b"original").unwrap();
+
+    // Clone = snapshot
+    let mut snapshot = original.clone();
+
+    // Modify original
+    original.write("/file.txt", b"modified").unwrap();
+    original.write("/new.txt", b"new").unwrap();
+
+    // Snapshot is unchanged
+    assert_eq!(snapshot.read("/file.txt").unwrap(), b"original");
+    assert!(!snapshot.exists("/new.txt").unwrap());
+}
+
+#[test]
+fn test_checkpoint_and_rollback() {
+    let mut fs = MemoryBackend::new();
+    fs.write("/important.txt", b"original").unwrap();
+
+    // Checkpoint = clone
+    let checkpoint = fs.clone();
+
+    // Do risky work
+    fs.write("/important.txt", b"corrupted").unwrap();
+
+    // Rollback = replace with checkpoint
+    fs = checkpoint;
+    assert_eq!(fs.read("/important.txt").unwrap(), b"original");
+}
+
+#[test]
+fn test_persistence_roundtrip() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("state.bin");
+
+    let mut fs = MemoryBackend::new();
+    fs.write("/data.txt", b"persisted").unwrap();
+
+    // Save
+    fs.save_to(&path).unwrap();
+
+    // Load
+    let restored = MemoryBackend::load_from(&path).unwrap();
+    assert_eq!(restored.read("/data.txt").unwrap(), b"persisted");
+}
+
+#[test]
+fn test_to_bytes_from_bytes() {
+    let mut fs = MemoryBackend::new();
+    fs.create_dir_all("/a/b/c").unwrap();
+    fs.write("/a/b/c/file.txt", b"nested").unwrap();
+
+    let bytes = fs.to_bytes().unwrap();
+    let restored = MemoryBackend::from_bytes(&bytes).unwrap();
+
+    assert_eq!(restored.read("/a/b/c/file.txt").unwrap(), b"nested");
+}
+
+#[test]
+fn test_from_bytes_invalid_data() {
+    let result = MemoryBackend::from_bytes(b"garbage");
+    assert!(result.is_err());
+}
+```
+
+---
+
+## 14. Running Tests
 
 ```bash
 # All tests
