@@ -23,6 +23,7 @@
 - [Design Overview](./architecture/design-overview.md)
 - [Two-Layer Path Handling](./architecture/two-layer-design.md)
 - [Architecture Decision Records](./architecture/adrs.md)
+- [Hybrid Backend Design](./architecture/hybrid-backend-design.md)
 
 ---
 
