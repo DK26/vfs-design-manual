@@ -610,7 +610,7 @@ impl FsDir for TxtBackend {
 
         // Check if already exists
         if entries.contains_key(&path) {
-            return Err(FsError::AlreadyExists { path });
+            return Err(FsError::AlreadyExists { path, operation: "create_dir" });
         }
 
         entries.insert(path.clone(), TxtEntry::new_dir(path));

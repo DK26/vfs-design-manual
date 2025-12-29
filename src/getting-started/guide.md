@@ -224,10 +224,10 @@ use anyfs_backend::FsError;
 match fs.write("/file.txt", &large_data) {
     Ok(()) => println!("Written"),
 
-    Err(FsError::NotFound(p)) => println!("Not found: {}", p),
-    Err(FsError::AlreadyExists(p)) => println!("Exists: {}", p),
-    Err(FsError::QuotaExceeded) => println!("Quota exceeded"),
-    Err(FsError::FeatureNotEnabled(f)) => println!("Feature disabled: {}", f),
+    Err(FsError::NotFound { path, .. }) => println!("Not found: {}", path.display()),
+    Err(FsError::AlreadyExists { path, .. }) => println!("Exists: {}", path.display()),
+    Err(FsError::QuotaExceeded { .. }) => println!("Quota exceeded"),
+    Err(FsError::FeatureNotEnabled { feature }) => println!("Feature disabled: {}", feature),
 
     Err(e) => println!("Error: {}", e),
 }

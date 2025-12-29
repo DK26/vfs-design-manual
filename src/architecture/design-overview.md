@@ -1064,9 +1064,9 @@ The `Fs` trait doesn't enforce filesystem semantics - backends decide their beha
 let linux_fs = MemoryBackend::new();
 assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 
-// Someone wants NTFS-like behavior? Middleware or custom backend:
-let ntfs_like = CaseInsensitive::new(
-    NtfsValidation::new(MemoryBackend::new())  // Blocks CON, NUL, ADS
+// Someone wants NTFS-like behavior? User-implemented middleware or custom backend:
+let ntfs_like = CaseInsensitive::new(           // (user-implemented middleware)
+    NtfsValidation::new(MemoryBackend::new())   // (user-implemented middleware)
 );
 
 // Or full custom implementation
@@ -1097,21 +1097,21 @@ impl FuseOps for AnyFsFuse<B> {
 
 Windows respects these flags - a case-sensitive mounted filesystem works correctly (modern Windows/WSL handle this).
 
-### Optional Middleware for Windows Compatibility
+### Illustrative: Custom Middleware for Windows Compatibility
 
-For users who need Windows-safe paths in virtual backends:
+For users who need Windows-safe paths in virtual backends, here are example middleware patterns (not built-in - implement as needed):
 
 ```rust
-/// Middleware that validates paths are Windows-compatible.
+/// Example: Middleware that validates paths are Windows-compatible.
 /// Rejects: CON, PRN, NUL, COM1-9, LPT1-9, trailing dots/spaces, ADS.
-pub struct NtfsValidation<B> { /* ... */ }
+pub struct NtfsValidation<B> { /* user-implemented */ }
 
-/// Middleware that makes a backend case-insensitive.
+/// Example: Middleware that makes a backend case-insensitive.
 /// Stores canonical (lowercase) keys, preserves original case in metadata.
-pub struct CaseInsensitive<B> { /* ... */ }
+pub struct CaseInsensitive<B> { /* user-implemented */ }
 ```
 
-**Not included by default** - opt-in for users who need it.
+**Not built-in** - these are illustrative patterns for users who need NTFS-like behavior.
 
 ---
 
@@ -1313,6 +1313,15 @@ pub enum FsError {
 
     /// Deserialization error (from FsExt).
     Deserialization(String),
+
+    /// Invalid password or encryption key (from SqliteCipherBackend).
+    InvalidPassword,
+
+    /// Data integrity verification failed (from encryption middleware).
+    /// AEAD tag mismatch, HMAC verification failure, etc.
+    IntegrityError {
+        path: PathBuf,
+    },
 
     /// Backend-specific error.
     Backend(String),

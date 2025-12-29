@@ -174,6 +174,7 @@ let mount = MountHandle::mount(backend, "/mnt/virtual")?;
 |---------|:-------:|:-----:|:-----:|:----:|
 | `MemoryBackend` | ✅ | ✅ | ✅ | ✅ |
 | `SqliteBackend` | ✅ | ✅ | ✅ | ✅ |
+| `SqliteCipherBackend` | ✅ | ✅ | ✅ | ❌ |
 | `VRootFsBackend` | ✅ | ✅ | ✅ | ❌ |
 
 Virtual backends work identically everywhere - paths are just keys, symlinks are stored data.

@@ -23,6 +23,7 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
     backends/
       memory.rs             # MemoryBackend [feature: memory, default]
       sqlite.rs             # SqliteBackend [feature: sqlite]
+      sqlite_cipher.rs      # SqliteCipherBackend [feature: sqlite-cipher]
       stdfs.rs              # StdFsBackend [feature: stdfs]
       vrootfs.rs            # VRootFsBackend [feature: vrootfs]
     middleware/
@@ -70,6 +71,7 @@ Features in `anyfs` select which backends to include:
 
 - `memory` — In-memory storage (default)
 - `sqlite` — SQLite-backed persistent storage
+- `sqlite-cipher` — Encrypted SQLite via SQLCipher (AES-256, mutually exclusive with `sqlite`)
 - `stdfs` — Direct `std::fs` delegation (no containment)
 - `vrootfs` — Host filesystem backend with path containment (uses `strict-path`)
 

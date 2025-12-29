@@ -486,7 +486,9 @@ For high-security scenarios where memory dumps are a threat:
 | Cold boot attack | Hardware RAM encryption | No (Intel TME/AMD SME) |
 | Hypervisor/DMA attack | SGX/SEV enclaves | No (hardware) |
 
-#### Encrypted Memory Backend
+#### Encrypted Memory Backend (Illustrative Pattern)
+
+> **Note:** `EncryptedMemoryBackend` is an illustrative pattern for users who need encrypted RAM storage. It is not a built-in backend in v1. Users can implement this pattern using the guidance below.
 
 Keep data encrypted even in RAM - decrypt only during active use:
 
@@ -607,7 +609,7 @@ For true defense against memory scanning, combine:
 |----------|-------------------|--------------------|--------------| ------------|
 | `SqliteCipherBackend` | Yes | Yes | No (SQLite uses plaintext RAM) | Encrypted `.db` file |
 | `FileEncryption<B>` middleware | Yes | No | Depends on B | Depends on B |
-| `EncryptedMemoryBackend` | Yes | Yes | Yes (encrypted in RAM) | Via `save_to_file()` |
+| `EncryptedMemoryBackend` (illustrative) | Yes | Yes | Yes (encrypted in RAM) | Via `save_to_file()` |
 | `IntegrityVerified<B>` middleware | No | No (files only) | No | Depends on B |
 
 ### Recommended Configurations
@@ -619,9 +621,10 @@ let backend = SqliteCipherBackend::open("secure.db", password)?;
 let fs = FileStorage::new(backend);
 ```
 
-#### High-Security RAM Processing
+#### High-Security RAM Processing (Illustrative)
 ```rust
 // Data never plaintext at rest (RAM or disk)
+// Note: EncryptedMemoryBackend is user-implemented (see pattern above)
 let backend = EncryptedMemoryBackend::new(derive_key(password));
 // ... use fs ...
 backend.save_to_file("snapshot.enc")?;  // Persists encrypted
@@ -759,7 +762,7 @@ impl SqliteCipherBackend {
     /// Create new encrypted database with password.
     pub fn create(path: impl AsRef<Path>, password: &str) -> Result<Self, FsError> {
         if path.as_ref().exists() {
-            return Err(FsError::AlreadyExists { path: path.as_ref().to_path_buf() });
+            return Err(FsError::AlreadyExists { path: path.as_ref().to_path_buf(), operation: "create" });
         }
         Self::open(path, password)
     }

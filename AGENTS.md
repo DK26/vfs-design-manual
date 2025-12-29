@@ -215,6 +215,7 @@ fn process_sandbox(fs: &FileStorage<impl Fs, Sandbox>) { /* only accepts Sandbox
 |---------|-------------|
 | `MemoryBackend` | In-memory storage, implements `Clone` for snapshots |
 | `SqliteBackend` | Single-file portable database |
+| `SqliteCipherBackend` | Encrypted SQLite via SQLCipher (AES-256) |
 | `StdFsBackend` | Direct `std::fs` delegation (no containment) |
 | `VRootFsBackend` | Host filesystem with path containment (via strict-path) |
 

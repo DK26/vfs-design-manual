@@ -461,12 +461,12 @@ Return appropriate `FsError` variants:
 
 | Situation | Error |
 |-----------|-------|
-| Path doesn't exist | `FsError::NotFound(path)` |
-| Path already exists | `FsError::AlreadyExists(path)` |
-| Expected file, got dir | `FsError::NotAFile(path)` |
-| Expected dir, got file | `FsError::NotADirectory(path)` |
-| Remove non-empty dir | `FsError::DirectoryNotEmpty(path)` |
-| Internal error | `FsError::Backend(message)` |
+| Path doesn't exist | `FsError::NotFound { path, operation }` |
+| Path already exists | `FsError::AlreadyExists { path, operation }` |
+| Expected file, got dir | `FsError::NotAFile { path }` |
+| Expected dir, got file | `FsError::NotADirectory { path }` |
+| Remove non-empty dir | `FsError::DirectoryNotEmpty { path }` |
+| Internal error | `FsError::Backend { message }` |
 
 ---
 

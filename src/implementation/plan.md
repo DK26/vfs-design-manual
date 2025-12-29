@@ -66,11 +66,11 @@ FileStorage handles path resolution (symlink-aware, not just lexical normalizati
 ```rust
 #[derive(Debug, thiserror::Error)]
 pub enum FsError {
-    #[error("not found: {path}")]
-    NotFound { path: PathBuf },
+    #[error("{operation}: not found: {path}")]
+    NotFound { path: PathBuf, operation: &'static str },
 
-    #[error("already exists: {path}")]
-    AlreadyExists { path: PathBuf },
+    #[error("{operation}: already exists: {path}")]
+    AlreadyExists { path: PathBuf, operation: &'static str },
 
     #[error("quota exceeded: limit {limit}, attempted {attempted}")]
     QuotaExceeded { limit: u64, attempted: u64 },
