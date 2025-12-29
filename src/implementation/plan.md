@@ -612,12 +612,15 @@ The layered trait design enables building cloud storage services - each adapter 
 Expose any `Fs` backend as an S3-compatible API. Users access your storage with standard AWS SDKs.
 
 ```rust
-use anyfs::{SqliteBackend, Quota, Tracing};
+use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
 use anyfs_s3_server::S3Server;
 
 // Your storage backend with quotas and audit logging
-let backend = Quota::new(Tracing::new(SqliteBackend::open("storage.db")?))
-    .with_max_total_size(100 * 1024 * 1024 * 1024);  // 100GB
+let backend = SqliteBackend::open("storage.db")?
+    .layer(TracingLayer::new())
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024 * 1024)  // 100GB
+        .build());
 
 S3Server::new(backend)
     .with_auth(auth_provider)       // Your auth implementation
@@ -702,22 +705,23 @@ let mut fs = FileStorage::new(backend);
 #### Multi-Tenant Cloud Storage Example
 
 ```rust
-use anyfs::{SqliteBackend, Quota, PathFilter, Tracing};
+use anyfs::{SqliteBackend, QuotaLayer, PathFilterLayer, TracingLayer};
 use anyfs_s3_server::S3Server;
 
 // Per-tenant backend factory
 fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> impl Fs {
     let db_path = format!("/data/tenants/{}.db", tenant_id);
 
-    Quota::new(
-        PathFilter::new(
-            Tracing::new(SqliteBackend::open(&db_path).unwrap())
-                .with_target(&format!("tenant.{}", tenant_id))
-        )
-        .allow("/**")
-        .deny("../**")  // No path traversal
-    )
-    .with_max_total_size(quota_bytes)
+    SqliteBackend::open(&db_path).unwrap()
+        .layer(TracingLayer::new()
+            .with_target(&format!("tenant.{}", tenant_id)))
+        .layer(PathFilterLayer::builder()
+            .allow("/**")
+            .deny("../**")  // No path traversal
+            .build())
+        .layer(QuotaLayer::builder()
+            .max_total_size(quota_bytes)
+            .build())
 }
 
 // Tenant-aware S3 server
@@ -760,18 +764,19 @@ Expose a `FsFull` backend as an SFTP server. Users connect with standard SSH/SFT
 **Server implementation:**
 
 ```rust
-use anyfs::{SqliteBackend, Quota, Tracing};
+use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
 use anyfs_sftp_server::SftpServer;
 
 // Per-user isolated backend factory
 fn get_user_storage(username: &str) -> impl FsFull {
     let db_path = format!("/data/users/{}.db", username);
 
-    Quota::new(
-        Tracing::new(SqliteBackend::open(&db_path).unwrap())
-            .with_target(&format!("user.{}", username))
-    )
-    .with_max_total_size(10 * 1024 * 1024 * 1024)  // 10GB per user
+    SqliteBackend::open(&db_path).unwrap()
+        .layer(TracingLayer::new()
+            .with_target(&format!("user.{}", username)))
+        .layer(QuotaLayer::builder()
+            .max_total_size(10 * 1024 * 1024 * 1024)  // 10GB per user
+            .build())
 }
 
 SftpServer::new(get_user_storage)
@@ -817,8 +822,10 @@ use anyfs_ssh_shell::SshShellServer;
 // On user login, mount their isolated storage as $HOME
 fn on_user_login(username: &str) -> Result<(), Error> {
     let db_path = format!("/data/users/{}.db", username);
-    let backend = Quota::new(SqliteBackend::open(&db_path)?)
-        .with_max_total_size(10 * 1024 * 1024 * 1024);
+    let backend = SqliteBackend::open(&db_path)?
+        .layer(QuotaLayer::builder()
+            .max_total_size(10 * 1024 * 1024 * 1024)
+            .build());
 
     let mount_point = format!("/home/{}", username);
     FuseMount::mount(backend, &mount_point)?;

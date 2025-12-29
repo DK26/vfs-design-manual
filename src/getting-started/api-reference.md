@@ -22,36 +22,31 @@ anyfs = { version = "0.1", features = ["sqlite", "vrootfs", "bytes"] }
 ## Creating a Backend Stack
 
 ```rust
-use anyfs::{MemoryBackend, SqliteBackend, Quota, Restrictions, Tracing, FileStorage};
+use anyfs::{MemoryBackend, SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer, FileStorage};
 
 // Simple
 let fs = FileStorage::new(MemoryBackend::new());
 
 // With limits
 let fs = FileStorage::new(
-    Quota::new(SqliteBackend::open("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)
-        .with_max_file_size(10 * 1024 * 1024)
+    SqliteBackend::open("data.db")?
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .max_file_size(10 * 1024 * 1024)
+            .build())
 );
 
-// Full stack (manual composition)
-let fs = FileStorage::new(
-    Tracing::new(
-        Restrictions::new(
-            Quota::new(SqliteBackend::open("data.db")?)
-                .with_max_total_size(100 * 1024 * 1024)
-        )
-        .deny_permissions()  // Block set_permissions() calls
-    )
-);
-
-// Layer-based composition
-use anyfs::{QuotaLayer, RestrictionsLayer, TracingLayer};
-
+// Full stack (fluent composition)
 let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new().deny_permissions())
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_permissions()
+        .build())
     .layer(TracingLayer::new());
+
+let fs = FileStorage::new(backend);
 
 // BackendStack builder (fluent API)
 use anyfs::BackendStack;
@@ -68,12 +63,15 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 ## Quota Methods
 
 ```rust
-Quota::new(backend)
-    .with_max_total_size(bytes)      // Total storage limit
-    .with_max_file_size(bytes)       // Per-file limit
-    .with_max_node_count(count)      // Max files/dirs
-    .with_max_dir_entries(count)     // Max entries per dir
-    .with_max_path_depth(depth)      // Max nesting
+// Builder pattern (required - at least one limit must be set)
+QuotaLayer::builder()
+    .max_total_size(bytes)      // Total storage limit
+    .max_file_size(bytes)       // Per-file limit
+    .max_node_count(count)      // Max files/dirs
+    .max_dir_entries(count)     // Max entries per dir
+    .max_path_depth(depth)      // Max nesting
+    .build()
+    .layer(backend)
 
 // Query
 backend.usage()        // -> Usage { total_size, file_count, ... }
@@ -86,21 +84,28 @@ backend.remaining()    // -> Remaining { bytes, can_write, ... }
 ## Restrictions Methods
 
 ```rust
+// Builder pattern (required - at least one restriction must be set)
 // By default, all operations work. Use deny_*() to block specific ones.
-Restrictions::new(backend)
+RestrictionsLayer::builder()
     .deny_symlinks()       // Block symlink() calls
     .deny_hard_links()     // Block hard_link() calls
     .deny_permissions()    // Block set_permissions() calls
+    .build()
+    .layer(backend)
 ```
 
 ---
 
-## Tracing Methods
+## TracingLayer Methods
 
 ```rust
-Tracing::new(backend)
-    .with_target("anyfs")             // tracing target
+// TracingLayer configuration (applied via .layer())
+TracingLayer::new()
+    .with_target("anyfs")              // tracing target
     .with_level(tracing::Level::DEBUG)
+
+// Usage
+let backend = inner.layer(TracingLayer::new().with_target("anyfs"));
 ```
 
 ---
@@ -108,10 +113,13 @@ Tracing::new(backend)
 ## PathFilter Methods
 
 ```rust
-PathFilter::new(backend)
+// Builder pattern (required - at least one rule must be set)
+PathFilterLayer::builder()
     .allow("/workspace/**")    // Allow glob pattern
     .deny("**/.env")           // Deny glob pattern
     .deny("**/secrets/**")
+    .build()
+    .layer(backend)
 
 // Rules evaluated in order; first match wins
 // No match = denied (deny by default)
@@ -133,11 +141,14 @@ ReadOnly::new(backend)
 ## RateLimit Methods
 
 ```rust
-RateLimit::new(backend)
+// Builder pattern (required - must set ops and window)
+RateLimitLayer::builder()
     .max_ops(1000)           // Operation limit
     .per_second()            // Window: 1 second
     // or
     .per_minute()            // Window: 60 seconds
+    .build()
+    .layer(backend)
 ```
 
 ---
@@ -161,10 +172,13 @@ dry_run.clear();                       // Clear the log
 ## Cache Methods
 
 ```rust
-Cache::new(backend)
-    .max_entries(1000)                     // LRU cache size
-    .max_entry_size(1024 * 1024)          // 1MB max per entry
-    .ttl(std::time::Duration::from_secs(60))  // Expiration
+// Builder pattern (required - at least max_entries must be set)
+CacheLayer::builder()
+    .max_entries(1000)                          // LRU cache size
+    .max_entry_size(1024 * 1024)               // 1MB max per entry
+    .ttl(std::time::Duration::from_secs(60))   // Expiration
+    .build()
+    .layer(backend)
 ```
 
 ---

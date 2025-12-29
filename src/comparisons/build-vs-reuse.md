@@ -85,17 +85,19 @@ AnyFS fills the gap by separating concerns:
 The middleware pattern (like Tower/Axum) enables composition:
 
 ```rust
-use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing, FileStorage};
+use anyfs::{SqliteBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer, FileStorage};
 
-let backend = Tracing::new(
-    PathFilter::new(
-        Restrictions::new(
-            Quota::new(SqliteBackend::open("tenant.db")?)
-                .with_max_total_size(100 * 1024 * 1024)
-        )
-    )
-    .allow("/workspace/**")
-);
+let backend = SqliteBackend::open("tenant.db")?
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
+        .build())
+    .layer(TracingLayer::new());
 
 let mut fs = FileStorage::new(backend);
 fs.write("/workspace/doc.txt", b"hello")?;

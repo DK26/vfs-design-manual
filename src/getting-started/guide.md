@@ -52,9 +52,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 use anyfs::{SqliteBackend, Quota, FileStorage};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let backend = Quota::new(SqliteBackend::open_or_create("data.db")?)
-        .with_max_total_size(100 * 1024 * 1024)  // 100 MB
-        .with_max_file_size(10 * 1024 * 1024);   // 10 MB per file
+    let backend = QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)  // 100 MB
+        .max_file_size(10 * 1024 * 1024)    // 10 MB per file
+        .build()
+        .layer(SqliteBackend::open_or_create("data.db")?);
 
     let mut fs = FileStorage::new(backend);
 
@@ -72,9 +74,11 @@ use anyfs::{MemoryBackend, Restrictions, FileStorage};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Block specific operations for untrusted code
-    let backend = Restrictions::new(MemoryBackend::new())
+    let backend = RestrictionsLayer::builder()
         .deny_hard_links()    // Block hard_link() calls
-        .deny_permissions();  // Block set_permissions() calls
+        .deny_permissions()   // Block set_permissions() calls
+        .build()
+        .layer(MemoryBackend::new());
 
     let mut fs = FileStorage::new(backend);
 
@@ -93,12 +97,14 @@ use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer, FileStor
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = SqliteBackend::open_or_create("data.db")?
-        .layer(QuotaLayer::new()
+        .layer(QuotaLayer::builder()
             .max_total_size(100 * 1024 * 1024)
-            .max_file_size(10 * 1024 * 1024))
-        .layer(RestrictionsLayer::new()
+            .max_file_size(10 * 1024 * 1024)
+            .build())
+        .layer(RestrictionsLayer::builder()
             .deny_hard_links()
-            .deny_permissions())
+            .deny_permissions()
+            .build())
         .layer(TracingLayer::new());
 
     let mut fs = FileStorage::new(backend);
@@ -173,12 +179,14 @@ fs.remove_dir_all("/old-folder")?;
 ```rust
 use anyfs::{MemoryBackend, Quota};
 
-let backend = Quota::new(MemoryBackend::new())
-    .with_max_total_size(500 * 1024 * 1024)  // 500 MB total
-    .with_max_file_size(50 * 1024 * 1024)    // 50 MB per file
-    .with_max_node_count(100_000)             // 100K files/dirs
-    .with_max_dir_entries(5_000)              // 5K per directory
-    .with_max_path_depth(32);                 // Max nesting
+let backend = QuotaLayer::builder()
+    .max_total_size(500 * 1024 * 1024)   // 500 MB total
+    .max_file_size(50 * 1024 * 1024)     // 50 MB per file
+    .max_node_count(100_000)             // 100K files/dirs
+    .max_dir_entries(5_000)              // 5K per directory
+    .max_path_depth(32)                  // Max nesting
+    .build()
+    .layer(MemoryBackend::new());
 
 // Check usage
 let usage = backend.usage();
@@ -197,10 +205,12 @@ if !remaining.can_write {
 use anyfs::{MemoryBackend, Restrictions};
 
 // By default, all operations work. Use deny_*() to block specific ones.
-let backend = Restrictions::new(MemoryBackend::new())
+let backend = RestrictionsLayer::builder()
     .deny_symlinks()      // Block symlink() calls
     .deny_hard_links()    // Block hard_link() calls
-    .deny_permissions();  // Block set_permissions() calls
+    .deny_permissions()   // Block set_permissions() calls
+    .build()
+    .layer(MemoryBackend::new());
 
 // Blocked operations return FsError::FeatureNotEnabled
 ```
@@ -208,10 +218,16 @@ let backend = Restrictions::new(MemoryBackend::new())
 ### Tracing — Instrumentation
 
 ```rust
-use anyfs::{MemoryBackend, Tracing};
+use anyfs::{MemoryBackend, TracingLayer};
 
-let backend = Tracing::new(MemoryBackend::new())
-    .with_logger(MyLogger::new());
+// TracingLayer uses the global tracing subscriber by default
+let backend = MemoryBackend::new().layer(TracingLayer::new());
+
+// Or configure with custom settings
+let backend = MemoryBackend::new()
+    .layer(TracingLayer::new()
+        .with_target("myapp::fs")
+        .with_level(tracing::Level::DEBUG));
 ```
 
 ---
@@ -258,8 +274,10 @@ use anyfs::{MemoryBackend, Quota, FileStorage};
 
 #[test]
 fn test_quota_exceeded() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_total_size(1024);  // 1 KB
+    let backend = QuotaLayer::builder()
+        .max_total_size(1024)  // 1 KB
+        .build()
+        .layer(MemoryBackend::new());
     let mut fs = FileStorage::new(backend);
 
     let big_data = vec![0u8; 2048];  // 2 KB
@@ -291,18 +309,21 @@ let fs = FileStorage::new(MemoryBackend::new());
 // With limits (layer-based)
 let fs = FileStorage::new(
     MemoryBackend::new()
-        .layer(QuotaLayer::new()
-            .max_total_size(100 * 1024 * 1024))
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .build())
 );
 
 // Sandboxed (layer-based)
 let fs = FileStorage::new(
     SqliteBackend::open("data.db")?
-        .layer(QuotaLayer::new()
-            .max_total_size(100 * 1024 * 1024))
-        .layer(RestrictionsLayer::new()
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .build())
+        .layer(RestrictionsLayer::builder()
             .deny_hard_links()
-            .deny_permissions())
+            .deny_permissions()
+            .build())
 );
 ```
 
@@ -351,8 +372,10 @@ use anyfs_fuse::FuseMount;
 
 // Mount the drive
 let backend = SqliteBackend::open("tenant.db")?
-    .layer(TracingLayer::new())  // Logs operations to DB
-    .layer(QuotaLayer::new().max_total_size(1_000_000_000));
+    .layer(TracingLayer::new())  // Logs operations to tracing subscriber
+    .layer(QuotaLayer::builder()
+        .max_total_size(1_000_000_000)
+        .build());
 
 let mount = FuseMount::mount(backend, "/mnt/workspace")?;
 ```
@@ -410,7 +433,9 @@ use anyfs_fuse::FuseMount;
 // 4GB RAM drive
 let mount = FuseMount::mount(
     MemoryBackend::new()
-        .layer(QuotaLayer::new().max_total_size(4 * 1024 * 1024 * 1024)),
+        .layer(QuotaLayer::builder()
+            .max_total_size(4 * 1024 * 1024 * 1024)
+            .build()),
     "/mnt/ramdisk"
 )?;
 
@@ -426,16 +451,19 @@ use anyfs_fuse::FuseMount;
 
 let mount = FuseMount::mount(
     MemoryBackend::new()
-        .layer(PathFilterLayer::new()
+        .layer(PathFilterLayer::builder()
             .allow("/workspace/**")
             .deny("**/..*")           // No hidden files
-            .deny("**/.*"))           // No dotfiles
-        .layer(RestrictionsLayer::new()
+            .deny("**/.*")            // No dotfiles
+            .build())
+        .layer(RestrictionsLayer::builder()
             .deny_symlinks()          // Prevent symlink attacks
-            .deny_hard_links())
-        .layer(QuotaLayer::new()
+            .deny_hard_links()
+            .build())
+        .layer(QuotaLayer::builder()
             .max_total_size(100 * 1024 * 1024)
-            .max_file_size(10 * 1024 * 1024))
+            .max_file_size(10 * 1024 * 1024)
+            .build())
         .layer(TracingLayer::new()),  // Full audit trail
     "/mnt/agent"
 )?;

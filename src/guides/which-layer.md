@@ -30,37 +30,23 @@ fs.write("/data/file.txt", b"hello")?;
 ### With middleware (quotas, sandboxing, tracing)
 
 ```rust
-use anyfs::{SqliteBackend, Quota, Restrictions, PathFilter, Tracing};
+use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, PathFilterLayer, TracingLayer};
 use anyfs::FileStorage;
 
-let backend = SqliteBackend::open("tenant.db")?;
-
-let stack = Tracing::new(
-    PathFilter::new(
-        Restrictions::new(
-            Quota::new(backend)
-                .with_max_total_size(100 * 1024 * 1024)
-        )
-    )
-    .allow("/workspace/**")
-    .deny("**/.env")
-);
-
-let mut fs = FileStorage::new(stack);
-```
-
-### Using Layer trait (alternative syntax)
-
-```rust
-use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
-use anyfs::FileStorage;
-
-let backend = SqliteBackend::open("tenant.db")?
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new())
+let stack = SqliteBackend::open("tenant.db")?
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
+        .deny("**/.env")
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
     .layer(TracingLayer::new());
 
-let mut fs = FileStorage::new(backend);
+let mut fs = FileStorage::new(stack);
 ```
 
 ### Custom backend implementation

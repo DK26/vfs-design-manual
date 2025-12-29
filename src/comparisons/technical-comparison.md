@@ -69,19 +69,21 @@ fs.toolcall_start("tool")?;  // Auditing bundled
 Tower-style middleware + pluggable backends:
 
 ```rust
-use anyfs::{SqliteBackend, Quota, PathFilter, Restrictions, Tracing, FileStorage};
+use anyfs::{SqliteBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer, FileStorage};
 
 // Compose middleware stack
-let backend = Tracing::new(
-    PathFilter::new(
-        Restrictions::new(
-            Quota::new(SqliteBackend::open("data.db")?)
-                .with_max_total_size(100 * 1024 * 1024)
-        )
-    )
-    .allow("/workspace/**")
-    .deny("**/.env")
-);
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
+        .deny("**/.env")
+        .build())
+    .layer(TracingLayer::new());
 
 let mut fs = FileStorage::new(backend);
 ```

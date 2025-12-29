@@ -336,20 +336,16 @@ FsError::Backend(String)                   // Backend-specific error
 ### Create a backend stack
 
 ```rust
-use anyfs::{MemoryBackend, Quota, PathFilter, Tracing, Fs};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, TracingLayer};
 
-let backend = MemoryBackend::new();
-let limited = Quota::new(backend).with_max_total_size(100 * 1024 * 1024);
-let filtered = PathFilter::new(limited).allow("/workspace/**").deny("**/.env");
-let traced = Tracing::new(filtered);
-```
-
-### Using Layer syntax
-
-```rust
 let backend = MemoryBackend::new()
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(PathFilterLayer::new().allow("/workspace/**"))
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
+        .deny("**/.env")
+        .build())
     .layer(TracingLayer::new());
 ```
 

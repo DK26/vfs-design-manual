@@ -37,11 +37,13 @@ use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, FileStorage};
 // Type is inferred - no need to write it out
 let mut fs = FileStorage::new(
     SqliteBackend::open("data.db")?
-        .layer(QuotaLayer::new()
-            .max_total_size(100 * 1024 * 1024))
-        .layer(RestrictionsLayer::new()
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .build())
+        .layer(RestrictionsLayer::builder()
             .deny_hard_links()
-            .deny_permissions())
+            .deny_permissions()
+            .build())
 );
 ```
 
@@ -216,10 +218,12 @@ type DynFileStorage<M = ()> = FileStorage<Box<dyn Fs>, M>;
 If you don't need the wrapper, use backends directly:
 
 ```rust
-use anyfs::{MemoryBackend, Quota, Fs};
+use anyfs::{MemoryBackend, QuotaLayer, Fs};
 
-let mut backend = Quota::new(MemoryBackend::new())
-    .with_max_total_size(100 * 1024 * 1024);
+let mut backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build());
 
 // Use Fs trait methods directly
 backend.write("/file.txt", b"data")?;

@@ -29,6 +29,7 @@ This file captures the decisions for the current AnyFS design.
 | ADR-019 | DryRun for testing and debugging | Accepted |
 | ADR-020 | Cache for read performance | Accepted |
 | ADR-021 | Overlay for union filesystem | Accepted |
+| ADR-022 | Builder pattern for configurable middleware | Accepted |
 
 ---
 
@@ -80,11 +81,14 @@ This file captures the decisions for the current AnyFS design.
 
 **Example:**
 ```rust
-let backend = Tracing::new(
-    Restrictions::new(
-        Quota::new(SqliteBackend::open("data.db")?)
-    )
-);
+let backend = SqliteBackend::open("data.db")?
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
+    .layer(TracingLayer::new());
 ```
 
 ---
@@ -262,9 +266,9 @@ let backend = SqliteBackend::open("data.db")?
 
 **Configuration:**
 ```rust
-Tracing::new(backend)
+backend.layer(TracingLayer::new()
     .with_target("anyfs")
-    .with_level(tracing::Level::DEBUG)
+    .with_level(tracing::Level::DEBUG))
 ```
 
 ---
@@ -368,10 +372,12 @@ FsError::QuotaExceeded {
 
 **Configuration:**
 ```rust
-PathFilter::new(backend)
+PathFilterLayer::builder()
     .allow("/workspace/**")    // Allow workspace access
     .deny("**/.env")           // Deny .env files anywhere
     .deny("**/secrets/**")     // Deny secrets directories
+    .build()
+    .layer(backend)
 ```
 
 **Semantics:**
@@ -420,9 +426,11 @@ let readonly_fs = ReadOnly::new(backend);
 
 **Configuration:**
 ```rust
-RateLimit::new(backend)
+RateLimitLayer::builder()
     .max_ops(1000)
     .per_second()
+    .build()
+    .layer(backend)
 ```
 
 **Semantics:**
@@ -478,10 +486,12 @@ let ops = dry_run.operations();         // ["write /test.txt (5 bytes)"]
 
 **Configuration:**
 ```rust
-Cache::new(backend)
+CacheLayer::builder()
     .max_entries(1000)
     .max_entry_size(1024 * 1024)  // 1MB max per entry
     .ttl(Duration::from_secs(60))
+    .build()
+    .layer(backend)
 ```
 
 **Semantics:**
@@ -534,3 +544,137 @@ let overlay = Overlay::new(base, upper);
 - `exists` checks upper first, then base (respecting whiteouts).
 - All writes go to upper layer; base is never modified.
 - Consider `opaque` directories (`.wh..wh..opq`) to hide entire base directories.
+
+---
+
+## ADR-022: Builder pattern for configurable middleware
+
+**Decision:** Middleware that requires configuration MUST use a builder pattern that prevents construction without meaningful values. `::new()` constructors are NOT allowed for middleware where a default configuration is nonsensical.
+
+**Problem:** A constructor like `QuotaLayer::new()` raises the question: "What quota?" An unlimited quota is pointless - you wouldn't use `QuotaLayer` at all. Similarly, `RestrictionsLayer::new()` with no restrictions, `PathFilterLayer::new()` with no rules, and `RateLimitLayer::new()` with no rate limit are all nonsensical.
+
+**Solution:** Use builders that enforce at least one meaningful configuration:
+
+```rust
+// QuotaLayer - requires at least one limit
+let quota = QuotaLayer::builder()
+    .max_total_size(100 * 1024 * 1024)
+    .build();
+
+// Can also set multiple limits
+let quota = QuotaLayer::builder()
+    .max_total_size(1_000_000)
+    .max_file_size(100_000)
+    .max_node_count(1000)
+    .build();
+
+// RestrictionsLayer - requires at least one restriction
+let restrictions = RestrictionsLayer::builder()
+    .deny_symlinks()
+    .build();
+
+// PathFilterLayer - requires at least one rule
+let filter = PathFilterLayer::builder()
+    .allow("/workspace/**")
+    .deny("**/.env")
+    .build();
+
+// RateLimitLayer - requires rate limit parameters
+let rate_limit = RateLimitLayer::builder()
+    .max_ops(1000)
+    .per_second()
+    .build();
+
+// CacheLayer - requires cache configuration
+let cache = CacheLayer::builder()
+    .max_entries(1000)
+    .build();
+```
+
+**Middleware that MAY keep `::new()`:**
+
+| Middleware | Rationale |
+|------------|-----------|
+| `TracingLayer` | Default (global tracing subscriber) is meaningful |
+| `ReadOnlyLayer` | No configuration needed |
+| `DryRunLayer` | No configuration needed |
+| `OverlayLayer` | Takes two backends as required params: `Overlay::new(lower, upper)` |
+
+**Implementation:**
+
+```rust
+// Builder with typestate pattern for compile-time enforcement
+pub struct QuotaLayerBuilder<State = Unconfigured> {
+    max_total_size: Option<u64>,
+    max_file_size: Option<u64>,
+    max_node_count: Option<u64>,
+    _state: PhantomData<State>,
+}
+
+pub struct Unconfigured;
+pub struct Configured;
+
+impl QuotaLayerBuilder<Unconfigured> {
+    pub fn max_total_size(mut self, bytes: u64) -> QuotaLayerBuilder<Configured> {
+        self.max_total_size = Some(bytes);
+        QuotaLayerBuilder {
+            max_total_size: self.max_total_size,
+            max_file_size: self.max_file_size,
+            max_node_count: self.max_node_count,
+            _state: PhantomData,
+        }
+    }
+
+    pub fn max_file_size(mut self, bytes: u64) -> QuotaLayerBuilder<Configured> {
+        // Similar transition to Configured state
+    }
+
+    pub fn max_node_count(mut self, count: u64) -> QuotaLayerBuilder<Configured> {
+        // Similar transition to Configured state
+    }
+
+    // Note: NO build() method on Unconfigured state!
+}
+
+impl QuotaLayerBuilder<Configured> {
+    // Additional configuration methods stay in Configured state
+    pub fn max_total_size(mut self, bytes: u64) -> Self {
+        self.max_total_size = Some(bytes);
+        self
+    }
+
+    // Only Configured state has build()
+    pub fn build(self) -> QuotaLayer {
+        QuotaLayer { /* ... */ }
+    }
+}
+
+impl QuotaLayer {
+    pub fn builder() -> QuotaLayerBuilder<Unconfigured> {
+        QuotaLayerBuilder {
+            max_total_size: None,
+            max_file_size: None,
+            max_node_count: None,
+            _state: PhantomData,
+        }
+    }
+}
+```
+
+**Why:**
+- **Compile-time safety:** Invalid configurations don't compile.
+- **Self-documenting API:** Users must explicitly choose configuration.
+- **No meaningless defaults:** Eliminates "what does this default to?" confusion.
+- **IDE guidance:** Autocomplete shows required methods before `build()`.
+- **Familiar pattern:** Rust builders are idiomatic and widely understood.
+
+**Error prevention:**
+```rust
+// This won't compile - no build() on Unconfigured
+let quota = QuotaLayer::builder().build();  // ❌ Error!
+
+// This compiles - at least one limit set
+let quota = QuotaLayer::builder()
+    .max_total_size(1_000_000)
+    .build();  // ✅ OK
+```

@@ -297,12 +297,14 @@ fn to_ntstatus(e: FsError) -> NTSTATUS {
 ### Basic Mount
 
 ```rust
-use anyfs::{MemoryBackend, Quota};
+use anyfs::{MemoryBackend, QuotaLayer};
 use anyfs_mount::MountHandle;
 
 // Create backend with middleware
-let backend = Quota::new(MemoryBackend::new())
-    .with_max_total_size(100 * 1024 * 1024);
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build());
 
 // Mount as drive
 let mount = MountHandle::mount(backend, "/mnt/ramdisk")?;
@@ -394,14 +396,17 @@ use anyfs_mount::MountHandle;
 
 // Build secure, audited, rate-limited mount
 let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new()
-        .max_total_size(1024 * 1024 * 1024))  // 1 GB
-    .layer(PathFilterLayer::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(1024 * 1024 * 1024)  // 1 GB
+        .build())
+    .layer(PathFilterLayer::builder()
         .deny("**/.git/**")
-        .deny("**/.env"))
-    .layer(RateLimitLayer::new()
+        .deny("**/.env")
+        .build())
+    .layer(RateLimitLayer::builder()
         .max_ops(10000)
-        .per_second())
+        .per_second()
+        .build())
     .layer(TracingLayer::new());
 
 let mount = MountHandle::mount(backend, "/mnt/secure")?;
@@ -447,7 +452,9 @@ let mount = MountHandle::mount(db, "U:")?;
 ```rust
 // Remote backend (future anyfs-s3, anyfs-sftp, etc.)
 let remote = S3Backend::new("my-bucket")?;
-let cached = Cache::new(remote).with_max_size(100 * 1024 * 1024);
+let cached = remote.layer(CacheLayer::builder()
+    .max_size(100 * 1024 * 1024)
+    .build());
 let mount = MountHandle::mount(cached, "/mnt/cloud")?;
 
 // Local apps see /mnt/cloud as regular filesystem

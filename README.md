@@ -198,13 +198,14 @@ Virtual backends work identically everywhere - paths are just keys, symlinks are
 ## Quick Start
 
 ```rust
-use anyfs::{MemoryBackend, Quota, Tracing, FileStorage};
+use anyfs::{MemoryBackend, QuotaLayer, TracingLayer, FileStorage};
 
 // Build a middleware stack
-let backend = Tracing::new(
-    Quota::new(MemoryBackend::new())
-        .with_max_total_size(50 * 1024 * 1024)
-);
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(50 * 1024 * 1024)
+        .build())
+    .layer(TracingLayer::new());
 
 // Use familiar std::fs-like API
 let mut fs = FileStorage::new(backend);

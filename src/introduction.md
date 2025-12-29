@@ -51,11 +51,13 @@ use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, FileStorage};
 
 // Layer-based composition
 let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new()
-        .max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
         .deny_hard_links()
-        .deny_permissions());
+        .deny_permissions()
+        .build());
 
 let mut fs = FileStorage::new(backend);
 

@@ -41,23 +41,26 @@ AnyFS is designed with security as a primary concern. Security policies are enfo
 Security policies are composable middleware layers:
 
 ```rust
-use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer};
 
-let secure_backend = Tracing::new(           // Audit trail
-    RateLimit::new(                          // Throttle operations
-        PathFilter::new(                     // Sandbox paths
-            Restrictions::new(               // Block dangerous features
-                Quota::new(MemoryBackend::new())  // Limit resources
-                    .with_max_total_size(100 * 1024 * 1024)
-            )
-        )
+let secure_backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()              // Limit resources
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()       // Block dangerous features
+        .deny_symlinks()
+        .deny_hard_links()
+        .build())
+    .layer(PathFilterLayer::builder()         // Sandbox paths
         .allow("/workspace/**")
         .deny("**/.env")
         .deny("**/secrets/**")
-    )
-    .max_ops(1000)
-    .per_second()
-);
+        .build())
+    .layer(RateLimitLayer::builder()          // Throttle operations
+        .max_ops(1000)
+        .per_second()
+        .build())
+    .layer(TracingLayer::new());              // Audit trail
 ```
 
 ### 2. Path Sandboxing (PathFilter)
@@ -65,11 +68,13 @@ let secure_backend = Tracing::new(           // Audit trail
 `PathFilter` middleware restricts path access using glob patterns:
 
 ```rust
-PathFilter::new(backend)
+PathFilterLayer::builder()
     .allow("/workspace/**")    // Allow workspace access
     .deny("**/.env")           // Block .env files
     .deny("**/secrets/**")     // Block secrets directories
     .deny("**/*.key")          // Block key files
+    .build()
+    .layer(backend)
 ```
 
 **Guarantees:**
@@ -82,10 +87,12 @@ PathFilter::new(backend)
 By default, all operations work. Use `Restrictions` middleware to **opt-in to restrictions**:
 
 ```rust
-Restrictions::new(backend)
+RestrictionsLayer::builder()
     .deny_hard_links()         // Block hard_link() calls
     .deny_permissions()        // Block set_permissions() calls
     .deny_symlinks()           // Block symlink() calls
+    .build()
+    .layer(backend)
 ```
 
 **Use cases:**
@@ -100,12 +107,14 @@ Restrictions::new(backend)
 `Quota` middleware enforces capacity limits:
 
 ```rust
-Quota::new(backend)
-    .with_max_total_size(100 * 1024 * 1024)  // 100 MB total
-    .with_max_file_size(10 * 1024 * 1024)    // 10 MB per file
-    .with_max_node_count(10_000)             // Max files/dirs
-    .with_max_dir_entries(1_000)             // Max per directory
-    .with_max_path_depth(64)                 // Max nesting
+QuotaLayer::builder()
+    .max_total_size(100 * 1024 * 1024)  // 100 MB total
+    .max_file_size(10 * 1024 * 1024)    // 10 MB per file
+    .max_node_count(10_000)             // Max files/dirs
+    .max_dir_entries(1_000)             // Max per directory
+    .max_path_depth(64)                 // Max nesting
+    .build()
+    .layer(backend)
 ```
 
 **Guarantees:**
@@ -117,9 +126,11 @@ Quota::new(backend)
 `RateLimit` middleware throttles operations:
 
 ```rust
-RateLimit::new(backend)
+RateLimitLayer::builder()
     .max_ops(1000)
     .per_second()
+    .build()
+    .layer(backend)
 ```
 
 **Guarantees:**
@@ -218,24 +229,27 @@ This is "follow and verify containment" - symlinks are followed by the OS, but e
 ### AI Agent Sandbox
 
 ```rust
-use anyfs::{MemoryBackend, Quota, PathFilter, Restrictions, RateLimit, Tracing, FileStorage};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer, FileStorage};
 
-let sandbox = Tracing::new(
-    RateLimit::new(
-        PathFilter::new(
-            Restrictions::new(
-                Quota::new(MemoryBackend::new())
-                    .with_max_total_size(50 * 1024 * 1024)
-                    .with_max_file_size(5 * 1024 * 1024)
-            )
-        )
+let sandbox = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(50 * 1024 * 1024)
+        .max_file_size(5 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .deny_hard_links()
+        .build())
+    .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
         .deny("**/secrets/**")
-    )
-    .max_ops(1000)
-    .per_second()
-);
+        .build())
+    .layer(RateLimitLayer::builder()
+        .max_ops(1000)
+        .per_second()
+        .build())
+    .layer(TracingLayer::new());
 
 let mut fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
@@ -248,8 +262,10 @@ use anyfs::{SqliteBackend, Quota, FileStorage};
 
 fn create_tenant_storage(tenant_id: &str, quota_bytes: u64) -> FileStorage<impl Fs> {
     let db_path = format!("tenants/{}.db", tenant_id);
-    let backend = Quota::new(SqliteBackend::open(&db_path).unwrap())
-        .with_max_total_size(quota_bytes);
+    let backend = QuotaLayer::builder()
+        .max_total_size(quota_bytes)
+        .build()
+        .layer(SqliteBackend::open(&db_path).unwrap());
 
     FileStorage::new(backend)
 }

@@ -45,12 +45,16 @@ All layers use `impl AsRef<Path>` for consistency with `std::fs`.
 
 ```rust
 // Middleware enforces policy
-let backend = PathFilter::new(
-    Restrictions::new(
-        Quota::new(MemoryBackend::new())
-    )
-)
-.allow("/workspace/**");
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
+        .build());
 
 // FileStorage is just ergonomics
 let fs = FileStorage::new(backend);
@@ -77,9 +81,11 @@ For virtual backends (Memory, SQLite), paths are just keys - no OS path traversa
 For sandboxing across all backends, use `PathFilter` middleware:
 
 ```rust
-PathFilter::new(backend)
+PathFilterLayer::builder()
     .allow("/workspace/**")
     .deny("**/.env")
+    .build()
+    .layer(backend)
 ```
 
 ---

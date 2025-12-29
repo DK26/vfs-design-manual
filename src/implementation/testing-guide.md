@@ -271,8 +271,8 @@ Each middleware is tested in isolation and in combination.
 ```rust
 #[test]
 fn test_quota_blocks_when_exceeded() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_total_size(100);
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_total_size(100).build());
     let mut fs = FileStorage::new(backend);
 
     let result = fs.write("/big.txt", &[0u8; 200]);
@@ -282,8 +282,8 @@ fn test_quota_blocks_when_exceeded() {
 
 #[test]
 fn test_quota_allows_within_limit() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_total_size(1000);
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_total_size(1000).build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/small.txt", &[0u8; 100]).unwrap();
@@ -293,8 +293,8 @@ fn test_quota_allows_within_limit() {
 
 #[test]
 fn test_quota_tracks_deletes() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_total_size(100);
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_total_size(100).build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file.txt", &[0u8; 50]).unwrap();
@@ -306,8 +306,8 @@ fn test_quota_tracks_deletes() {
 
 #[test]
 fn test_quota_max_file_size() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_file_size(50);
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_file_size(50).build());
     let mut fs = FileStorage::new(backend);
 
     let result = fs.write("/big.txt", &[0u8; 100]);
@@ -317,8 +317,8 @@ fn test_quota_max_file_size() {
 
 #[test]
 fn test_quota_streaming_write() {
-    let backend = Quota::new(MemoryBackend::new())
-        .with_max_total_size(100);
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_total_size(100).build());
     let mut fs = FileStorage::new(backend);
 
     let mut writer = fs.open_write("/file.txt").unwrap();
@@ -337,8 +337,8 @@ fn test_quota_streaming_write() {
 ```rust
 #[test]
 fn test_restrictions_blocks_symlinks() {
-    let backend = Restrictions::new(MemoryBackend::new())
-        .deny_symlinks();
+    let backend = MemoryBackend::new()
+        .layer(RestrictionsLayer::builder().deny_symlinks().build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/target.txt", b"data").unwrap();
@@ -349,8 +349,8 @@ fn test_restrictions_blocks_symlinks() {
 
 #[test]
 fn test_restrictions_allows_non_blocked() {
-    let backend = Restrictions::new(MemoryBackend::new())
-        .deny_symlinks();  // Only block symlinks
+    let backend = MemoryBackend::new()
+        .layer(RestrictionsLayer::builder().deny_symlinks().build());  // Only block symlinks
     let mut fs = FileStorage::new(backend);
 
     // Hard links should still work
@@ -360,8 +360,8 @@ fn test_restrictions_allows_non_blocked() {
 
 #[test]
 fn test_restrictions_blocks_permissions() {
-    let backend = Restrictions::new(MemoryBackend::new())
-        .deny_permissions();
+    let backend = MemoryBackend::new()
+        .layer(RestrictionsLayer::builder().deny_permissions().build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();
@@ -376,8 +376,8 @@ fn test_restrictions_blocks_permissions() {
 ```rust
 #[test]
 fn test_pathfilter_allows_matching() {
-    let backend = PathFilter::new(MemoryBackend::new())
-        .allow("/workspace/**");
+    let backend = MemoryBackend::new()
+        .layer(PathFilterLayer::builder().allow("/workspace/**").build());
     let mut fs = FileStorage::new(backend);
 
     fs.create_dir_all("/workspace/project").unwrap();
@@ -386,8 +386,8 @@ fn test_pathfilter_allows_matching() {
 
 #[test]
 fn test_pathfilter_blocks_non_matching() {
-    let backend = PathFilter::new(MemoryBackend::new())
-        .allow("/workspace/**");
+    let backend = MemoryBackend::new()
+        .layer(PathFilterLayer::builder().allow("/workspace/**").build());
     let mut fs = FileStorage::new(backend);
 
     let result = fs.write("/etc/passwd", b"data");
@@ -397,9 +397,11 @@ fn test_pathfilter_blocks_non_matching() {
 
 #[test]
 fn test_pathfilter_deny_overrides_allow() {
-    let backend = PathFilter::new(MemoryBackend::new())
-        .allow("/workspace/**")
-        .deny("**/.env");
+    let backend = MemoryBackend::new()
+        .layer(PathFilterLayer::builder()
+            .allow("/workspace/**")
+            .deny("**/.env")
+            .build());
     let mut fs = FileStorage::new(backend);
 
     let result = fs.write("/workspace/.env", b"SECRET=xxx");
@@ -413,9 +415,11 @@ fn test_pathfilter_read_dir_filters() {
     inner.write("/workspace/allowed.txt", b"data").unwrap();
     inner.write("/workspace/.env", b"secret").unwrap();
 
-    let backend = PathFilter::new(inner)
-        .allow("/workspace/**")
-        .deny("**/.env");
+    let backend = inner
+        .layer(PathFilterLayer::builder()
+            .allow("/workspace/**")
+            .deny("**/.env")
+            .build());
     let fs = FileStorage::new(backend);
 
     let entries = fs.read_dir("/workspace").unwrap();
@@ -463,10 +467,9 @@ fn test_readonly_allows_reads() {
 fn test_middleware_composition_order() {
     // Quota inside, Restrictions outside
     // Quota should be checked before restrictions
-    let backend = Restrictions::new(
-        Quota::new(MemoryBackend::new())
-            .with_max_total_size(100)
-    ).deny_symlinks();
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder().max_total_size(100).build())
+        .layer(RestrictionsLayer::builder().deny_symlinks().build());
 
     let mut fs = FileStorage::new(backend);
 
@@ -873,9 +876,8 @@ fn test_vroot_canonicalizes_paths() {
 ```rust
 #[test]
 fn test_ratelimit_allows_within_limit() {
-    let backend = RateLimit::new(MemoryBackend::new())
-        .max_ops(10)
-        .per_second();
+    let backend = MemoryBackend::new()
+        .layer(RateLimitLayer::builder().max_ops(10).per_second().build());
     let mut fs = FileStorage::new(backend);
 
     // Should succeed within limit
@@ -886,9 +888,8 @@ fn test_ratelimit_allows_within_limit() {
 
 #[test]
 fn test_ratelimit_blocks_when_exceeded() {
-    let backend = RateLimit::new(MemoryBackend::new())
-        .max_ops(3)
-        .per_second();
+    let backend = MemoryBackend::new()
+        .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file1.txt", b"data").unwrap();
@@ -901,9 +902,8 @@ fn test_ratelimit_blocks_when_exceeded() {
 
 #[test]
 fn test_ratelimit_resets_after_window() {
-    let backend = RateLimit::new(MemoryBackend::new())
-        .max_ops(2)
-        .per(Duration::from_millis(100));
+    let backend = MemoryBackend::new()
+        .layer(RateLimitLayer::builder().max_ops(2).per(Duration::from_millis(100)).build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file1.txt", b"data").unwrap();
@@ -918,9 +918,8 @@ fn test_ratelimit_resets_after_window() {
 
 #[test]
 fn test_ratelimit_counts_all_operations() {
-    let backend = RateLimit::new(MemoryBackend::new())
-        .max_ops(3)
-        .per_second();
+    let backend = MemoryBackend::new()
+        .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();  // 1
@@ -955,10 +954,11 @@ fn test_tracing_logs_operations() {
     let logger = TestLogger::default();
     let logs = Arc::clone(&logger.logs);
 
-    let backend = Tracing::new(MemoryBackend::new())
-        .with_logger(move |op| {
-            logs.lock().unwrap().push(op.to_string());
-        });
+    let backend = MemoryBackend::new()
+        .layer(TracingLayer::new()
+            .with_logger(move |op| {
+                logs.lock().unwrap().push(op.to_string());
+            }));
     let mut fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();
@@ -974,10 +974,11 @@ fn test_tracing_includes_path() {
     let logger = TestLogger::default();
     let logs = Arc::clone(&logger.logs);
 
-    let backend = Tracing::new(MemoryBackend::new())
-        .with_logger(move |op| {
-            logs.lock().unwrap().push(op.to_string());
-        });
+    let backend = MemoryBackend::new()
+        .layer(TracingLayer::new()
+            .with_logger(move |op| {
+                logs.lock().unwrap().push(op.to_string());
+            }));
     let mut fs = FileStorage::new(backend);
 
     fs.write("/important/secret.txt", b"data").unwrap();
@@ -991,10 +992,11 @@ fn test_tracing_logs_errors() {
     let logger = TestLogger::default();
     let logs = Arc::clone(&logger.logs);
 
-    let backend = Tracing::new(MemoryBackend::new())
-        .with_logger(move |op| {
-            logs.lock().unwrap().push(op.to_string());
-        });
+    let backend = MemoryBackend::new()
+        .layer(TracingLayer::new()
+            .with_logger(move |op| {
+                logs.lock().unwrap().push(op.to_string());
+            }));
     let fs = FileStorage::new(backend);
 
     let _ = fs.read("/nonexistent.txt");
@@ -1007,7 +1009,7 @@ fn test_tracing_logs_errors() {
 fn test_tracing_with_span_context() {
     use tracing::{info_span, Instrument};
 
-    let backend = Tracing::new(MemoryBackend::new());
+    let backend = MemoryBackend::new().layer(TracingLayer::new());
     let mut fs = FileStorage::new(backend);
 
     async {
@@ -1052,10 +1054,11 @@ fn test_vroot_backend_interchangeable() {
 
 #[test]
 fn test_middleware_stack_interchangeable() {
-    let backend = Tracing::new(
-        Quota::new(MemoryBackend::new())
-            .with_max_total_size(1024 * 1024)
-    );
+    let backend = MemoryBackend::new()
+        .layer(QuotaLayer::builder()
+            .max_total_size(1024 * 1024)
+            .build())
+        .layer(TracingLayer::new());
     generic_filesystem_test(backend);
 }
 ```
@@ -1092,8 +1095,8 @@ proptest! {
         file_sizes in prop::collection::vec(1..100usize, 1..10)
     ) {
         let limit = 500usize;
-        let backend = Quota::new(MemoryBackend::new())
-            .with_max_total_size(limit as u64);
+        let backend = MemoryBackend::new()
+            .layer(QuotaLayer::builder().max_total_size(limit as u64).build());
         let mut fs = FileStorage::new(backend);
 
         let mut total_written = 0usize;

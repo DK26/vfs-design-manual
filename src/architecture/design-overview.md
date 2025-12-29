@@ -89,22 +89,24 @@ The traits are low-level interfaces that any backend can implement - memory, SQL
 **Example: Secure AI Agent Sandbox**
 
 ```rust
-use anyfs::FileStorage;
+use anyfs::{MemoryBackend, QuotaLayer, RestrictionsLayer, PathFilterLayer, FileStorage};
 
 struct AiSandbox;  // Marker type
 
 // Application composes secure defaults (marker in type annotation)
 let sandbox: FileStorage<_, AiSandbox> = FileStorage::new(
-    PathFilter::new(
-        Restrictions::new(
-            Quota::new(MemoryBackend::new())
-                .with_max_total_size(50 * 1024 * 1024)
-        )
-        .deny_hard_links()
-        .deny_permissions()
-    )
-    .allow("/workspace/**")
-    .deny("**/.env")
+    MemoryBackend::new()
+        .layer(QuotaLayer::builder()
+            .max_total_size(50 * 1024 * 1024)
+            .build())
+        .layer(RestrictionsLayer::builder()
+            .deny_hard_links()
+            .deny_permissions()
+            .build())
+        .layer(PathFilterLayer::builder()
+            .allow("/workspace/**")
+            .deny("**/.env")
+            .build())
 );
 ```
 
@@ -464,12 +466,14 @@ Enforces quota limits. Tracks usage and rejects operations that would exceed lim
 ```rust
 use anyfs::{SqliteBackend, Quota};
 
-let backend = Quota::new(SqliteBackend::open("data.db")?)
-    .with_max_total_size(100 * 1024 * 1024)   // 100 MB
-    .with_max_file_size(10 * 1024 * 1024)     // 10 MB per file
-    .with_max_node_count(10_000)               // 10K files/dirs
-    .with_max_dir_entries(1_000)               // 1K entries per dir
-    .with_max_path_depth(64);
+let backend = QuotaLayer::builder()
+    .max_total_size(100 * 1024 * 1024)   // 100 MB
+    .max_file_size(10 * 1024 * 1024)     // 10 MB per file
+    .max_node_count(10_000)              // 10K files/dirs
+    .max_dir_entries(1_000)              // 1K entries per dir
+    .max_path_depth(64)
+    .build()
+    .layer(SqliteBackend::open("data.db")?);
 
 // Check usage
 let usage = backend.usage();
@@ -484,10 +488,12 @@ Blocks specific operations when needed.
 use anyfs::{MemoryBackend, Restrictions};
 
 // By default, all operations work. Use deny_*() to block specific ones.
-let backend = Restrictions::new(MemoryBackend::new())
+let backend = RestrictionsLayer::builder()
     .deny_symlinks()       // Block symlink() calls
     .deny_hard_links()     // Block hard_link() calls
-    .deny_permissions();   // Block set_permissions() calls
+    .deny_permissions()    // Block set_permissions() calls
+    .build()
+    .layer(MemoryBackend::new());
 ```
 
 When blocked, operations return `FsError::FeatureNotEnabled`.
@@ -497,11 +503,12 @@ When blocked, operations return `FsError::FeatureNotEnabled`.
 Integrates with the [tracing](https://docs.rs/tracing) ecosystem for structured logging and instrumentation.
 
 ```rust
-use anyfs::{SqliteBackend, Tracing};
+use anyfs::{SqliteBackend, TracingLayer};
 
-let backend = Tracing::new(SqliteBackend::open("data.db")?)
-    .with_target("anyfs")           // tracing target
-    .with_level(tracing::Level::DEBUG);
+let backend = SqliteBackend::open("data.db")?
+    .layer(TracingLayer::new()
+        .with_target("anyfs")
+        .with_level(tracing::Level::DEBUG));
 
 // Users configure tracing subscribers as they prefer
 tracing_subscriber::fmt::init();
@@ -520,11 +527,13 @@ Restricts access to specific paths. Essential for sandboxing.
 ```rust
 use anyfs::{MemoryBackend, PathFilter};
 
-let backend = PathFilter::new(MemoryBackend::new())
+let backend = PathFilterLayer::builder()
     .allow("/workspace/**")           // Allow all under /workspace
     .allow("/tmp/**")                  // Allow temp files
     .deny("/workspace/.env")           // But deny .env files
-    .deny("**/.git/**");               // Deny all .git directories
+    .deny("**/.git/**")               // Deny all .git directories
+    .build()
+    .layer(MemoryBackend::new());
 ```
 
 When a path is denied, operations return `FsError::AccessDenied`.
@@ -551,10 +560,12 @@ Limits operations per second. Prevents runaway agents.
 use anyfs::{MemoryBackend, RateLimit};
 use std::time::Duration;
 
-let backend = RateLimit::new(MemoryBackend::new())
-    .with_max_ops(100)                        // 100 ops per window
-    .with_window(Duration::from_secs(1))      // 1 second window
-    .with_max_burst(10);                      // Allow bursts up to 10
+let backend = RateLimitLayer::builder()
+    .max_ops(100)                        // 100 ops per window
+    .window(Duration::from_secs(1))      // 1 second window
+    .max_burst(10)                       // Allow bursts up to 10
+    .build()
+    .layer(MemoryBackend::new());
 
 // When rate exceeded: FsError::RateLimitExceeded
 ```
@@ -583,10 +594,12 @@ LRU cache for read operations. Essential for slow backends (S3, network).
 ```rust
 use anyfs::{SqliteBackend, Cache};
 
-let backend = Cache::new(SqliteBackend::open("data.db")?)
-    .with_max_size(100 * 1024 * 1024)  // 100 MB cache
-    .with_max_entries(10_000)           // Max 10K entries
-    .with_ttl(Duration::from_secs(300)); // 5 min TTL
+let backend = CacheLayer::builder()
+    .max_size(100 * 1024 * 1024)      // 100 MB cache
+    .max_entries(10_000)              // Max 10K entries
+    .ttl(Duration::from_secs(300))    // 5 min TTL
+    .build()
+    .layer(SqliteBackend::open("data.db")?);
 
 // First read: hits backend, caches result
 let data = backend.read("/file.txt")?;
@@ -752,12 +765,12 @@ Each middleware provides a corresponding `Layer` implementation:
 
 ```rust
 // QuotaLayer, TracingLayer, RestrictionsLayer, etc.
-pub struct QuotaLayer { /* config */ }
+pub struct QuotaLayer { limits: QuotaLimits }
 
 impl<B: Fs> Layer<B> for QuotaLayer {
     type Backend = Quota<B>;
     fn layer(self, backend: B) -> Self::Backend {
-        Quota::new(backend).with_limits(self.limits)
+        Quota::from_limits(self.limits).layer(backend)
     }
 }
 ```
@@ -770,36 +783,20 @@ impl<B: Fs> Layer<B> for QuotaLayer {
 
 Middleware composes by wrapping. Order matters - innermost applies first.
 
-### Manual Composition
+### Fluent Composition
 
-```rust
-use anyfs::{SqliteBackend, Quota, Restrictions, Tracing, FileStorage};
-
-// Build from inside out:
-let backend = SqliteBackend::open("data.db")?;
-
-let limited = Quota::new(backend)
-    .with_max_total_size(100 * 1024 * 1024);
-
-let restricted = Restrictions::new(limited)
-    .deny_hard_links()
-    .deny_permissions();
-
-let traced = Tracing::new(restricted);
-
-let mut fs = FileStorage::new(traced);
-```
-
-### Layer-based Composition
-
-Use the `Layer` trait for Axum-style composition:
+Use the `.layer()` extension method for Axum-style composition:
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 
 let backend = SqliteBackend::open("data.db")?
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new().deny_permissions())  // Block set_permissions()
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_permissions()  // Block set_permissions()
+        .build())
     .layer(TracingLayer::new());
 ```
 
@@ -1139,17 +1136,23 @@ use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Restrictions, Tracing};
 
 // Build a secure sandbox for an AI agent
 let sandbox = MemoryBackend::new()
-    .layer(QuotaLayer::new()
+    .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024)  // 50 MB
-        .max_file_size(5 * 1024 * 1024))   // 5 MB per file
-    .layer(PathFilterLayer::new()
+        .max_file_size(5 * 1024 * 1024)    // 5 MB per file
+        .build())
+    .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
-        .deny("**/secrets/**"))
-    .layer(RestrictionsLayer::new())        // No symlinks, no hardlinks
-    .layer(RateLimitLayer::new()
+        .deny("**/secrets/**")
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .deny_hard_links()
+        .build())
+    .layer(RateLimitLayer::builder()
         .max_ops(1000)
-        .per_second())
+        .per_second()
+        .build())
     .layer(TracingLayer::new());
 ```
 
@@ -1446,5 +1449,8 @@ Or use `Restrictions` middleware to disable unsupported features uniformly:
 
 ```rust
 #[cfg(windows)]
-let backend = Restrictions::new(backend).deny_symlinks();
+let backend = RestrictionsLayer::builder()
+    .deny_symlinks()
+    .build()
+    .layer(backend);
 ```

@@ -312,8 +312,12 @@ fs.write("/hello.txt", b"Hello!")?;
 
 ```rust
 let backend = MemoryBackend::new()
-    .layer(QuotaLayer::new().max_total_size(100 * 1024 * 1024))
-    .layer(RestrictionsLayer::new().deny_symlinks())
+    .layer(QuotaLayer::builder()
+        .max_total_size(100 * 1024 * 1024)
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .build())
     .layer(TracingLayer::new());
 
 let mut fs = FileStorage::new(backend);
@@ -323,14 +327,22 @@ let mut fs = FileStorage::new(backend);
 
 ```rust
 let sandbox = MemoryBackend::new()
-    .layer(QuotaLayer::new()
+    .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024)
-        .max_file_size(5 * 1024 * 1024))
-    .layer(PathFilterLayer::new()
+        .max_file_size(5 * 1024 * 1024)
+        .build())
+    .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
-        .deny("**/.env"))
-    .layer(RestrictionsLayer::new())
-    .layer(RateLimitLayer::new().max_ops(1000).per_second())
+        .deny("**/.env")
+        .build())
+    .layer(RestrictionsLayer::builder()
+        .deny_symlinks()
+        .deny_hard_links()
+        .build())
+    .layer(RateLimitLayer::builder()
+        .max_ops(1000)
+        .per_second()
+        .build())
     .layer(TracingLayer::new());
 ```
 

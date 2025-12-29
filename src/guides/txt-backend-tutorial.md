@@ -745,19 +745,18 @@ impl FsDir for TxtBackend {
 Now you have a complete `Fs` implementation! Let's use it:
 
 ```rust
-use anyfs::{FileStorage, Quota, Tracing};
+use anyfs::{FileStorage, QuotaLayer, TracingLayer};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create our glorious TXT filesystem
-    let backend = TxtBackend::open("my_filesystem.txt")?;
-
-    // Wrap it with middleware to prevent the file from exploding
-    let backend = Quota::new(backend)
-        .with_max_total_size(10 * 1024 * 1024)  // 10 MB max
-        .with_max_file_size(1 * 1024 * 1024);   // 1 MB per file
-
-    // Add tracing because why not
-    let backend = Tracing::new(backend);
+    let backend = TxtBackend::open("my_filesystem.txt")?
+        // Wrap it with middleware to prevent the file from exploding
+        .layer(QuotaLayer::builder()
+            .max_total_size(10 * 1024 * 1024)  // 10 MB max
+            .max_file_size(1 * 1024 * 1024)    // 1 MB per file
+            .build())
+        // Add tracing because why not
+        .layer(TracingLayer::new());
 
     // Create the filesystem wrapper
     let mut fs = FileStorage::new(backend);
