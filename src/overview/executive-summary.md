@@ -77,7 +77,7 @@ let backend = SqliteBackend::open("tenant.db")?
         .deny_permissions()
         .build());
 
-let mut fs = FileStorage::new(backend);
+let fs = FileStorage::new(backend);
 
 fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;

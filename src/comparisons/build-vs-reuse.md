@@ -99,7 +99,7 @@ let backend = SqliteBackend::open("tenant.db")?
         .build())
     .layer(TracingLayer::new());
 
-let mut fs = FileStorage::new(backend);
+let fs = FileStorage::new(backend);
 fs.write("/workspace/doc.txt", b"hello")?;
 ```
 

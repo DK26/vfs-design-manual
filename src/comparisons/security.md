@@ -187,7 +187,7 @@ Symlinks are just data. Creating `/sandbox/link -> /etc/passwd` is harmless. The
 Virtual backends always support symlinks. They also provide control over symlink following:
 
 ```rust
-let mut backend = MemoryBackend::new();
+let backend = MemoryBackend::new();
 backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolution
 ```
 
@@ -251,7 +251,7 @@ let sandbox = MemoryBackend::new()
         .build())
     .layer(TracingLayer::new());
 
-let mut fs = FileStorage::new(sandbox);
+let fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
 ```
 
@@ -426,7 +426,7 @@ pub struct FileEncryption<B> {
 }
 
 impl<B: Fs> FsWrite for FileEncryption<B> {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         // Encrypt content with authenticated encryption (AES-GCM)
         let nonce = generate_nonce();
         let ciphertext = aes_gcm_encrypt(&self.key, &nonce, data)?;
@@ -468,7 +468,7 @@ pub struct IntegrityVerified<B> {
 }
 
 impl<B: Fs> FsWrite for IntegrityVerified<B> {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let mac = hmac_sha256(&self.key, data);
         let protected = [data, mac.as_slice()].concat();
         self.inner.write(path, &protected)
@@ -542,7 +542,7 @@ impl FsRead for EncryptedMemoryBackend {
 }
 
 impl FsWrite for EncryptedMemoryBackend {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         // Encrypt immediately - plaintext never stored
         let encrypted = self.encrypt(data)?;
 

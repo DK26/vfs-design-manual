@@ -351,7 +351,7 @@ fn no_panic_on_missing_file() {
 
 #[test]
 fn no_panic_on_invalid_operation() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"data").unwrap();
     // Try to read directory on a file
     let result = backend.read_dir("/file.txt");
@@ -365,7 +365,7 @@ fn no_panic_on_invalid_operation() {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen_test]
 fn memory_backend_works_in_wasm() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.write("/test.txt", b"hello").unwrap();
     // Should not panic
 }
@@ -657,7 +657,7 @@ let remote = RemoteBackend::connect("https://api.yourservice.com")
     .await?;
 
 // Use like any other backend
-let mut fs = FileStorage::new(remote);
+let fs = FileStorage::new(remote);
 fs.write("/documents/report.pdf", data)?;
 ```
 
@@ -699,7 +699,7 @@ GrpcServer::new(backend)
 use anyfs_grpc::GrpcBackend;
 
 let backend = GrpcBackend::connect("http://[::1]:50051").await?;
-let mut fs = FileStorage::new(backend);
+let fs = FileStorage::new(backend);
 ```
 
 #### Multi-Tenant Cloud Storage Example

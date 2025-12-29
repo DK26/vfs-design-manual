@@ -26,6 +26,7 @@ Key properties:
 - Backends handle **storage only** - just store/retrieve bytes at given paths
 - Policy (limits, feature gates) is handled by middleware, not backends
 - Implement only the traits your backend supports
+- **Backends must be thread-safe** - all trait methods use `&self`, so backends must use interior mutability (e.g., `RwLock`, `Mutex`) for synchronization
 
 ---
 
@@ -94,31 +95,31 @@ impl FsRead for MyBackend {
 
 // Implement FsWrite
 impl FsWrite for MyBackend {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         todo!()
     }
 
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn append(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         todo!()
     }
 
-    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_file(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn rename(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
+    fn truncate(&self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
         todo!()
     }
 
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError> {
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError> {
         todo!()
     }
 }
@@ -129,19 +130,19 @@ impl FsDir for MyBackend {
         todo!()
     }
 
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!()
     }
 }
@@ -207,13 +208,13 @@ fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, FsEr
 
 ```rust
 impl FsWrite for MyBackend {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
-    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError>;
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+    fn append(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+    fn remove_file(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn rename(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
+    fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
+    fn truncate(&self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError>;
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
 }
 ```
 
@@ -227,10 +228,10 @@ impl FsWrite for MyBackend {
 ```rust
 impl FsDir for MyBackend {
     fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError>;
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
 }
 ```
 
@@ -246,8 +247,8 @@ Add these if your backend supports the features:
 
 ```rust
 impl FsLink for MyBackend {
-    fn symlink(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
-    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
+    fn symlink(&self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
+    fn hard_link(&self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
     fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError>;
     fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, FsError>;
 }
@@ -260,7 +261,7 @@ impl FsLink for MyBackend {
 
 ```rust
 impl FsPermissions for MyBackend {
-    fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError>;
+    fn set_permissions(&self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError>;
 }
 ```
 
@@ -268,8 +269,8 @@ impl FsPermissions for MyBackend {
 
 ```rust
 impl FsSync for MyBackend {
-    fn sync(&mut self) -> Result<(), FsError>;
-    fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn sync(&self) -> Result<(), FsError>;
+    fn fsync(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
 }
 ```
 
@@ -352,7 +353,7 @@ impl FsInode for MemoryBackend {
 }
 
 impl FsLink for MemoryBackend {
-    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
+    fn hard_link(&self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
         let inode = self.path_to_inode(&original)?;
         self.paths.insert(link.as_ref().to_path_buf(), inode);
         self.nodes.get_mut(&inode).unwrap().nlink += 1;
@@ -423,10 +424,10 @@ For full POSIX semantics (file handles, locking, extended attributes):
 
 ```rust
 impl FsHandles for MyBackend {
-    fn open(&mut self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, FsError>;
+    fn open(&self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, FsError>;
     fn read_at(&self, handle: Handle, buf: &mut [u8], offset: u64) -> Result<usize, FsError>;
-    fn write_at(&mut self, handle: Handle, data: &[u8], offset: u64) -> Result<usize, FsError>;
-    fn close(&mut self, handle: Handle) -> Result<(), FsError>;
+    fn write_at(&self, handle: Handle, data: &[u8], offset: u64) -> Result<usize, FsError>;
+    fn close(&self, handle: Handle) -> Result<(), FsError>;
 }
 ```
 
@@ -434,9 +435,9 @@ impl FsHandles for MyBackend {
 
 ```rust
 impl FsLock for MyBackend {
-    fn lock(&mut self, handle: Handle, lock: LockType) -> Result<(), FsError>;
-    fn try_lock(&mut self, handle: Handle, lock: LockType) -> Result<bool, FsError>;
-    fn unlock(&mut self, handle: Handle) -> Result<(), FsError>;
+    fn lock(&self, handle: Handle, lock: LockType) -> Result<(), FsError>;
+    fn try_lock(&self, handle: Handle, lock: LockType) -> Result<bool, FsError>;
+    fn unlock(&self, handle: Handle) -> Result<(), FsError>;
 }
 ```
 
@@ -445,8 +446,8 @@ impl FsLock for MyBackend {
 ```rust
 impl FsXattr for MyBackend {
     fn get_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<Vec<u8>, FsError>;
-    fn set_xattr(&mut self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), FsError>;
-    fn remove_xattr(&mut self, path: impl AsRef<Path>, name: &str) -> Result<(), FsError>;
+    fn set_xattr(&self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), FsError>;
+    fn remove_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<(), FsError>;
     fn list_xattr(&self, path: impl AsRef<Path>) -> Result<Vec<String>, FsError>;
 }
 ```
@@ -499,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_write_read() {
-        let mut backend = create_backend();
+        let backend = create_backend();
         backend.write("/test.txt", b"hello").unwrap();
         let content = backend.read("/test.txt").unwrap();
         assert_eq!(content, b"hello");
@@ -507,7 +508,7 @@ mod tests {
 
     #[test]
     fn test_create_dir() {
-        let mut backend = create_backend();
+        let backend = create_backend();
         backend.create_dir("/foo").unwrap();
         assert!(backend.exists("/foo").unwrap());
     }
@@ -564,7 +565,7 @@ impl<W: Write + Send> Write for CountingWriter<W> {
 
 ```rust
 impl<B: Fs> Fs for Quota<B> {
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError> {
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError> {
         // Check if we're at quota before opening
         if self.usage.total_bytes >= self.limits.max_total_size {
             return Err(FsError::QuotaExceeded { ... });
@@ -659,7 +660,7 @@ impl<B: FsRead> FsRead for Counter<B> {
 }
 
 impl<B: FsWrite> FsWrite for Counter<B> {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         self.count.fetch_add(1, Ordering::Relaxed);  // Count it
         self.inner.write(path, data)                  // Delegate
     }
@@ -750,30 +751,30 @@ impl<B: FsDir> FsDir for ReadOnly<B> {
         self.inner.read_dir(path)
     }
 
-    fn create_dir(&mut self, _path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir(&self, _path: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "create_dir" })
     }
 
-    fn create_dir_all(&mut self, _path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir_all(&self, _path: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "create_dir_all" })
     }
 
-    fn remove_dir(&mut self, _path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir(&self, _path: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "remove_dir" })
     }
 
-    fn remove_dir_all(&mut self, _path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir_all(&self, _path: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "remove_dir_all" })
     }
 }
 
 // FsWrite: block all operations
 impl<B: FsWrite> FsWrite for ReadOnly<B> {
-    fn write(&mut self, _path: impl AsRef<Path>, _data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, _path: impl AsRef<Path>, _data: &[u8]) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "write" })
     }
 
-    fn remove_file(&mut self, _path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_file(&self, _path: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "remove_file" })
     }
 
@@ -784,7 +785,7 @@ impl<B: FsWrite> FsWrite for ReadOnly<B> {
 **Usage:**
 
 ```rust
-let mut backend = ReadOnly::new(MemoryBackend::new());
+let backend = ReadOnly::new(MemoryBackend::new());
 
 backend.read("/file.txt");       // OK (if file exists)
 backend.write("/file.txt", b""); // Error: ReadOnly
@@ -877,7 +878,7 @@ impl<B: FsRead> FsRead for Encrypted<B> {
 
 // FsWrite: encrypt on write
 impl<B: FsWrite> FsWrite for Encrypted<B> {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let encrypted = self.encrypt(data);
         self.inner.write(path, &encrypted)
     }
@@ -891,7 +892,7 @@ impl<B: FsDir> FsDir for Encrypted<B> {
         self.inner.read_dir(path)
     }
 
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         self.inner.create_dir(path)
     }
 
@@ -995,9 +996,26 @@ fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
 - Trying to list a file as a directory
 - Concurrent access conflicts
 
-### 2. Thread Safety
+### 2. Thread Safety (Required)
 
-Backends must be safe for concurrent access. Use appropriate synchronization:
+**All trait methods use `&self`, not `&mut self`.** This means backends MUST use interior mutability for thread-safe concurrent access.
+
+**Why `&self`?**
+- Enables concurrent access patterns (multiple readers, concurrent operations)
+- Matches real filesystem semantics (concurrent access is normal)
+- More flexible API (can share references without exclusive ownership)
+
+**Backend implementer responsibility:**
+- Use `RwLock`, `Mutex`, or similar for internal state
+- Ensure operations are atomic (a single `write()` call shouldn't produce partial results)
+- Handle lock poisoning gracefully
+
+**What the synchronization guarantees:**
+- Memory safety (no data corruption)
+- Atomic operations (writes don't interleave)
+
+**What it does NOT guarantee:**
+- Order of concurrent writes to the same path (last write wins - standard FS behavior)
 
 ```rust
 use std::sync::{Arc, RwLock};
@@ -1008,14 +1026,16 @@ pub struct MemoryBackend {
     entries: Arc<RwLock<HashMap<PathBuf, Entry>>>,
 }
 
-impl Fs for MemoryBackend {
+impl FsRead for MemoryBackend {
     fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
         let entries = self.entries.read()
             .map_err(|_| FsError::Backend("lock poisoned".into()))?;
         // ...
     }
+}
 
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+impl FsWrite for MemoryBackend {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let mut entries = self.entries.write()
             .map_err(|_| FsError::Backend("lock poisoned".into()))?;
         // ...
@@ -1145,7 +1165,7 @@ fn test_read_nonexistent_returns_error() {
 
 #[test]
 fn test_read_dir_on_file_returns_error() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"data").unwrap();
     assert!(matches!(
         backend.read_dir("/file.txt"),
@@ -1201,7 +1221,7 @@ fn test_concurrent_create_dir_all() {
 ```rust
 #[test]
 fn test_path_with_dotdot() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.create_dir_all("/foo/bar").unwrap();
     backend.write("/foo/bar/test.txt", b"data").unwrap();
 
@@ -1259,7 +1279,7 @@ impl MemoryBackend {
 ### Usage
 
 ```rust
-let mut fs = MemoryBackend::new();
+let fs = MemoryBackend::new();
 fs.write("/data.txt", b"important")?;
 
 // Snapshot = clone

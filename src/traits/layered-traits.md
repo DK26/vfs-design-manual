@@ -43,7 +43,7 @@ AnyFS uses a **layered trait architecture** for maximum flexibility with minimal
 ### FsRead
 
 ```rust
-pub trait FsRead: Send {
+pub trait FsRead: Send + Sync {
     fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
     fn read_to_string(&self, path: impl AsRef<Path>) -> Result<String, FsError>;
     fn read_range(&self, path: impl AsRef<Path>, offset: u64, len: usize) -> Result<Vec<u8>, FsError>;
@@ -56,26 +56,26 @@ pub trait FsRead: Send {
 ### FsWrite
 
 ```rust
-pub trait FsWrite: Send {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
-    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError>;
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
+pub trait FsWrite: Send + Sync {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+    fn append(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+    fn remove_file(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn rename(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
+    fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError>;
+    fn truncate(&self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError>;
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
 }
 ```
 
 ### FsDir
 
 ```rust
-pub trait FsDir: Send {
+pub trait FsDir: Send + Sync {
     fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError>;
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+    fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
 }
 ```
 
@@ -86,9 +86,9 @@ pub trait FsDir: Send {
 ### FsLink
 
 ```rust
-pub trait FsLink: Send {
-    fn symlink(&mut self, target: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
-    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
+pub trait FsLink: Send + Sync {
+    fn symlink(&self, target: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
+    fn hard_link(&self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError>;
     fn read_link(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError>;
     fn symlink_metadata(&self, path: impl AsRef<Path>) -> Result<Metadata, FsError>;
 }
@@ -97,24 +97,24 @@ pub trait FsLink: Send {
 ### FsPermissions
 
 ```rust
-pub trait FsPermissions: Send {
-    fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError>;
+pub trait FsPermissions: Send + Sync {
+    fn set_permissions(&self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError>;
 }
 ```
 
 ### FsSync
 
 ```rust
-pub trait FsSync: Send {
-    fn sync(&mut self) -> Result<(), FsError>;
-    fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), FsError>;
+pub trait FsSync: Send + Sync {
+    fn sync(&self) -> Result<(), FsError>;
+    fn fsync(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
 }
 ```
 
 ### FsStats
 
 ```rust
-pub trait FsStats: Send {
+pub trait FsStats: Send + Sync {
     fn statfs(&self) -> Result<StatFs, FsError>;
 }
 ```
@@ -126,7 +126,7 @@ pub trait FsStats: Send {
 ### FsInode
 
 ```rust
-pub trait FsInode: Send {
+pub trait FsInode: Send + Sync {
     fn path_to_inode(&self, path: impl AsRef<Path>) -> Result<u64, FsError>;
     fn inode_to_path(&self, inode: u64) -> Result<PathBuf, FsError>;
     fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, FsError>;
@@ -172,31 +172,31 @@ pub enum LockType {
 ### FsHandles
 
 ```rust
-pub trait FsHandles: Send {
-    fn open(&mut self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, FsError>;
+pub trait FsHandles: Send + Sync {
+    fn open(&self, path: impl AsRef<Path>, flags: OpenFlags) -> Result<Handle, FsError>;
     fn read_at(&self, handle: Handle, buf: &mut [u8], offset: u64) -> Result<usize, FsError>;
-    fn write_at(&mut self, handle: Handle, data: &[u8], offset: u64) -> Result<usize, FsError>;
-    fn close(&mut self, handle: Handle) -> Result<(), FsError>;
+    fn write_at(&self, handle: Handle, data: &[u8], offset: u64) -> Result<usize, FsError>;
+    fn close(&self, handle: Handle) -> Result<(), FsError>;
 }
 ```
 
 ### FsLock
 
 ```rust
-pub trait FsLock: Send {
-    fn lock(&mut self, handle: Handle, lock: LockType) -> Result<(), FsError>;
-    fn try_lock(&mut self, handle: Handle, lock: LockType) -> Result<bool, FsError>;
-    fn unlock(&mut self, handle: Handle) -> Result<(), FsError>;
+pub trait FsLock: Send + Sync {
+    fn lock(&self, handle: Handle, lock: LockType) -> Result<(), FsError>;
+    fn try_lock(&self, handle: Handle, lock: LockType) -> Result<bool, FsError>;
+    fn unlock(&self, handle: Handle) -> Result<(), FsError>;
 }
 ```
 
 ### FsXattr
 
 ```rust
-pub trait FsXattr: Send {
+pub trait FsXattr: Send + Sync {
     fn get_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<Vec<u8>, FsError>;
-    fn set_xattr(&mut self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), FsError>;
-    fn remove_xattr(&mut self, path: impl AsRef<Path>, name: &str) -> Result<(), FsError>;
+    fn set_xattr(&self, path: impl AsRef<Path>, name: &str, value: &[u8]) -> Result<(), FsError>;
+    fn remove_xattr(&self, path: impl AsRef<Path>, name: &str) -> Result<(), FsError>;
     fn list_xattr(&self, path: impl AsRef<Path>) -> Result<Vec<String>, FsError>;
 }
 ```
@@ -251,7 +251,7 @@ fn process_files(fs: &impl Fs) -> Result<(), FsError> {
 }
 
 // Requires link support
-fn create_backup(fs: &mut (impl Fs + FsLink)) -> Result<(), FsError> {
+fn create_backup(fs: &(impl Fs + FsLink)) -> Result<(), FsError> {
     fs.hard_link("/data.txt", "/data.txt.bak")?;
     Ok(())
 }
@@ -281,7 +281,7 @@ pub trait FsExt: Fs {
     #[cfg(feature = "serde")]
     fn read_json<T: DeserializeOwned>(&self, path: impl AsRef<Path>) -> Result<T, FsError>;
     #[cfg(feature = "serde")]
-    fn write_json<T: Serialize>(&mut self, path: impl AsRef<Path>, value: &T) -> Result<(), FsError>;
+    fn write_json<T: Serialize>(&self, path: impl AsRef<Path>, value: &T) -> Result<(), FsError>;
 }
 
 // Blanket implementation

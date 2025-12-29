@@ -22,7 +22,7 @@
 use anyfs::MemoryBackend;
 use anyfs::FileStorage;
 
-let mut fs = FileStorage::new(MemoryBackend::new());
+let fs = FileStorage::new(MemoryBackend::new());
 fs.create_dir_all("/data")?;
 fs.write("/data/file.txt", b"hello")?;
 ```
@@ -46,7 +46,7 @@ let stack = SqliteBackend::open("tenant.db")?
         .build())
     .layer(TracingLayer::new());
 
-let mut fs = FileStorage::new(stack);
+let fs = FileStorage::new(stack);
 ```
 
 ### Custom backend implementation
@@ -62,7 +62,7 @@ impl Fs for MyBackend {
         todo!()
     }
 
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         todo!()
     }
 

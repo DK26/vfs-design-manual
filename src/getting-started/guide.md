@@ -36,7 +36,7 @@ Available features:
 use anyfs::{MemoryBackend, FileStorage};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/hello.txt", b"Hello, AnyFS!")?;
     let content = fs.read("/hello.txt")?;
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .layer(SqliteBackend::open_or_create("data.db")?);
 
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.create_dir_all("/documents")?;
     fs.write("/documents/notes.txt", b"Meeting notes")?;
@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .layer(MemoryBackend::new());
 
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     // Symlinks work (not blocked)
     fs.write("/original.txt", b"content")?;
@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build())
         .layer(TracingLayer::new());
 
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.create_dir_all("/data")?;
     fs.write("/data/file.txt", b"hello")?;
@@ -258,7 +258,7 @@ use anyfs::{MemoryBackend, FileStorage};
 
 #[test]
 fn test_write_and_read() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/test.txt", b"test data").unwrap();
     let content = fs.read("/test.txt").unwrap();
@@ -278,7 +278,7 @@ fn test_quota_exceeded() {
         .max_total_size(1024)  // 1 KB
         .build()
         .layer(MemoryBackend::new());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let big_data = vec![0u8; 2048];  // 2 KB
     let result = fs.write("/big.bin", &big_data);

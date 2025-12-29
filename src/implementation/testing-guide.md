@@ -63,7 +63,7 @@ Fs       ──▶ FsRead, FsWrite, FsDir tests (REQUIRED for all)
 ```rust
 #[test]
 fn test_write_and_read() {
-    let mut backend = create_backend();
+    let backend = create_backend();
 
     backend.write("/file.txt", b"hello world").unwrap();
     let content = backend.read("/file.txt").unwrap();
@@ -82,7 +82,7 @@ fn test_read_nonexistent_returns_not_found() {
 
 #[test]
 fn test_create_dir_and_list() {
-    let mut backend = create_backend();
+    let backend = create_backend();
 
     backend.create_dir("/mydir").unwrap();
     backend.write("/mydir/file.txt", b"data").unwrap();
@@ -94,7 +94,7 @@ fn test_create_dir_and_list() {
 
 #[test]
 fn test_create_dir_all() {
-    let mut backend = create_backend();
+    let backend = create_backend();
 
     backend.create_dir_all("/a/b/c/d").unwrap();
 
@@ -103,7 +103,7 @@ fn test_create_dir_all() {
 
 #[test]
 fn test_remove_file() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"data").unwrap();
 
     backend.remove_file("/file.txt").unwrap();
@@ -113,7 +113,7 @@ fn test_remove_file() {
 
 #[test]
 fn test_remove_dir_all() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.create_dir_all("/a/b/c").unwrap();
     backend.write("/a/b/c/file.txt", b"data").unwrap();
 
@@ -124,7 +124,7 @@ fn test_remove_dir_all() {
 
 #[test]
 fn test_rename() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/old.txt", b"data").unwrap();
 
     backend.rename("/old.txt", "/new.txt").unwrap();
@@ -135,7 +135,7 @@ fn test_rename() {
 
 #[test]
 fn test_copy() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/original.txt", b"data").unwrap();
 
     backend.copy("/original.txt", "/copy.txt").unwrap();
@@ -146,7 +146,7 @@ fn test_copy() {
 
 #[test]
 fn test_metadata() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"hello").unwrap();
 
     let meta = backend.metadata("/file.txt").unwrap();
@@ -157,7 +157,7 @@ fn test_metadata() {
 
 #[test]
 fn test_append() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"hello").unwrap();
 
     backend.append("/file.txt", b" world").unwrap();
@@ -167,7 +167,7 @@ fn test_append() {
 
 #[test]
 fn test_truncate() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"hello world").unwrap();
 
     backend.truncate("/file.txt", 5).unwrap();
@@ -177,7 +177,7 @@ fn test_truncate() {
 
 #[test]
 fn test_read_range() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"hello world").unwrap();
 
     let partial = backend.read_range("/file.txt", 6, 5).unwrap();
@@ -191,7 +191,7 @@ fn test_read_range() {
 ```rust
 #[test]
 fn test_symlink() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/target.txt", b"data").unwrap();
 
     backend.symlink("/target.txt", "/link.txt").unwrap();
@@ -205,7 +205,7 @@ fn test_symlink() {
 
 #[test]
 fn test_hard_link() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/original.txt", b"data").unwrap();
 
     backend.hard_link("/original.txt", "/hardlink.txt").unwrap();
@@ -220,7 +220,7 @@ fn test_hard_link() {
 
 #[test]
 fn test_symlink_metadata() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/target.txt", b"data").unwrap();
     backend.symlink("/target.txt", "/link.txt").unwrap();
 
@@ -231,7 +231,7 @@ fn test_symlink_metadata() {
 
 #[test]
 fn test_set_permissions() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"data").unwrap();
 
     backend.set_permissions("/file.txt", Permissions::from_mode(0o644)).unwrap();
@@ -242,7 +242,7 @@ fn test_set_permissions() {
 
 #[test]
 fn test_sync() {
-    let mut backend = create_backend();
+    let backend = create_backend();
     backend.write("/file.txt", b"data").unwrap();
 
     // Should not error
@@ -273,7 +273,7 @@ Each middleware is tested in isolation and in combination.
 fn test_quota_blocks_when_exceeded() {
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_total_size(100).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let result = fs.write("/big.txt", &[0u8; 200]);
 
@@ -284,7 +284,7 @@ fn test_quota_blocks_when_exceeded() {
 fn test_quota_allows_within_limit() {
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_total_size(1000).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/small.txt", &[0u8; 100]).unwrap();
 
@@ -295,7 +295,7 @@ fn test_quota_allows_within_limit() {
 fn test_quota_tracks_deletes() {
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_total_size(100).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file.txt", &[0u8; 50]).unwrap();
     fs.remove_file("/file.txt").unwrap();
@@ -308,7 +308,7 @@ fn test_quota_tracks_deletes() {
 fn test_quota_max_file_size() {
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_file_size(50).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let result = fs.write("/big.txt", &[0u8; 100]);
 
@@ -319,7 +319,7 @@ fn test_quota_max_file_size() {
 fn test_quota_streaming_write() {
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_total_size(100).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let mut writer = fs.open_write("/file.txt").unwrap();
     writer.write_all(&[0u8; 50]).unwrap();
@@ -339,7 +339,7 @@ fn test_quota_streaming_write() {
 fn test_restrictions_blocks_symlinks() {
     let backend = MemoryBackend::new()
         .layer(RestrictionsLayer::builder().deny_symlinks().build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/target.txt", b"data").unwrap();
     let result = fs.symlink("/target.txt", "/link.txt");
@@ -351,7 +351,7 @@ fn test_restrictions_blocks_symlinks() {
 fn test_restrictions_allows_non_blocked() {
     let backend = MemoryBackend::new()
         .layer(RestrictionsLayer::builder().deny_symlinks().build());  // Only block symlinks
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     // Hard links should still work
     fs.write("/target.txt", b"data").unwrap();
@@ -362,7 +362,7 @@ fn test_restrictions_allows_non_blocked() {
 fn test_restrictions_blocks_permissions() {
     let backend = MemoryBackend::new()
         .layer(RestrictionsLayer::builder().deny_permissions().build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();
     let result = fs.set_permissions("/file.txt", Permissions::from_mode(0o777));
@@ -378,7 +378,7 @@ fn test_restrictions_blocks_permissions() {
 fn test_pathfilter_allows_matching() {
     let backend = MemoryBackend::new()
         .layer(PathFilterLayer::builder().allow("/workspace/**").build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.create_dir_all("/workspace/project").unwrap();
     fs.write("/workspace/project/file.txt", b"data").unwrap();
@@ -388,7 +388,7 @@ fn test_pathfilter_allows_matching() {
 fn test_pathfilter_blocks_non_matching() {
     let backend = MemoryBackend::new()
         .layer(PathFilterLayer::builder().allow("/workspace/**").build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let result = fs.write("/etc/passwd", b"data");
 
@@ -402,7 +402,7 @@ fn test_pathfilter_deny_overrides_allow() {
             .allow("/workspace/**")
             .deny("**/.env")
             .build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let result = fs.write("/workspace/.env", b"SECRET=xxx");
 
@@ -439,7 +439,7 @@ fn test_readonly_blocks_writes() {
     inner.write("/file.txt", b"original").unwrap();
 
     let backend = ReadOnly::new(inner);
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     let result = fs.write("/file.txt", b"modified");
     assert!(matches!(result, Err(FsError::ReadOnly { .. })));
@@ -471,7 +471,7 @@ fn test_middleware_composition_order() {
         .layer(QuotaLayer::builder().max_total_size(100).build())
         .layer(RestrictionsLayer::builder().deny_symlinks().build());
 
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     // Write should hit quota first
     let result = fs.write("/big.txt", &[0u8; 200]);
@@ -485,7 +485,7 @@ fn test_layer_syntax() {
         .layer(RestrictionsLayer::new().deny_symlinks())
         .layer(TracingLayer::new());
 
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
     fs.write("/test.txt", b"data").unwrap();
 }
 ```
@@ -546,7 +546,7 @@ fn test_error_not_found() {
 
 #[test]
 fn test_error_already_exists() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     fs.create_dir("/mydir").unwrap();
 
     match fs.create_dir("/mydir") {
@@ -559,7 +559,7 @@ fn test_error_already_exists() {
 
 #[test]
 fn test_error_not_a_directory() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     fs.write("/file.txt", b"data").unwrap();
 
     match fs.read_dir("/file.txt") {
@@ -572,7 +572,7 @@ fn test_error_not_a_directory() {
 
 #[test]
 fn test_error_directory_not_empty() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     fs.create_dir("/mydir").unwrap();
     fs.write("/mydir/file.txt", b"data").unwrap();
 
@@ -592,7 +592,7 @@ fn test_error_directory_not_empty() {
 ```rust
 #[test]
 fn test_concurrent_reads() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.write("/file.txt", b"data").unwrap();
     let backend = Arc::new(RwLock::new(backend));
 
@@ -663,7 +663,7 @@ fn stress_test_concurrent_operations() {
 ```rust
 #[test]
 fn test_path_normalization() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/a/b/../c/file.txt", b"data").unwrap();
 
@@ -673,7 +673,7 @@ fn test_path_normalization() {
 
 #[test]
 fn test_double_slashes() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("//a//b//file.txt", b"data").unwrap();
 
@@ -698,7 +698,7 @@ fn test_empty_path_returns_error() {
 
 #[test]
 fn test_unicode_paths() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/文件/データ.txt", b"data").unwrap();
 
@@ -707,7 +707,7 @@ fn test_unicode_paths() {
 
 #[test]
 fn test_paths_with_spaces() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
 
     fs.write("/my folder/my file.txt", b"data").unwrap();
 
@@ -728,20 +728,20 @@ fn no_panic_missing_file() {
 
 #[test]
 fn no_panic_missing_parent() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     let _ = fs.write("/missing/parent/file.txt", b"data");  // Should return Err
 }
 
 #[test]
 fn no_panic_read_dir_on_file() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     fs.write("/file.txt", b"data").unwrap();
     let _ = fs.read_dir("/file.txt");  // Should return Err, not panic
 }
 
 #[test]
 fn no_panic_remove_nonempty_dir() {
-    let mut fs = FileStorage::new(MemoryBackend::new());
+    let fs = FileStorage::new(MemoryBackend::new());
     fs.create_dir("/dir").unwrap();
     fs.write("/dir/file.txt", b"data").unwrap();
     let _ = fs.remove_dir("/dir");  // Should return Err, not panic
@@ -756,7 +756,7 @@ fn no_panic_remove_nonempty_dir() {
 // Virtual backend symlink following control
 #[test]
 fn test_virtual_backend_follow_symlinks_enabled() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.write("/target.txt", b"secret").unwrap();
     backend.symlink("/target.txt", "/link.txt").unwrap();
 
@@ -766,7 +766,7 @@ fn test_virtual_backend_follow_symlinks_enabled() {
 
 #[test]
 fn test_virtual_backend_follow_symlinks_disabled() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.set_follow_symlinks(false);
     backend.write("/target.txt", b"secret").unwrap();
     backend.symlink("/target.txt", "/link.txt").unwrap();
@@ -778,7 +778,7 @@ fn test_virtual_backend_follow_symlinks_disabled() {
 
 #[test]
 fn test_symlink_chain_resolution() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.write("/target.txt", b"data").unwrap();
     backend.symlink("/target.txt", "/link1.txt").unwrap();
     backend.symlink("/link1.txt", "/link2.txt").unwrap();
@@ -789,7 +789,7 @@ fn test_symlink_chain_resolution() {
 
 #[test]
 fn test_symlink_loop_detection() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     backend.symlink("/link2.txt", "/link1.txt").unwrap();
     backend.symlink("/link1.txt", "/link2.txt").unwrap();
 
@@ -799,7 +799,7 @@ fn test_symlink_loop_detection() {
 
 #[test]
 fn test_virtual_symlink_cannot_escape() {
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     // Create a symlink pointing "outside" - but in virtual backend, paths are just keys
     backend.symlink("../../../etc/passwd", "/link.txt").unwrap();
 
@@ -859,7 +859,7 @@ fn test_vroot_allows_internal_symlinks() {
 fn test_vroot_canonicalizes_paths() {
     let temp = tempfile::tempdir().unwrap();
     let backend = VRootFsBackend::new(temp.path()).unwrap();
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.create_dir("/a").unwrap();
     fs.write("/a/file.txt", b"data").unwrap();
@@ -878,7 +878,7 @@ fn test_vroot_canonicalizes_paths() {
 fn test_ratelimit_allows_within_limit() {
     let backend = MemoryBackend::new()
         .layer(RateLimitLayer::builder().max_ops(10).per_second().build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     // Should succeed within limit
     for i in 0..5 {
@@ -890,7 +890,7 @@ fn test_ratelimit_allows_within_limit() {
 fn test_ratelimit_blocks_when_exceeded() {
     let backend = MemoryBackend::new()
         .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file1.txt", b"data").unwrap();
     fs.write("/file2.txt", b"data").unwrap();
@@ -904,7 +904,7 @@ fn test_ratelimit_blocks_when_exceeded() {
 fn test_ratelimit_resets_after_window() {
     let backend = MemoryBackend::new()
         .layer(RateLimitLayer::builder().max_ops(2).per(Duration::from_millis(100)).build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file1.txt", b"data").unwrap();
     fs.write("/file2.txt", b"data").unwrap();
@@ -920,7 +920,7 @@ fn test_ratelimit_resets_after_window() {
 fn test_ratelimit_counts_all_operations() {
     let backend = MemoryBackend::new()
         .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();  // 1
     let _ = fs.read("/file.txt");              // 2
@@ -959,7 +959,7 @@ fn test_tracing_logs_operations() {
             .with_logger(move |op| {
                 logs.lock().unwrap().push(op.to_string());
             }));
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/file.txt", b"data").unwrap();
     fs.read("/file.txt").unwrap();
@@ -979,7 +979,7 @@ fn test_tracing_includes_path() {
             .with_logger(move |op| {
                 logs.lock().unwrap().push(op.to_string());
             }));
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     fs.write("/important/secret.txt", b"data").unwrap();
 
@@ -1010,7 +1010,7 @@ fn test_tracing_with_span_context() {
     use tracing::{info_span, Instrument};
 
     let backend = MemoryBackend::new().layer(TracingLayer::new());
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     async {
         fs.write("/async.txt", b"data").unwrap();
@@ -1073,7 +1073,7 @@ use proptest::prelude::*;
 proptest! {
     #[test]
     fn prop_write_read_roundtrip(data: Vec<u8>) {
-        let mut backend = MemoryBackend::new();
+        let backend = MemoryBackend::new();
         backend.write("/file.bin", &data).unwrap();
         let read_data = backend.read("/file.bin").unwrap();
         prop_assert_eq!(data, read_data);
@@ -1081,7 +1081,7 @@ proptest! {
 
     #[test]
     fn prop_path_normalization_idempotent(path in "[a-z/]{1,50}") {
-        let mut backend = MemoryBackend::new();
+        let backend = MemoryBackend::new();
         if let Ok(()) = backend.create_dir_all(&path) {
             // Creating again should either succeed or return AlreadyExists
             let result = backend.create_dir_all(&path);
@@ -1097,7 +1097,7 @@ proptest! {
         let limit = 500usize;
         let backend = MemoryBackend::new()
             .layer(QuotaLayer::builder().max_total_size(limit as u64).build());
-        let mut fs = FileStorage::new(backend);
+        let fs = FileStorage::new(backend);
 
         let mut total_written = 0usize;
         for (i, size) in file_sizes.into_iter().take(file_count).enumerate() {
@@ -1138,7 +1138,7 @@ fn test_clone_creates_independent_copy() {
 
 #[test]
 fn test_checkpoint_and_rollback() {
-    let mut fs = MemoryBackend::new();
+    let fs = MemoryBackend::new();
     fs.write("/important.txt", b"original").unwrap();
 
     // Checkpoint = clone
@@ -1157,7 +1157,7 @@ fn test_persistence_roundtrip() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("state.bin");
 
-    let mut fs = MemoryBackend::new();
+    let fs = MemoryBackend::new();
     fs.write("/data.txt", b"persisted").unwrap();
 
     // Save
@@ -1170,7 +1170,7 @@ fn test_persistence_roundtrip() {
 
 #[test]
 fn test_to_bytes_from_bytes() {
-    let mut fs = MemoryBackend::new();
+    let fs = MemoryBackend::new();
     fs.create_dir_all("/a/b/c").unwrap();
     fs.write("/a/b/c/file.txt", b"nested").unwrap();
 
@@ -1240,7 +1240,7 @@ where
     F: Fn(&mut dyn Fs),
 {
     // Memory
-    let mut backend = MemoryBackend::new();
+    let backend = MemoryBackend::new();
     test(&mut backend);
 
     // SQLite

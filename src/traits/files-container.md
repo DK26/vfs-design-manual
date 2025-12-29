@@ -26,7 +26,7 @@ All policy (limits, feature gates, logging) is handled by middleware, not FileSt
 use anyfs::{MemoryBackend, FileStorage};
 
 // Simple: just ergonomics (type inferred)
-let mut fs = FileStorage::new(MemoryBackend::new());
+let fs = FileStorage::new(MemoryBackend::new());
 ```
 
 With middleware (layer-based):
@@ -35,7 +35,7 @@ With middleware (layer-based):
 use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, FileStorage};
 
 // Type is inferred - no need to write it out
-let mut fs = FileStorage::new(
+let fs = FileStorage::new(
     SqliteBackend::open("data.db")?
         .layer(QuotaLayer::builder()
             .max_total_size(100 * 1024 * 1024)
@@ -220,7 +220,7 @@ If you don't need the wrapper, use backends directly:
 ```rust
 use anyfs::{MemoryBackend, QuotaLayer, Fs};
 
-let mut backend = MemoryBackend::new()
+let backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build());

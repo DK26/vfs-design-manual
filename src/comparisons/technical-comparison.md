@@ -85,7 +85,7 @@ let backend = SqliteBackend::open("data.db")?
         .build())
     .layer(TracingLayer::new());
 
-let mut fs = FileStorage::new(backend);
+let fs = FileStorage::new(backend);
 ```
 
 **Advantages:**
@@ -139,11 +139,11 @@ AnyFS middleware can **intercept, transform, and control** operations:
 ## 4. Backend Trait
 
 ```rust
-pub trait Fs: Send {
+pub trait Fs: Send + Sync {
     fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
     fn open_read(&self, path: impl AsRef<Path>) -> Result<Box<dyn Read + Send>, FsError>;
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn Write + Send>, FsError>;
     // ... methods aligned with std::fs
 }
 ```

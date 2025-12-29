@@ -54,25 +54,25 @@ impl FsRead for MyBackend {
 }
 
 impl FsWrite for MyBackend {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         todo!("create or overwrite file")
     }
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn append(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         todo!("append to file")
     }
-    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_file(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("delete file")
     }
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn rename(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("move/rename")
     }
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("copy file")
     }
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
+    fn truncate(&self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
         todo!("resize file")
     }
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn std::io::Write + Send>, FsError> {
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn std::io::Write + Send>, FsError> {
         todo!("return writer")
     }
 }
@@ -81,16 +81,16 @@ impl FsDir for MyBackend {
     fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
         todo!("return Vec<DirEntry { name, inode, file_type }>")
     }
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("create single directory")
     }
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("create directory and parents")
     }
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("remove empty directory")
     }
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("remove directory recursively")
     }
 }
@@ -101,10 +101,10 @@ impl FsDir for MyBackend {
 
 ```rust
 impl FsLink for MyBackend {
-    fn symlink(&mut self, target: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
+    fn symlink(&self, target: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("create symlink pointing to target")
     }
-    fn hard_link(&mut self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
+    fn hard_link(&self, original: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("create hard link (same inode)")
     }
     fn read_link(&self, path: impl AsRef<Path>) -> Result<std::path::PathBuf, FsError> {
@@ -116,16 +116,16 @@ impl FsLink for MyBackend {
 }
 
 impl FsPermissions for MyBackend {
-    fn set_permissions(&mut self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError> {
+    fn set_permissions(&self, path: impl AsRef<Path>, perm: Permissions) -> Result<(), FsError> {
         todo!("set file permissions")
     }
 }
 
 impl FsSync for MyBackend {
-    fn sync(&mut self) -> Result<(), FsError> {
+    fn sync(&self) -> Result<(), FsError> {
         todo!("flush all writes to storage")
     }
-    fn fsync(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn fsync(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("flush writes for one file")
     }
 }
@@ -230,10 +230,10 @@ impl<B: Fs> Layer<B> for MyMiddlewareLayer {
 
 ```rust
 impl<B: FsWrite> FsWrite for ReadOnly<B> {
-    fn write(&mut self, _: impl AsRef<Path>, _: &[u8]) -> Result<(), FsError> {
+    fn write(&self, _: impl AsRef<Path>, _: &[u8]) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "write" })
     }
-    fn remove_file(&mut self, _: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_file(&self, _: impl AsRef<Path>) -> Result<(), FsError> {
         Err(FsError::ReadOnly { operation: "remove_file" })
     }
     // ... all write methods return ReadOnly error
@@ -251,7 +251,7 @@ impl<B: FsRead> FsRead for Encrypted<B> {
 }
 
 impl<B: FsWrite> FsWrite for Encrypted<B> {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let encrypted = self.encrypt(data);
         self.inner.write(path, &encrypted)
     }
@@ -354,7 +354,7 @@ let backend = MemoryBackend::new()
 ```rust
 use anyfs::FileStorage;
 
-let mut fs = FileStorage::new(backend);
+let fs = FileStorage::new(backend);
 fs.write("/file.txt", b"hello")?;
 let data = fs.read("/file.txt")?;
 ```

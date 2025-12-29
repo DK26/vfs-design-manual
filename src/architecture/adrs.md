@@ -30,6 +30,7 @@ This file captures the decisions for the current AnyFS design.
 | ADR-020 | Cache for read performance | Accepted |
 | ADR-021 | Overlay for union filesystem | Accepted |
 | ADR-022 | Builder pattern for configurable middleware | Accepted |
+| ADR-023 | Interior mutability for all trait methods | Accepted |
 
 ---
 
@@ -678,3 +679,78 @@ let quota = QuotaLayer::builder()
     .max_total_size(1_000_000)
     .build();  // ✅ OK
 ```
+
+---
+
+## ADR-023: Interior mutability for all trait methods
+
+**Decision:** All `Fs` trait methods use `&self`, not `&mut self`. Backends manage their own synchronization internally (interior mutability).
+
+**Previous design:**
+```rust
+pub trait FsRead: Send {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
+}
+
+pub trait FsWrite: Send {
+    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+}
+```
+
+**New design:**
+```rust
+pub trait FsRead: Send + Sync {
+    fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
+}
+
+pub trait FsWrite: Send + Sync {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError>;
+}
+```
+
+**Why:**
+
+1. **Filesystems are conceptually always mutable.** A filesystem doesn't become "borrowed" when you write to it - the underlying storage manages concurrency itself.
+
+2. **Enables concurrent access patterns.** With `&mut self`, you cannot have concurrent readers and writers even when the backend supports it (e.g., SQLite with WAL mode, real filesystems).
+
+3. **Matches real-world filesystem semantics.** `std::fs::write()` takes a path, not a mutable reference to some filesystem object. Files are shared resources.
+
+4. **Simplifies middleware implementation.** Middleware no longer needs to worry about propagating mutability - all operations use `&self`.
+
+5. **Common pattern in Rust.** Many I/O abstractions use interior mutability: `std::io::Write` for `File` (via OS handles), `tokio::fs`, database connection pools, etc.
+
+**Implementation:**
+
+Backends use appropriate synchronization primitives:
+
+```rust
+pub struct MemoryBackend {
+    // Interior mutability via Mutex/RwLock
+    data: RwLock<HashMap<PathBuf, Vec<u8>>>,
+}
+
+impl FsWrite for MemoryBackend {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+        let mut guard = self.data.write().unwrap();
+        guard.insert(path.as_ref().to_path_buf(), data.to_vec());
+        Ok(())
+    }
+}
+
+pub struct SqliteBackend {
+    // SQLite handles its own locking
+    conn: Connection,  // rusqlite::Connection is internally synchronized
+}
+```
+
+**Trade-offs:**
+
+| Aspect | &mut self | &self (interior mutability) |
+|--------|-----------|----------------------------|
+| Compile-time safety | Single writer enforced | Runtime synchronization |
+| Concurrent access | Not possible | Backend decides |
+| API simplicity | Simple | Slightly more complex backends |
+| Real-world match | Poor | Good |
+
+**Conclusion:** The benefits of matching filesystem semantics and enabling concurrent access outweigh the loss of compile-time single-writer enforcement. Backends are responsible for their own thread safety.

@@ -74,7 +74,7 @@ fn resolve_no_follow(&self, path: &Path) -> Result<PathBuf, FsError> {
 ```rust
 /// Virtual backends where we control everything
 pub trait VirtualFs: Fs {
-    fn set_symlink_resolution(&mut self, enabled: bool);
+    fn set_symlink_resolution(&self, enabled: bool);
 }
 
 /// Real filesystem backends where OS controls symlink resolution
@@ -173,7 +173,7 @@ The design is straightforward:
 
 2. **Virtual backends provide `set_follow_symlinks(bool)`** - the actual security control:
    ```rust
-   let mut backend = MemoryBackend::new();
+   let backend = MemoryBackend::new();
    backend.set_follow_symlinks(false);  // Symlinks not resolved during path operations
    ```
 

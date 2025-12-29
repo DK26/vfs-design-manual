@@ -348,7 +348,7 @@ Where the magic happens - writing files to a text file:
 use anyfs_backend::FsWrite;
 
 impl FsWrite for TxtBackend {
-    fn write(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn write(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
         // Ensure parent directory exists
@@ -383,7 +383,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn append(&mut self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
+    fn append(&self, path: impl AsRef<Path>, data: &[u8]) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -402,7 +402,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn remove_file(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_file(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -421,7 +421,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn rename(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn rename(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         let from = from.as_ref().to_path_buf();
         let to = to.as_ref().to_path_buf();
 
@@ -439,7 +439,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn copy(&mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
+    fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<(), FsError> {
         let from = from.as_ref().to_path_buf();
         let to = to.as_ref().to_path_buf();
 
@@ -466,7 +466,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn truncate(&mut self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
+    fn truncate(&self, path: impl AsRef<Path>, size: u64) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -485,7 +485,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn open_write(&mut self, path: impl AsRef<Path>) -> Result<Box<dyn std::io::Write + Send>, FsError> {
+    fn open_write(&self, path: impl AsRef<Path>) -> Result<Box<dyn std::io::Write + Send>, FsError> {
         // For simplicity, we buffer writes and apply on drop
         // A real implementation would be more sophisticated
         let path = path.as_ref().to_path_buf();
@@ -586,7 +586,7 @@ impl FsDir for TxtBackend {
         Ok(children)
     }
 
-    fn create_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
         // Check parent exists
@@ -621,7 +621,7 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn create_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
         // Build list of directories to create
@@ -659,7 +659,7 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn remove_dir(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
         // Can't remove root
@@ -699,7 +699,7 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn remove_dir_all(&mut self, path: impl AsRef<Path>) -> Result<(), FsError> {
+    fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
         // Can't remove root
@@ -759,7 +759,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(TracingLayer::new());
 
     // Create the filesystem wrapper
-    let mut fs = FileStorage::new(backend);
+    let fs = FileStorage::new(backend);
 
     // Use it like any other filesystem!
     fs.create_dir_all("/projects/secret")?;
