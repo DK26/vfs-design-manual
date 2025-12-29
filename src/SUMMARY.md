@@ -39,6 +39,7 @@
 - [Implementation Patterns (LLM Context)](./guides/llm-context.md)
 - [Cross-Platform Mounting](./guides/mounting.md)
 - [Tutorial: Building a TXT Backend](./guides/txt-backend-tutorial.md)
+- [Tutorial: Building Middleware](./guides/middleware-tutorial.md)
 
 ---
 
