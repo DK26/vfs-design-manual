@@ -763,3 +763,109 @@ This does NOT guarantee:
 - Order of concurrent writes to the same path (last write wins - standard FS behavior)
 
 **Conclusion:** The benefits of matching filesystem semantics and enabling concurrent access outweigh the loss of compile-time single-writer enforcement. Backends are responsible for their own thread safety via interior mutability.
+
+---
+
+## ADR-024: Async Strategy
+
+**Status:** Accepted
+**Context:** Async/await is prevalent in Rust networking and I/O. While AnyFS is primarily sync-focused (matching `std::fs`), we may need async support in the future for:
+- Network-backed storage (S3, WebDAV, etc.)
+- High-concurrency scenarios
+- Integration with async runtimes (tokio, async-std)
+
+**Decision:** Plan for a **parallel async trait hierarchy** that mirrors the sync traits.
+
+**Strategy:**
+
+```
+Sync Traits          Async Traits
+-----------          ------------
+FsRead        →      AsyncFsRead
+FsWrite       →      AsyncFsWrite
+FsDir         →      AsyncFsDir
+Fs            →      AsyncFs
+FsFull        →      AsyncFsFull
+FsFuse        →      AsyncFsFuse
+FsPosix       →      AsyncFsPosix
+```
+
+**Design principles:**
+
+1. **Separate crate:** Async traits live in `anyfs-async` to avoid pulling async dependencies into the core.
+
+2. **Method parity:** Each async trait method corresponds 1:1 with its sync counterpart:
+   ```rust
+   // Sync (anyfs-backend)
+   pub trait FsRead: Send + Sync {
+       fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
+   }
+
+   // Async (anyfs-async)
+   #[async_trait]
+   pub trait AsyncFsRead: Send + Sync {
+       async fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError>;
+   }
+   ```
+
+3. **Layer trait compatibility:** The `Layer` trait works for both sync and async:
+   ```rust
+   pub trait Layer<B> {
+       type Backend;
+       fn layer(self, backend: B) -> Self::Backend;
+   }
+
+   // Middleware can implement for both:
+   impl<B: Fs> Layer<B> for QuotaLayer {
+       type Backend = Quota<B>;
+       fn layer(self, backend: B) -> Self::Backend { ... }
+   }
+
+   impl<B: AsyncFs> Layer<B> for QuotaLayer {
+       type Backend = AsyncQuota<B>;
+       fn layer(self, backend: B) -> Self::Backend { ... }
+   }
+   ```
+
+4. **Sync-to-async bridge:** Provide adapters for using sync backends in async contexts:
+   ```rust
+   // Wraps sync backend for use in async code (uses spawn_blocking)
+   pub struct SyncToAsync<B>(B);
+
+   impl<B: Fs> AsyncFsRead for SyncToAsync<B> {
+       async fn read(&self, path: impl AsRef<Path>) -> Result<Vec<u8>, FsError> {
+           let path = path.as_ref().to_path_buf();
+           let backend = self.0.clone(); // requires Clone
+           tokio::task::spawn_blocking(move || backend.read(&path)).await?
+       }
+   }
+   ```
+
+5. **No async-to-sync bridge:** We intentionally don't provide async-to-sync adapters (would require blocking on async runtime, which is problematic).
+
+**Implementation phases:**
+
+| Phase | Scope | Dependency |
+|-------|-------|------------|
+| 1 | Sync traits stable | Now |
+| 2 | Design async traits | When needed |
+| 3 | `anyfs-async` crate | When needed |
+| 4 | Async middleware | When needed |
+
+**Why parallel traits (not feature flags):**
+
+- **No conditional compilation complexity** - sync and async are separate, clean codebases
+- **No trait object issues** - async traits have different object safety requirements
+- **Clear dependency boundaries** - sync code doesn't pull in tokio/async-std
+- **Ecosystem alignment** - mirrors how `std::io` vs `tokio::io` work
+
+**Trade-offs:**
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Parallel traits | Clean separation, no async deps in core | Code duplication in middleware |
+| Feature flags | Single codebase | Complex conditional compilation |
+| Async-only | Modern, no duplication | Forces async runtime on sync users |
+| Sync-only | Simple | Can't support network backends efficiently |
+
+**Conclusion:** Parallel async traits provide the best balance of simplicity now (sync-only core) with a clear migration path for async support later. The `Layer` trait design already accommodates this pattern.

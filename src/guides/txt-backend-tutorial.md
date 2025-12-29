@@ -544,7 +544,7 @@ Directory operations to complete the `Fs` trait:
 use anyfs_backend::{FsDir, DirEntry};
 
 impl FsDir for TxtBackend {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError> {
         let path = path.as_ref().to_path_buf();
         let entries = self.entries.read().unwrap();
 
@@ -583,7 +583,8 @@ impl FsDir for TxtBackend {
         // Sort for consistent ordering
         children.sort_by(|a, b| a.name.cmp(&b.name));
 
-        Ok(children)
+        // Wrap in ReadDirIter (items are Ok since we've already validated them)
+        Ok(ReadDirIter::new(children.into_iter().map(Ok)))
     }
 
     fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {

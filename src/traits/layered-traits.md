@@ -73,11 +73,33 @@ pub trait FsWrite: Send + Sync {
 
 ```rust
 pub trait FsDir: Send + Sync {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError>;
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError>;
     fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn remove_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
+}
+
+/// Iterator over directory entries. Wraps a boxed iterator for flexibility.
+///
+/// - Outer `Result` (from `read_dir()`) = "can I open this directory?"
+/// - Inner `Result` (per item) = "can I read this entry?"
+pub struct ReadDirIter(Box<dyn Iterator<Item = Result<DirEntry, FsError>> + Send + 'static>);
+
+impl Iterator for ReadDirIter {
+    type Item = Result<DirEntry, FsError>;
+    fn next(&mut self) -> Option<Self::Item> { self.0.next() }
+}
+
+impl ReadDirIter {
+    pub fn new(iter: impl Iterator<Item = Result<DirEntry, FsError>> + Send + 'static) -> Self {
+        Self(Box::new(iter))
+    }
+
+    /// Collect all entries, short-circuiting on first error.
+    pub fn collect_all(self) -> Result<Vec<DirEntry>, FsError> {
+        self.collect()
+    }
 }
 ```
 

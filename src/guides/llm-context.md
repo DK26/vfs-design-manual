@@ -80,8 +80,8 @@ impl FsWrite for MyBackend {
 }
 
 impl FsDir for MyBackend {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
-        todo!("return Vec<DirEntry { name, inode, file_type }>")
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError> {
+        todo!("return ReadDirIter::new(entries.into_iter().map(Ok))")
     }
     fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError> {
         todo!("create single directory")

@@ -203,7 +203,7 @@ pub trait FsWrite: Send + Sync {
 
 ```rust
 pub trait FsDir: Send + Sync {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError>;
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError>;
     fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;

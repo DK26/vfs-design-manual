@@ -126,7 +126,7 @@ impl FsWrite for MyBackend {
 
 // Implement FsDir
 impl FsDir for MyBackend {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError> {
         todo!()
     }
 
@@ -227,7 +227,7 @@ impl FsWrite for MyBackend {
 
 ```rust
 impl FsDir for MyBackend {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError>;
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError>;
     fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
     fn remove_dir(&self, path: impl AsRef<Path>) -> Result<(), FsError>;
@@ -747,7 +747,7 @@ impl<B: FsRead> FsRead for ReadOnly<B> {
 
 // FsDir: delegate reads, block writes
 impl<B: FsDir> FsDir for ReadOnly<B> {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError> {
         self.inner.read_dir(path)
     }
 
@@ -888,7 +888,7 @@ impl<B: FsWrite> FsWrite for Encrypted<B> {
 
 // FsDir: just delegate (directories don't need encryption)
 impl<B: FsDir> FsDir for Encrypted<B> {
-    fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, FsError> {
+    fn read_dir(&self, path: impl AsRef<Path>) -> Result<ReadDirIter, FsError> {
         self.inner.read_dir(path)
     }
 
