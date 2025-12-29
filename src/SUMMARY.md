@@ -41,6 +41,7 @@
 - [Cross-Platform Mounting](./guides/mounting.md)
 - [Tutorial: Building a TXT Backend](./guides/txt-backend-tutorial.md)
 - [Tutorial: Building Middleware](./guides/middleware-tutorial.md)
+- [Remote Backend Patterns](./guides/remote-backend-patterns.md)
 
 ---
 
@@ -57,6 +58,8 @@
 
 - [Implementation Plan](./implementation/plan.md)
 - [Backend Implementer's Guide](./implementation/backend-guide.md)
+- [SQLite Operational Guide](./implementation/sqlite-operations.md)
+- [Security Model](./implementation/security-model.md)
 - [Testing Guide](./implementation/testing-guide.md)
 - [Lessons from Similar Projects](./implementation/lessons-learned.md)
 
