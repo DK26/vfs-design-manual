@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -460,7 +460,7 @@ let readonly_fs = FileStorage::new(
 <ul>
 <li><input disabled="" type="checkbox"> Use <code>PathFilter</code> to sandbox untrusted code</li>
 <li><input disabled="" type="checkbox"> Use <code>Quota</code> to prevent resource exhaustion</li>
-<li><input disabled="" type="checkbox"> Use <code>Restrictions</code> (default) to disable dangerous features</li>
+<li><input disabled="" type="checkbox"> Use <code>Restrictions</code> when you need to disable risky operations</li>
 <li><input disabled="" type="checkbox"> Use <code>RateLimit</code> for untrusted/shared environments</li>
 <li><input disabled="" type="checkbox"> Use <code>Tracing</code> for audit trails</li>
 <li><input disabled="" type="checkbox"> Use separate backends for separate tenants</li>
@@ -592,7 +592,7 @@ pub struct FileEncryption&lt;B&gt; {
 }
 
 impl&lt;B: Fs&gt; FsWrite for FileEncryption&lt;B&gt; {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         // Encrypt content with authenticated encryption (AES-GCM)
         let nonce = generate_nonce();
         let ciphertext = aes_gcm_encrypt(&amp;self.key, &amp;nonce, data)?;
@@ -602,7 +602,7 @@ impl&lt;B: Fs&gt; FsWrite for FileEncryption&lt;B&gt; {
 }
 
 impl&lt;B: Fs&gt; FsRead for FileEncryption&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let encrypted = self.inner.read(path)?;
         let (nonce, ciphertext) = encrypted.split_at(12);
         aes_gcm_decrypt(&amp;self.key, nonce, ciphertext)
@@ -634,7 +634,7 @@ pub struct IntegrityVerified&lt;B&gt; {
 }
 
 impl&lt;B: Fs&gt; FsWrite for IntegrityVerified&lt;B&gt; {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let mac = hmac_sha256(&amp;self.key, data);
         let protected = [data, mac.as_slice()].concat();
         self.inner.write(path, &amp;protected)
@@ -642,7 +642,7 @@ impl&lt;B: Fs&gt; FsWrite for IntegrityVerified&lt;B&gt; {
 }
 
 impl&lt;B: Fs&gt; FsRead for IntegrityVerified&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let protected = self.inner.read(path)?;
         let (data, mac) = protected.split_at(protected.len() - 32);
         if !hmac_verify(&amp;self.key, data, mac) {
@@ -697,7 +697,7 @@ struct EncryptedNode {
 }
 
 impl FsRead for EncryptedMemoryBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let node = self.nodes.get(path.as_ref())
             .ok_or_else(|| FsError::NotFound { path: path.as_ref().to_path_buf() })?;
 
@@ -710,7 +710,7 @@ impl FsRead for EncryptedMemoryBackend {
 }
 
 impl FsWrite for EncryptedMemoryBackend {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         // Encrypt immediately - plaintext never stored
         let encrypted = self.encrypt(data)?;
 

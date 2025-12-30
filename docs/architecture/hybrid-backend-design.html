@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -377,7 +377,7 @@ enum WriteCmd {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for HybridBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
 
         // 1. Query SQLite for blob_id
@@ -404,7 +404,7 @@ enum WriteCmd {
             .map_err(|e| FsError::Backend(e.to_string()))
     }
 
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
         let path = path.as_ref();
         let db = self.db.lock().map_err(|_| FsError::Backend("lock poisoned".into()))?;
 
@@ -418,7 +418,7 @@ enum WriteCmd {
         Ok(exists)
     }
 
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         let path = path.as_ref();
         let db = self.db.lock().map_err(|_| FsError::Backend("lock poisoned".into()))?;
 
@@ -452,7 +452,7 @@ enum WriteCmd {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsWrite for HybridBackend {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Phase 1: Upload blob (can fail independently)
@@ -474,7 +474,7 @@ enum WriteCmd {
             .map_err(|_| FsError::Backend("write cancelled".into()))?
     }
 
-    fn remove_file(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_file(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Queue the removal (blob cleanup happens in background via GC)
@@ -487,7 +487,7 @@ enum WriteCmd {
             .map_err(|_| FsError::Backend("remove cancelled".into()))?
     }
 
-    fn copy(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn copy(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         // Copy is just a metadata operation - increment refcount, no blob copy!
         let (tx, rx) = oneshot::channel();
 
@@ -751,7 +751,7 @@ fs.write("/documents/report.pdf", &amp;pdf_bytes)?;
 </span><span class="boring">fn main() {
 </span>#[async_trait]
 impl AsyncFsRead for HybridBackend {
-    async fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    async fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let blob_id = self.lookup_blob_id(path).await?;
         self.blobs.get_async(&amp;blob_id).await  // Non-blocking!
     }

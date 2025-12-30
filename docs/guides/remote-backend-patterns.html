@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -330,14 +330,15 @@ message DirEntry {
 </span><span class="boring">fn main() {
 </span>use tonic::{transport::Server, Request, Response, Status};
 use anyfs_backend::Fs;
+use anyfs::FileStorage;
 
 pub struct FsServer&lt;B: Fs&gt; {
-    backend: B,
+    backend: FileStorage&lt;B&gt;,
 }
 
 impl&lt;B: Fs + Send + Sync + 'static&gt; FsServer&lt;B&gt; {
     pub fn new(backend: B) -&gt; Self {
-        Self { backend }
+        Self { backend: FileStorage::new(backend) }
     }
 
     pub async fn serve(self, addr: &amp;str) -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -563,7 +564,7 @@ impl RemoteBackend {
 }
 
 impl FsRead for RemoteBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         // Note: This is sync, but we're calling async code
         // In practice, use tokio::runtime::Handle or async traits
 
@@ -588,7 +589,7 @@ impl FsRead for RemoteBackend {
         })
     }
 
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
         // Could be a dedicated RPC or use metadata
         match self.metadata(path) {
             Ok(_) =&gt; Ok(true),
@@ -597,7 +598,7 @@ impl FsRead for RemoteBackend {
         }
     }
 
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             let req = self.request(MetadataRequest {
@@ -621,7 +622,7 @@ impl FsRead for RemoteBackend {
 }
 
 impl FsWrite for RemoteBackend {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             let req = self.request(WriteRequest {
@@ -647,7 +648,7 @@ impl FsWrite for RemoteBackend {
 }
 
 impl FsDir for RemoteBackend {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt; {
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt; {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             let mut all_entries = Vec::new();
@@ -731,7 +732,7 @@ impl&lt;B&gt; CachingBackend&lt;B&gt; {
 }
 
 impl&lt;B: FsRead&gt; FsRead for CachingBackend&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
 
         // Check cache first
@@ -750,7 +751,7 @@ impl&lt;B: FsRead&gt; FsRead for CachingBackend&lt;B&gt; {
         Ok(data)
     }
 
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         let path = path.as_ref();
 
         // Check cache
@@ -777,7 +778,7 @@ impl&lt;B: FsRead&gt; FsRead for CachingBackend&lt;B&gt; {
 }
 
 impl&lt;B: FsWrite&gt; FsWrite for CachingBackend&lt;B&gt; {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref();
 
         // Write through to remote
@@ -811,8 +812,10 @@ impl&lt;B: FsWrite&gt; FsWrite for CachingBackend&lt;B&gt; {
 <p>Handle network failures gracefully:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub struct OfflineCapableBackend&lt;B&gt; {
-    remote: B,
+</span>use anyfs::FileStorage;
+
+pub struct OfflineCapableBackend&lt;B&gt; {
+    remote: FileStorage&lt;B&gt;,
     local_cache: SqliteBackend,  // Local SQLite for offline ops
     mode: RwLock&lt;ConnectionMode&gt;,
     pending_writes: RwLock&lt;Vec&lt;PendingWrite&gt;&gt;,
@@ -883,7 +886,7 @@ impl&lt;B: Fs&gt; OfflineCapableBackend&lt;B&gt; {
 }
 
 impl&lt;B: FsRead&gt; FsRead for OfflineCapableBackend&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
 
         if self.is_online() {
@@ -908,7 +911,7 @@ impl&lt;B: FsRead&gt; FsRead for OfflineCapableBackend&lt;B&gt; {
 }
 
 impl&lt;B: FsWrite&gt; FsWrite for OfflineCapableBackend&lt;B&gt; {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref();
 
         // Always write to local cache
@@ -957,7 +960,7 @@ impl&lt;B: FsWrite&gt; FsWrite for OfflineCapableBackend&lt;B&gt; {
 }
 
 fn resolve_conflict(
-    path: &amp;Path,
+    path: &amp;str,
     local_data: &amp;[u8],
     server_data: &amp;[u8],
     strategy: ConflictResolution,
@@ -973,7 +976,7 @@ fn resolve_conflict(
         }
         ConflictResolution::KeepBoth =&gt; {
             // Rename local to path.conflict
-            let conflict_path = format!("{}.conflict", path.display());
+            let conflict_path = format!("{}.conflict", path);
             remote.write(&amp;conflict_path, local_data)?;
             Ok(())
         }

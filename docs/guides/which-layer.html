@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -239,11 +239,11 @@ use std::path::Path;
 pub struct MyBackend;
 
 impl Fs for MyBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         todo!()
     }
 
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         todo!()
     }
 
@@ -261,7 +261,7 @@ pub struct MyMiddleware&lt;B: Fs&gt; {
 }
 
 impl&lt;B: Fs&gt; Fs for MyMiddleware&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         // Intercept, transform, or delegate
         self.inner.read(path)
     }
@@ -282,7 +282,7 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <ul>
 <li><strong>Don’t depend on <code>anyfs</code></strong> if you’re only implementing a backend or middleware. Use <code>anyfs-backend</code>.</li>
 <li><strong>Don’t put policy in backends.</strong> Use middleware (Quota, PathFilter, etc.).</li>
-<li><strong>Don’t put policy in FileStorage.</strong> It’s just an ergonomic wrapper.</li>
+<li><strong>Don’t put policy in FileStorage.</strong> It is an ergonomic wrapper with centralized path resolution, not a policy layer.</li>
 </ul>
 
                     </main>

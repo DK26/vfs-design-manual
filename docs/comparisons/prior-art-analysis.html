@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -525,11 +525,15 @@ ufs.use(memfs);     // Memory overlay
 <li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>, <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a utilities crate.</li>
 <li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without changing sync traits.</li>
 <li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to demonstrate middleware and backend neutrality (navigation and file management only, not full bash scripting).</li>
+<li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a specialized <code>Overlay</code> variant.</li>
+<li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code> (PyFilesystem/fsspec-style).</li>
 </ul>
 <p><strong>Defer (valuable, but needs data or wider review):</strong></p>
 <ul>
 <li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style block cache).</li>
 <li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection (symlink control, case sensitivity, max path length).</li>
+<li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code (System.IO.Abstractions-style).</li>
+<li>Retry/timeout middleware for remote backends (once remote backends exist).</li>
 </ul>
 <p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
 <ul>
@@ -597,8 +601,8 @@ fn test_many_open_handles() {
 
     // Opening many files shouldn't crash
     for i in 0..10000 {
-        fs.write(&amp;format!("/file{}", i), b"x").unwrap();
-        if let Ok(h) = fs.open_read(&amp;format!("/file{}", i)) {
+        fs.write(format!("/file{}", i), b"x").unwrap();
+        if let Ok(h) = fs.open_read(format!("/file{}", i)) {
             handles.push(h);
         }
     }

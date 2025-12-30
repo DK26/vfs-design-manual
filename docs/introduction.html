@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-b1aa7698.js"></script>
+        <script src="toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -257,6 +257,16 @@ fs.write("/data/file.txt", b"hello")?;
 </table>
 </div>
 <hr>
+<h2 id="future-ideas-post-v1"><a class="header" href="#future-ideas-post-v1">Future Ideas (Post-v1)</a></h2>
+<p>These are optional extensions that fit the design but are intentionally out of scope for v1:</p>
+<ul>
+<li>URL-based backend registry and bulk helpers (<code>FsExt</code>/utilities)</li>
+<li>Async adapter crate for remote backends (<code>anyfs-async</code>)</li>
+<li>Companion shell (<code>anyfs-shell</code>) for interactive exploration</li>
+<li>Copy-on-write overlay and archive backends (zip/tar) as separate crates</li>
+</ul>
+<p>See <a href="./architecture/design-overview.html#future-ideas-post-v1">Design Overview</a> for the full list and rationale.</p>
+<hr>
 <h2 id="status"><a class="header" href="#status">Status</a></h2>
 <div class="table-wrapper">
 <table>
@@ -273,8 +283,8 @@ fs.write("/data/file.txt", b"hello")?;
 <h2 id="authoritative-documents"><a class="header" href="#authoritative-documents">Authoritative Documents</a></h2>
 <ol>
 <li><code>AGENTS.md</code> (for AI assistants)</li>
-<li><code>book/src/architecture/design-overview.md</code></li>
-<li><code>book/src/architecture/adrs.md</code></li>
+<li><code>src/architecture/design-overview.md</code></li>
+<li><code>src/architecture/adrs.md</code></li>
 </ol>
 
                     </main>

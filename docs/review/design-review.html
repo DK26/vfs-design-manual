@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -264,7 +264,7 @@ fn with_symlinks(fs: &amp;(impl Fs + FsLink)) {  // Correct
 <p><strong>Community expectation:</strong> Projects like <code>tokio</code>, <code>async-std</code> are dominant. Users may expect:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>async fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+</span>async fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
 <span class="boring">}</span></code></pre>
 <p><strong>Mitigation:</strong></p>
 <ol>
@@ -280,12 +280,12 @@ fn with_symlinks(fs: &amp;(impl Fs + FsLink)) {  // Correct
 </span><span class="boring">fn main() {
 </span>// Our design
 pub trait FsWrite: Send + Sync {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
 }
 
 // What users might expect (std::io::Write pattern)
 pub trait FsWrite {
-    fn write(&amp;mut self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn write(&amp;mut self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <p><strong>Why we chose this (ADR-023):</strong></p>
@@ -343,11 +343,11 @@ pub trait Layer&lt;B: Fs&gt; {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Current
-fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
 
 // Better
 #[must_use]
-fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
 <span class="boring">}</span></code></pre>
 <p><strong>Impact:</strong> Users might accidentally ignore errors.</p>
 <p><strong>Fix:</strong> Add <code>#[must_use]</code> to all <code>Result</code>-returning methods, or use <code>#[must_use]</code> on the trait itself.</p>
@@ -411,8 +411,8 @@ let quota = QuotaLayer::builder()
 <p><strong>Mitigation:</strong> Clear error messages and documentation.</p>
 <hr>
 <h2 id="-non-issues-were-doing-it-right"><a class="header" href="#-non-issues-were-doing-it-right">✅ Non-Issues (We’re Doing It Right)</a></h2>
-<h3 id="10-impl-asrefpath-everywhere"><a class="header" href="#10-impl-asrefpath-everywhere">10. <code>impl AsRef&lt;Path&gt;</code> Everywhere</a></h3>
-<p>✅ Matches <code>std::fs</code> conventions. Idiomatic.</p>
+<h3 id="10-object-safe-path-parameters"><a class="header" href="#10-object-safe-path-parameters">10. Object-Safe Path Parameters</a></h3>
+<p>✅ Core traits use <code>&amp;Path</code>; ergonomics come from <code>FileStorage</code>/<code>FsExt</code>.</p>
 <h3 id="11-send--sync-requirements"><a class="header" href="#11-send--sync-requirements">11. <code>Send + Sync</code> Requirements</a></h3>
 <p>✅ Standard for thread-safe abstractions. Enables use across async boundaries.</p>
 <h3 id="12-feature-gated-backends"><a class="header" href="#12-feature-gated-backends">12. Feature-Gated Backends</a></h3>

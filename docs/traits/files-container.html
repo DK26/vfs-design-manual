@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -189,11 +189,13 @@
 <li><strong><code>B</code></strong> - Backend type (generic, zero-cost)</li>
 <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
 </ul>
+<p>It is the intended application-facing API: std::fs-style paths with object-safe core traits under the hood.</p>
 <p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in.</p>
-<p><strong>It does TWO things:</strong></p>
+<p><strong>It does THREE things:</strong></p>
 <ol>
 <li>Ergonomics (std::fs-aligned API)</li>
 <li>Optional type-safety via marker types</li>
+<li>Centralized path resolution for virtual backends (symlink-aware normalization)</li>
 </ol>
 <p>All policy (limits, feature gates, logging) is handled by middleware, not FileStorage.</p>
 <hr>
@@ -202,7 +204,7 @@
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, FileStorage};
 
-// Simple: just ergonomics (type inferred)
+// Simple: ergonomics + path resolution (type inferred)
 let fs = FileStorage::new(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
 <p>With middleware (layer-based):</p>
@@ -315,6 +317,7 @@ fn save_document(fs: &amp;UserDataFs, doc: &amp;Document) { ... }
 </tbody>
 </table>
 </div>
+<p>When the backend implements extended traits (e.g., <code>FsLink</code>, <code>FsInode</code>, <code>FsHandles</code>), FileStorage forwards those methods too and keeps the same <code>impl AsRef&lt;Path&gt;</code> ergonomics for path parameters.</p>
 <hr>
 <h2 id="what-filestorage-does-not-do"><a class="header" href="#what-filestorage-does-not-do">What FileStorage Does NOT Do</a></h2>
 <div class="table-wrapper">
@@ -326,11 +329,13 @@ fn save_document(fs: &amp;UserDataFs, doc: &amp;Document) { ... }
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code></td></tr>
 <tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code></td></tr>
 <tr><td>Audit logging</td><td><code>Tracing&lt;B&gt;</code></td></tr>
-<tr><td>Path containment</td><td>Backend-specific (VRootFsBackend)</td></tr>
+<tr><td>Path containment</td><td>PathFilter middleware or VRootFsBackend containment</td></tr>
 </tbody>
 </table>
 </div>
-<p>FileStorage is <strong>purely ergonomic</strong>. If you need policy, compose middleware.</p>
+<p>FileStorage is <strong>not a policy layer</strong>. If you need policy, compose middleware.</p>
+<p>It is also the <strong>ergonomic path layer</strong>: its methods accept <code>impl AsRef&lt;Path&gt;</code> and forward to the core object-safe traits that take <code>&amp;Path</code>.</p>
+<p>For virtual backends, FileStorage performs symlink-aware path resolution before delegating so normalization is consistent across backends. Backends that wrap a real filesystem (e.g., <code>VRootFsBackend</code>) implement <code>SelfResolving</code> to skip this resolution and let the OS handle it (with strict containment on that backend).</p>
 <hr>
 <h2 id="filestorage-implementation"><a class="header" href="#filestorage-implementation">FileStorage Implementation</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -396,15 +401,16 @@ type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
 <p>If you don’t need the wrapper, use backends directly:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, Fs};
+</span>use anyfs::{MemoryBackend, QuotaLayer, FileStorage};
 
 let backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build());
 
-// Use Fs trait methods directly
-backend.write("/file.txt", b"data")?;
+// Use FileStorage for std::fs-style paths
+let fs = FileStorage::new(backend);
+fs.write("/file.txt", b"data")?;
 <span class="boring">}</span></code></pre>
 <p><code>FileStorage&lt;B, M&gt;</code> is part of the <code>anyfs</code> crate, not a separate crate.</p>
 

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -314,11 +314,12 @@ RateLimitLayer::builder()
 <h2 id="dryrun-methods"><a class="header" href="#dryrun-methods">DryRun Methods</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let mut dry_run = DryRun::new(backend);
+</span>let dry_run = DryRun::new(backend);
+let fs = FileStorage::new(dry_run);
 
 // Read operations execute normally
 // Write operations are logged but not executed
-dry_run.write("/file.txt", b"data")?;  // Logged, returns Ok
+fs.write("/file.txt", b"data")?;  // Logged, returns Ok
 
 // Inspect logged operations
 let ops = dry_run.operations();        // -&gt; &amp;[Operation]
@@ -333,6 +334,18 @@ CacheLayer::builder()
     .max_entries(1000)                          // LRU cache size
     .max_entry_size(1024 * 1024)               // 1MB max per entry
     .ttl(std::time::Duration::from_secs(60))   // Expiration
+    .build()
+    .layer(backend)
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="indexlayer-methods-post-v1"><a class="header" href="#indexlayer-methods-post-v1">IndexLayer Methods (Post-v1)</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Builder pattern (required - set index path)
+IndexLayer::builder()
+    .index_file("index.db")             // Sidecar index file (SQLite default)
+    .consistency(IndexConsistency::Strict)
+    .track_reads(false)                 // Optional
     .build()
     .layer(backend)
 <span class="boring">}</span></code></pre>
@@ -368,6 +381,7 @@ if fs.is_dir("/path")? { ... }
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="file-operations"><a class="header" href="#file-operations">File Operations</a></h2>
+<p>Examples below assume <code>FileStorage</code> (std::fs-style paths). If you call core trait methods directly, pass <code>&amp;Path</code>.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Check existence
@@ -480,21 +494,24 @@ let clean = normalize("//foo///bar//");  // -&gt; "/foo/bar"
 <p>Backends implementing <code>FsInode</code> track inodes internally for hardlink support and FUSE mounting:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Convert between paths and inodes
-let inode: u64 = backend.path_to_inode("/some/path")?;
-let path: PathBuf = backend.inode_to_path(inode)?;
+</span>use anyfs::FileStorage;
+
+// Convert between paths and inodes
+let fs = FileStorage::new(backend);
+let inode: u64 = fs.path_to_inode("/some/path")?;
+let path: PathBuf = fs.inode_to_path(inode)?;
 
 // Lookup child by name within a directory (FUSE-style)
-let root_inode = backend.path_to_inode("/")?;
-let child_inode = backend.lookup(root_inode, "filename.txt")?;
+let root_inode = fs.path_to_inode("/")?;
+let child_inode = fs.lookup(root_inode, "filename.txt")?;
 
 // Get metadata by inode (avoids path resolution)
-let meta = backend.metadata_by_inode(inode)?;
+let meta = fs.metadata_by_inode(inode)?;
 
 // Hardlinks share the same inode
-backend.hard_link("/original", "/link")?;
-let ino1 = backend.path_to_inode("/original")?;
-let ino2 = backend.path_to_inode("/link")?;
+fs.hard_link("/original", "/link")?;
+let ino1 = fs.path_to_inode("/original")?;
+let ino2 = fs.path_to_inode("/link")?;
 assert_eq!(ino1, ino2);  // Same inode!
 <span class="boring">}</span></code></pre>
 <p><strong>Inode sources by backend:</strong></p>

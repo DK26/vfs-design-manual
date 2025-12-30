@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -214,7 +214,7 @@
 <tbody>
 <tr><td>Multi-tenant isolation</td><td>Separate backend instances per tenant</td></tr>
 <tr><td>Portability</td><td>SQLite backend: tenant data = single <code>.db</code> file</td></tr>
-<tr><td>Security</td><td>Restrictions disables dangerous features by default</td></tr>
+<tr><td>Security</td><td>Restrictions blocks risky operations when composed</td></tr>
 <tr><td>Resource control</td><td>Quota enforces quotas</td></tr>
 <tr><td>Audit compliance</td><td>Tracing records all operations</td></tr>
 <tr><td>Custom storage</td><td>Implement Fs for any medium</td></tr>
@@ -243,7 +243,7 @@
 <p><strong>std::fs alignment</strong></p>
 <ul>
 <li>Familiar method names</li>
-<li><code>impl AsRef&lt;Path&gt;</code> everywhere</li>
+<li>Core traits use <code>&amp;Path</code>; <code>FileStorage</code>/<code>FsExt</code> accept <code>impl AsRef&lt;Path&gt;</code> for ergonomics</li>
 </ul>
 </li>
 </ul>
@@ -282,7 +282,7 @@ fs.write("/documents/hello.txt", b"Hello!")?;
 </table>
 </div>
 <hr>
-<p>For details, see <code>book/src/architecture/design-overview.md</code>.</p>
+<p>For details, see <a href="../architecture/design-overview.html">Design Overview</a>.</p>
 
                     </main>
 

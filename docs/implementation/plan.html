@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -436,7 +436,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 </ul>
 </li>
 <li><code>BackendStack</code> builder for fluent middleware composition</li>
-<li>Accepts <code>impl AsRef&lt;Path&gt;</code> for convenience</li>
+<li>Accepts <code>impl AsRef&lt;Path&gt;</code> in <code>FileStorage</code>/<code>FsExt</code> (core traits use <code>&amp;Path</code>)</li>
 <li>Delegates all operations to wrapped backend</li>
 </ul>
 <p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in.</p>
@@ -529,16 +529,16 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 </span>#[test]
 fn no_panic_on_missing_file() {
     let backend = create_backend();
-    let result = backend.read("/nonexistent");
+    let result = backend.read(std::path::Path::new("/nonexistent"));
     assert!(matches!(result, Err(FsError::NotFound { .. })));
 }
 
 #[test]
 fn no_panic_on_invalid_operation() {
     let backend = create_backend();
-    backend.write("/file.txt", b"data").unwrap();
+    backend.write(std::path::Path::new("/file.txt"), b"data").unwrap();
     // Try to read directory on a file
-    let result = backend.read_dir("/file.txt");
+    let result = backend.read_dir(std::path::Path::new("/file.txt"));
     assert!(matches!(result, Err(FsError::NotADirectory { .. })));
 }
 <span class="boring">}</span></code></pre>
@@ -549,7 +549,7 @@ fn no_panic_on_invalid_operation() {
 #[wasm_bindgen_test]
 fn memory_backend_works_in_wasm() {
     let backend = MemoryBackend::new();
-    backend.write("/test.txt", b"hello").unwrap();
+    backend.write(std::path::Path::new("/test.txt"), b"hello").unwrap();
     // Should not panic
 }
 <span class="boring">}</span></code></pre>
@@ -607,6 +607,10 @@ strategy:
 <li>Compression middleware</li>
 <li><code>no_std</code> support (learned from <code>vfs</code> #38)</li>
 <li>Batch operations for performance (learned from <code>agentfs</code> #130)</li>
+<li>URL-based backend registry helper (e.g., <code>sqlite://</code>, <code>mem://</code>)</li>
+<li>Copy-on-write overlay variant (Afero-style <code>CopyOnWriteFs</code>)</li>
+<li>Archive backends (zip/tar) as separate crates</li>
+<li>Indexing middleware (primary) with sidecar SQLite catalog and future pluggable engines</li>
 <li>Companion shell (<code>anyfs-shell</code>) for interactive exploration of backends and middleware</li>
 </ul>
 <h3 id="anyfs-shell---local-companion-shell"><a class="header" href="#anyfs-shell---local-companion-shell"><code>anyfs-shell</code> - Local Companion Shell</a></h3>
@@ -870,7 +874,7 @@ let remote = RemoteBackend::connect("https://api.yourservice.com")
 
 // Use like any other backend
 let fs = FileStorage::new(remote);
-fs.write("/documents/report.pdf", data)?;
+fs.write(std::path::Path::new("/documents/report.pdf"), data)?;
 <span class="boring">}</span></code></pre>
 <p><strong>Combined with FUSE for transparent mount:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

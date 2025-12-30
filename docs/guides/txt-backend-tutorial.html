@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -436,7 +436,7 @@ impl TxtBackend {
 </span>use anyfs_backend::{FsRead, FsError, Metadata, FileType};
 
 impl FsRead for TxtBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
         let entries = self.entries.read().unwrap();
 
@@ -450,7 +450,7 @@ impl FsRead for TxtBackend {
         Ok(entry.content.clone())
     }
 
-    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, FsError&gt; {
+    fn read_to_string(&amp;self, path: &amp;Path) -&gt; Result&lt;String, FsError&gt; {
         let bytes = self.read(path.as_ref())?;
         String::from_utf8(bytes)
             .map_err(|_| FsError::InvalidData {
@@ -459,7 +459,7 @@ impl FsRead for TxtBackend {
             })
     }
 
-    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read_range(&amp;self, path: &amp;Path, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let content = self.read(path)?;
         let start = offset as usize;
 
@@ -471,13 +471,13 @@ impl FsRead for TxtBackend {
         Ok(content[start..end].to_vec())
     }
 
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
         let path = path.as_ref();
         let entries = self.entries.read().unwrap();
         Ok(entries.contains_key(path))
     }
 
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         let path = path.as_ref();
         let entries = self.entries.read().unwrap();
 
@@ -495,7 +495,7 @@ impl FsRead for TxtBackend {
         })
     }
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
         let content = self.read(path)?;
         Ok(Box::new(std::io::Cursor::new(content)))
     }
@@ -509,12 +509,13 @@ impl FsRead for TxtBackend {
 </span>use anyfs_backend::FsWrite;
 
 impl FsWrite for TxtBackend {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
-            if parent != Path::new("/") &amp;&amp; parent != Path::new("") {
+            let parent_str = parent.to_string_lossy();
+            if parent_str != "/" &amp;&amp; !parent_str.is_empty() {
                 let entries = self.entries.read().unwrap();
                 if !entries.contains_key(parent) {
                     drop(entries);
@@ -544,7 +545,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn append(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn append(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -563,7 +564,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn remove_file(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_file(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -582,7 +583,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn rename(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn rename(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let from = from.as_ref().to_path_buf();
         let to = to.as_ref().to_path_buf();
 
@@ -600,7 +601,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn copy(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn copy(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let from = from.as_ref().to_path_buf();
         let to = to.as_ref().to_path_buf();
 
@@ -627,7 +628,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn truncate(&amp;self, path: impl AsRef&lt;Path&gt;, size: u64) -&gt; Result&lt;(), FsError&gt; {
+    fn truncate(&amp;self, path: &amp;Path, size: u64) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
         let mut entries = self.entries.write().unwrap();
 
@@ -646,7 +647,7 @@ impl FsWrite for TxtBackend {
         Ok(())
     }
 
-    fn open_write(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
+    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
         // For simplicity, we buffer writes and apply on drop
         // A real implementation would be more sophisticated
         let path = path.as_ref().to_path_buf();
@@ -702,7 +703,7 @@ impl Drop for TxtFileWriter {
 </span>use anyfs_backend::{FsDir, DirEntry};
 
 impl FsDir for TxtBackend {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt; {
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt; {
         let path = path.as_ref().to_path_buf();
         let entries = self.entries.read().unwrap();
 
@@ -745,12 +746,13 @@ impl FsDir for TxtBackend {
         Ok(ReadDirIter::new(children.into_iter().map(Ok)))
     }
 
-    fn create_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn create_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Check parent exists
         if let Some(parent) = path.parent() {
-            if parent != Path::new("/") &amp;&amp; parent != Path::new("") {
+            let parent_str = parent.to_string_lossy();
+            if parent_str != "/" &amp;&amp; !parent_str.is_empty() {
                 let entries = self.entries.read().unwrap();
                 let parent_entry = entries.get(parent)
                     .ok_or_else(|| FsError::NotFound {
@@ -780,7 +782,7 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn create_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn create_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Build list of directories to create
@@ -798,7 +800,7 @@ impl FsDir for TxtBackend {
             to_create.push(current.clone());
 
             match current.parent() {
-                Some(parent) if parent != Path::new("") =&gt; {
+                Some(parent) if !parent.as_os_str().is_empty() =&gt; {
                     current = parent.to_path_buf();
                 }
                 _ =&gt; break,
@@ -818,11 +820,11 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn remove_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Can't remove root
-        if path == Path::new("/") {
+        if path.to_string_lossy() == "/" {
             return Err(FsError::PermissionDenied {
                 path,
                 operation: "remove root directory"
@@ -858,11 +860,11 @@ impl FsDir for TxtBackend {
         Ok(())
     }
 
-    fn remove_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
         // Can't remove root
-        if path == Path::new("/") {
+        if path.to_string_lossy() == "/" {
             return Err(FsError::PermissionDenied {
                 path,
                 operation: "remove root directory"

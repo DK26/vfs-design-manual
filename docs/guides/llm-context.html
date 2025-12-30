@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,64 +209,64 @@ use std::path::Path;
 pub struct MyBackend { /* your storage */ }
 
 impl FsRead for MyBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         todo!("return file contents")
     }
-    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, FsError&gt; {
+    fn read_to_string(&amp;self, path: &amp;Path) -&gt; Result&lt;String, FsError&gt; {
         String::from_utf8(self.read(path)?).map_err(|e| FsError::Backend(e.to_string()))
     }
-    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read_range(&amp;self, path: &amp;Path, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         todo!("return slice of file")
     }
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
         todo!("check if path exists")
     }
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         todo!("return Metadata { inode, nlink, file_type, size, permissions, created, modified, accessed }")
     }
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
         Ok(Box::new(std::io::Cursor::new(self.read(path)?)))
     }
 }
 
 impl FsWrite for MyBackend {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         todo!("create or overwrite file")
     }
-    fn append(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn append(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         todo!("append to file")
     }
-    fn remove_file(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_file(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("delete file")
     }
-    fn rename(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn rename(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("move/rename")
     }
-    fn copy(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn copy(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("copy file")
     }
-    fn truncate(&amp;self, path: impl AsRef&lt;Path&gt;, size: u64) -&gt; Result&lt;(), FsError&gt; {
+    fn truncate(&amp;self, path: &amp;Path, size: u64) -&gt; Result&lt;(), FsError&gt; {
         todo!("resize file")
     }
-    fn open_write(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
+    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
         todo!("return writer")
     }
 }
 
 impl FsDir for MyBackend {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt; {
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt; {
         todo!("return ReadDirIter::new(entries.into_iter().map(Ok))")
     }
-    fn create_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn create_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("create single directory")
     }
-    fn create_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn create_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("create directory and parents")
     }
-    fn remove_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("remove empty directory")
     }
-    fn remove_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("remove directory recursively")
     }
 }
@@ -276,22 +276,22 @@ impl FsDir for MyBackend {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsLink for MyBackend {
-    fn symlink(&amp;self, target: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn symlink(&amp;self, target: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("create symlink pointing to target")
     }
-    fn hard_link(&amp;self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn hard_link(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("create hard link (same inode)")
     }
-    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
+    fn read_link(&amp;self, path: &amp;Path) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
         todo!("return symlink target")
     }
-    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt; {
+    fn symlink_metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
         todo!("metadata without following symlink")
     }
 }
 
 impl FsPermissions for MyBackend {
-    fn set_permissions(&amp;self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), FsError&gt; {
+    fn set_permissions(&amp;self, path: &amp;Path, perm: Permissions) -&gt; Result&lt;(), FsError&gt; {
         todo!("set file permissions")
     }
 }
@@ -300,7 +300,7 @@ impl FsSync for MyBackend {
     fn sync(&amp;self) -&gt; Result&lt;(), FsError&gt; {
         todo!("flush all writes to storage")
     }
-    fn fsync(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn fsync(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         todo!("flush writes for one file")
     }
 }
@@ -316,7 +316,7 @@ impl FsStats for MyBackend {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsInode for MyBackend {
-    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, FsError&gt; {
+    fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt; {
         todo!("return unique inode for path")
     }
     fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
@@ -352,7 +352,7 @@ impl&lt;B&gt; MyMiddleware&lt;B&gt; {
 
 // Implement each trait, delegating or intercepting as needed
 impl&lt;B: FsRead&gt; FsRead for MyMiddleware&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         // INTERCEPT: add your logic
         let data = self.inner.read(path)?;  // DELEGATE
         // INTERCEPT: modify result
@@ -360,7 +360,7 @@ impl&lt;B: FsRead&gt; FsRead for MyMiddleware&lt;B&gt; {
     }
 
     // For passthrough methods, just delegate:
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt; {
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
         self.inner.exists(path)
     }
     // ... implement all FsRead methods
@@ -404,10 +404,10 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: FsWrite&gt; FsWrite for ReadOnly&lt;B&gt; {
-    fn write(&amp;self, _: impl AsRef&lt;Path&gt;, _: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, _: &amp;Path, _: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         Err(FsError::ReadOnly { operation: "write" })
     }
-    fn remove_file(&amp;self, _: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt; {
+    fn remove_file(&amp;self, _: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
         Err(FsError::ReadOnly { operation: "remove_file" })
     }
     // ... all write methods return ReadOnly error
@@ -417,14 +417,14 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: FsRead&gt; FsRead for Encrypted&lt;B&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let encrypted = self.inner.read(path)?;
         Ok(self.decrypt(&amp;encrypted))
     }
 }
 
 impl&lt;B: FsWrite&gt; FsWrite for Encrypted&lt;B&gt; {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let encrypted = self.encrypt(data);
         self.inner.write(path, &amp;encrypted)
     }
@@ -439,7 +439,7 @@ impl&lt;B: FsWrite&gt; FsWrite for Encrypted&lt;B&gt; {
 pub struct ExternalCompat&lt;F&gt;(F);
 
 impl&lt;F: external::FileSystem&gt; FsRead for ExternalCompat&lt;F&gt; {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         self.0.read_file(path).map_err(|e| FsError::Backend(e.to_string()))
     }
     // Map each method, converting errors

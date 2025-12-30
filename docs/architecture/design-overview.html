@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -242,6 +242,7 @@
 <hr>
 <h2 id="design-principle-predictable-defaults-opt-in-security"><a class="header" href="#design-principle-predictable-defaults-opt-in-security">Design Principle: Predictable Defaults, Opt-in Security</a></h2>
 <p><strong>The <code>Fs</code> traits mimic <code>std::fs</code> with predictable, permissive defaults.</strong></p>
+<p>See ADR-027 for the decision rationale.</p>
 <p>The traits are low-level interfaces that any backend can implement - memory, SQLite, real filesystem, network storage, etc. To maintain consistent behavior across all backends:</p>
 <ul>
 <li>All operations work by default (<code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code>)</li>
@@ -319,11 +320,16 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>, <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a utilities crate.</li>
 <li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without changing sync traits.</li>
 <li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to demonstrate middleware and backend neutrality (navigation and file management only, not full bash scripting).</li>
+<li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a specialized <code>Overlay</code> variant.</li>
+<li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code> (inspired by PyFilesystem/fsspec).</li>
+<li>Indexing middleware (<code>Indexing&lt;B&gt;</code> + <code>IndexLayer</code>) with pluggable index engines (SQLite default). See <a href="./indexed-realfs-backend.html">Indexing Middleware</a>.</li>
 </ul>
 <p><strong>Defer (valuable, but needs data or wider review):</strong></p>
 <ul>
 <li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style block cache).</li>
 <li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection (symlink control, case sensitivity, max path length).</li>
+<li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code (System.IO.Abstractions-style).</li>
+<li>Retry/timeout middleware for remote backends (when network backends are real).</li>
 </ul>
 <p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
 <ul>
@@ -332,7 +338,7 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <p>Detailed rationale lives in <code>src/comparisons/prior-art-analysis.md</code>.</p>
 <hr>
 <h2 id="performance-strategic-boxing-adr-025"><a class="header" href="#performance-strategic-boxing-adr-025">Performance: Strategic Boxing (ADR-025)</a></h2>
-<p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path, box at boundaries where flexibility is needed</strong>.</p>
+<p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path, box at boundaries where flexibility is needed</strong>. We avoid heap allocations and dynamic dispatch unless they add flexibility without meaningful performance impact.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -346,6 +352,7 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 </tbody>
 </table>
 </div>
+<p><strong>Hot-loop guidance:</strong> If you open many small files and care about micro-overhead (especially on virtual backends), prefer <code>read()</code>/<code>write()</code> or the typed streaming extension (<code>FsReadTyped</code>/<code>FsWriteTyped</code>) when the backend type is known. These are the zero-allocation fast paths.</p>
 <p><strong>Why box streams and iterators?</strong></p>
 <ol>
 <li>Middleware needs to wrap them (<code>QuotaWriter</code> counts bytes, <code>PathFilter</code> filters entries)</li>
@@ -362,6 +369,7 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <hr>
 <h2 id="trait-architecture-in-anyfs-backend"><a class="header" href="#trait-architecture-in-anyfs-backend">Trait Architecture (in <code>anyfs-backend</code>)</a></h2>
 <p>AnyFS uses <strong>layered traits</strong> for maximum flexibility with minimal complexity.</p>
+<p>See ADR-030 for the rationale behind the layered hierarchy.</p>
 <pre><code>                        FsPosix
                            │
             ┌──────────────┼──────────────┐
@@ -395,25 +403,25 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
-    fn read_to_string(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;String, FsError&gt;;
-    fn read_range(&amp;self, path: impl AsRef&lt;Path&gt;, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
-    fn exists(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt;;
-    fn metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt;;
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+    fn read_to_string(&amp;self, path: &amp;Path) -&gt; Result&lt;String, FsError&gt;;
+    fn read_range(&amp;self, path: &amp;Path, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt;;
+    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <h3 id="fswrite---write-operations"><a class="header" href="#fswrite---write-operations">FsWrite - Write Operations</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsWrite: Send + Sync {
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
-    fn append(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
-    fn remove_file(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn rename(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn copy(&amp;self, from: impl AsRef&lt;Path&gt;, to: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn truncate(&amp;self, path: impl AsRef&lt;Path&gt;, size: u64) -&gt; Result&lt;(), FsError&gt;;
-    fn open_write(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn append(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn remove_file(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn rename(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn copy(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn truncate(&amp;self, path: &amp;Path, size: u64) -&gt; Result&lt;(), FsError&gt;;
+    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <blockquote>
@@ -423,11 +431,11 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsDir: Send + Sync {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt;;
-    fn create_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn create_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn remove_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn remove_dir_all(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
+    fn create_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn create_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn remove_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -435,19 +443,19 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsLink: Send + Sync {
-    fn symlink(&amp;self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn hard_link(&amp;self, original: impl AsRef&lt;Path&gt;, link: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
-    fn read_link(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt;;
-    fn symlink_metadata(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Metadata, FsError&gt;;
+    fn symlink(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn hard_link(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
+    fn read_link(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt;;
+    fn symlink_metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 
 pub trait FsPermissions: Send + Sync {
-    fn set_permissions(&amp;self, path: impl AsRef&lt;Path&gt;, perm: Permissions) -&gt; Result&lt;(), FsError&gt;;
+    fn set_permissions(&amp;self, path: &amp;Path, perm: Permissions) -&gt; Result&lt;(), FsError&gt;;
 }
 
 pub trait FsSync: Send + Sync {
     fn sync(&amp;self) -&gt; Result&lt;(), FsError&gt;;
-    fn fsync(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;(), FsError&gt;;
+    fn fsync(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
 }
 
 pub trait FsStats: Send + Sync {
@@ -459,7 +467,7 @@ pub trait FsStats: Send + Sync {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsInode: Send {
-    fn path_to_inode(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;u64, FsError&gt;;
+    fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt;;
     fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, FsError&gt;;
     fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, FsError&gt;;
     fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt;;
@@ -470,7 +478,7 @@ pub trait FsStats: Send + Sync {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsHandles: Send + Sync {
-    fn open(&amp;self, path: impl AsRef&lt;Path&gt;, flags: OpenFlags) -&gt; Result&lt;Handle, FsError&gt;;
+    fn open(&amp;self, path: &amp;Path, flags: OpenFlags) -&gt; Result&lt;Handle, FsError&gt;;
     fn read_at(&amp;self, handle: Handle, buf: &amp;mut [u8], offset: u64) -&gt; Result&lt;usize, FsError&gt;;
     fn write_at(&amp;self, handle: Handle, data: &amp;[u8], offset: u64) -&gt; Result&lt;usize, FsError&gt;;
     fn close(&amp;self, handle: Handle) -&gt; Result&lt;(), FsError&gt;;
@@ -483,10 +491,10 @@ pub trait FsLock: Send + Sync {
 }
 
 pub trait FsXattr: Send + Sync {
-    fn get_xattr(&amp;self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
-    fn set_xattr(&amp;self, path: impl AsRef&lt;Path&gt;, name: &amp;str, value: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
-    fn remove_xattr(&amp;self, path: impl AsRef&lt;Path&gt;, name: &amp;str) -&gt; Result&lt;(), FsError&gt;;
-    fn list_xattr(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;String&gt;, FsError&gt;;
+    fn get_xattr(&amp;self, path: &amp;Path, name: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+    fn set_xattr(&amp;self, path: &amp;Path, name: &amp;str, value: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn remove_xattr(&amp;self, path: &amp;Path, name: &amp;str) -&gt; Result&lt;(), FsError&gt;;
+    fn list_xattr(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;String&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -511,12 +519,25 @@ impl&lt;T: FsFuse + FsHandles + FsLock + FsXattr&gt; FsPosix for T {}
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="usage-examples"><a class="header" href="#usage-examples">Usage Examples</a></h2>
-<h3 id="most-users-just-fs"><a class="header" href="#most-users-just-fs">Most Users: Just <code>Fs</code></a></h3>
+<p>Application code should use <code>FileStorage</code> for the std::fs-style DX (string paths). Core trait examples are shown separately for implementers and generic code.</p>
+<h3 id="most-users-filestorage"><a class="header" href="#most-users-filestorage">Most Users: FileStorage</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::Fs;
+</span>use anyfs::{FileStorage, MemoryBackend};
 
-fn process_files(fs: &amp;impl Fs) {
+fn process_files() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let fs = FileStorage::new(MemoryBackend::new());
+    let data = fs.read("/input.txt")?;
+    fs.write("/output.txt", &amp;processed(data))?;
+    Ok(())
+}
+<span class="boring">}</span></code></pre>
+<h3 id="generic-code-over-core-traits"><a class="header" href="#generic-code-over-core-traits">Generic Code over Core Traits</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{FileStorage, Fs};
+
+fn process_files&lt;B: Fs&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     let data = fs.read("/input.txt")?;
     fs.write("/output.txt", &amp;processed(data))?;
 }
@@ -524,9 +545,9 @@ fn process_files(fs: &amp;impl Fs) {
 <h3 id="need-links-add-the-trait"><a class="header" href="#need-links-add-the-trait">Need Links? Add the Trait</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{Fs, FsLink};
+</span>use anyfs::{FileStorage, Fs, FsLink};
 
-fn with_symlinks(fs: &amp;(impl Fs + FsLink)) {
+fn with_symlinks&lt;B: Fs + FsLink&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     fs.write("/target.txt", b"content")?;
     fs.symlink("/target.txt", "/link.txt")?;
 }
@@ -544,9 +565,9 @@ fn mount_filesystem(fs: impl FsFuse) {
 <h3 id="full-posix-application"><a class="header" href="#full-posix-application">Full POSIX Application</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::FsPosix;
+</span>use anyfs::{FileStorage, FsPosix};
 
-fn database_app(fs: &amp;impl FsPosix) {
+fn database_app&lt;B: FsPosix&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     let handle = fs.open("/data.db", OpenFlags::READ_WRITE)?;
     fs.lock(handle, LockType::Exclusive)?;
     fs.write_at(handle, data, offset)?;
@@ -770,13 +791,14 @@ let backend = PathFilterLayer::builder()
 <p>Prevents all write operations. Useful for publishing immutable data.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, ReadOnly};
+</span>use anyfs::{SqliteBackend, ReadOnly, FileStorage};
 
 // Wrap any backend to make it read-only
 let backend = ReadOnly::new(SqliteBackend::open("published.db")?);
+let fs = FileStorage::new(backend);
 
-backend.read("/doc.txt")?;     // OK
-backend.write("/doc.txt", b"x"); // Error: FsError::ReadOnly
+fs.read("/doc.txt")?;     // OK
+fs.write("/doc.txt", b"x"); // Error: FsError::ReadOnly
 <span class="boring">}</span></code></pre>
 <h3 id="ratelimit"><a class="header" href="#ratelimit">RateLimit<b></b></a></h3>
 <p>Limits operations per second. Prevents runaway agents.</p>
@@ -798,22 +820,21 @@ let backend = RateLimitLayer::builder()
 <p>Logs operations without executing writes. Great for testing and debugging.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, DryRun};
+</span>use anyfs::{MemoryBackend, DryRun, FileStorage};
 
 let backend = DryRun::new(MemoryBackend::new());
+let fs = FileStorage::new(backend);
 
-backend.write("/test.txt", b"hello")?;  // Logged but not written
-backend.read("/test.txt");               // Error: file doesn't exist
+fs.write("/test.txt", b"hello")?;  // Logged but not written
+let _ = fs.read("/test.txt");       // Error: file doesn't exist
 
-// Get recorded operations
-let ops = backend.operations();
-// [Operation::Write { path: "/test.txt", size: 5 }]
+// To inspect recorded operations, keep the DryRun handle before wrapping it.
 <span class="boring">}</span></code></pre>
 <h3 id="cache"><a class="header" href="#cache">Cache<b></b></a></h3>
 <p>LRU cache for read operations. Essential for slow backends (S3, network).</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{SqliteBackend, Cache};
+</span>use anyfs::{SqliteBackend, Cache, FileStorage};
 
 let backend = CacheLayer::builder()
     .max_size(100 * 1024 * 1024)      // 100 MB cache
@@ -821,12 +842,13 @@ let backend = CacheLayer::builder()
     .ttl(Duration::from_secs(300))    // 5 min TTL
     .build()
     .layer(SqliteBackend::open("data.db")?);
+let fs = FileStorage::new(backend);
 
 // First read: hits backend, caches result
-let data = backend.read("/file.txt")?;
+let data = fs.read("/file.txt")?;
 
 // Second read: served from cache (fast!)
-let data = backend.read("/file.txt")?;
+let data = fs.read("/file.txt")?;
 <span class="boring">}</span></code></pre>
 <h3 id="overlaybase-upper"><a class="header" href="#overlaybase-upper">Overlay&lt;Base, Upper&gt;</a></h3>
 <p>Union filesystem with a read-only base and writable upper layer. Like Docker.</p>
@@ -1033,18 +1055,18 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 <p><strong>Note:</strong> <code>sqlite</code> and <code>sqlite-cipher</code> features are mutually exclusive (both use rusqlite with different SQLite builds).</p>
 <hr>
 <h2 id="path-handling"><a class="header" href="#path-handling">Path Handling</a></h2>
-<p>All layers use <code>impl AsRef&lt;Path&gt;</code>, aligned with <code>std::fs</code>:</p>
+<p>Core traits take <code>&amp;Path</code> so they are object-safe (<code>dyn Fs</code> works). The ergonomic layer (<code>FileStorage</code> and <code>FsExt</code>) accepts <code>impl AsRef&lt;Path&gt;</code>:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// All of these work
+</span>// These work via FileStorage/FsExt
 fs.write("/file.txt", data)?;
 fs.write(String::from("/file.txt"), data)?;
-fs.write(Path::new("/file.txt"), data)?;
 fs.write(PathBuf::from("/file.txt"), data)?;
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="path-resolution"><a class="header" href="#path-resolution">Path Resolution</a></h2>
 <p>Path resolution (walking directory structure, following symlinks) operates on the <strong><code>Fs</code> abstraction</strong>, not reimplemented per-backend.</p>
+<p>See ADR-029 for the path-resolution decision.</p>
 <h3 id="why-abstract-path-resolution"><a class="header" href="#why-abstract-path-resolution">Why Abstract Path Resolution?</a></h3>
 <p>We simulate inodes - that’s the whole point of virtualizing a filesystem. Path resolution must work on that abstraction:</p>
 <ul>
@@ -1199,7 +1221,7 @@ pub fn normalize(path: impl AsRef&lt;Path&gt;) -&gt; PathBuf;
 </span>use dunce::simplified;
 
 // \\?\C:\Users\foo\bar.txt → C:\Users\foo\bar.txt
-let path = simplified(Path::new(r"\\?\C:\Users\foo\bar.txt"));
+let path = simplified(r"\\?\C:\Users\foo\bar.txt");
 <span class="boring">}</span></code></pre>
 <p><strong>Why this matters for <code>soft_canonicalize</code>:</strong></p>
 <ul>
@@ -1223,6 +1245,7 @@ let path = simplified(Path::new(r"\\?\C:\Users\foo\bar.txt"));
 <hr>
 <h2 id="filesystem-semantics-linux-like-by-default"><a class="header" href="#filesystem-semantics-linux-like-by-default">Filesystem Semantics: Linux-like by Default</a></h2>
 <p><strong>Design principle:</strong> Simple, secure defaults. Don’t close doors for alternative semantics.</p>
+<p>See ADR-028 for the decision rationale.</p>
 <h3 id="default-behavior-built-in-backends"><a class="header" href="#default-behavior-built-in-backends">Default Behavior (Built-in Backends)</a></h3>
 <div class="table-wrapper">
 <table>
@@ -1242,8 +1265,11 @@ let path = simplified(Path::new(r"\\?\C:\Users\foo\bar.txt"));
 <p>The <code>Fs</code> trait doesn’t enforce filesystem semantics - backends decide their behavior:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Built-in backends: Linux-like
-let linux_fs = MemoryBackend::new();
+</span>use anyfs::{FileStorage, MemoryBackend};
+use std::path::Path;
+
+// Built-in backends: Linux-like
+let linux_fs = FileStorage::new(MemoryBackend::new());
 assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 
 // Someone wants NTFS-like behavior? User-implemented middleware or custom backend:
@@ -1253,7 +1279,7 @@ let ntfs_like = CaseInsensitive::new(           // (user-implemented middleware)
 
 // Or full custom implementation
 impl Fs for NtfsEmulatingBackend {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let normalized = self.case_fold(path);  // Case-insensitive lookup
         // ...
     }
@@ -1392,10 +1418,12 @@ impl&lt;B: Fs&gt; FsExt for B {
 </code></pre>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use bytes::Bytes;
+</span>use anyfs::{FileStorage, MemoryBackend};
+use bytes::Bytes;
 
 // With bytes feature, read returns Bytes (O(1) slicing)
-let data: Bytes = backend.read("/large-file.bin")?;
+let fs = FileStorage::new(MemoryBackend::new());
+let data: Bytes = fs.read("/large-file.bin")?;
 let slice = data.slice(1000..2000);  // Zero-copy!
 <span class="boring">}</span></code></pre>
 <p><strong>When to use:</strong></p>
@@ -1613,7 +1641,7 @@ impl From&lt;std::io::Error&gt; for FsError {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// This works identically on Windows, Linux, macOS, and WASM
-let fs = MemoryBackend::new();
+let fs = FileStorage::new(MemoryBackend::new());
 fs.symlink("/target", "/link")?;           // Just stores the link
 fs.set_permissions("/file", 0o755.into())?; // Just stores metadata
 <span class="boring">}</span></code></pre>

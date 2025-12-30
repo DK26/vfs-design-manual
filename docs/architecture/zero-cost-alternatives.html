@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,18 +184,18 @@
 <p>This document analyzes alternatives to dynamic dispatch (<code>Box&lt;dyn Trait&gt;</code>) for streaming I/O and directory iteration.</p>
 <blockquote>
 <p><strong>Decision:</strong> See <a href="./adrs.html#adr-025-strategic-boxing-tower-style">ADR-025: Strategic Boxing</a> for the formal decision.</p>
-<p><strong>TL;DR:</strong> We follow Tower/Axum’s approach - zero-cost on hot path (<code>read()</code>, <code>write()</code>), box at cold path boundaries (<code>open_read()</code>, <code>read_dir()</code>). The boxing cost (&lt;1% of I/O time) is negligible; the ergonomic benefits are substantial.</p>
+<p><strong>TL;DR:</strong> We follow Tower/Axum’s approach - zero-cost on hot path (<code>read()</code>, <code>write()</code>), box at cold path boundaries (<code>open_read()</code>, <code>read_dir()</code>). We avoid heap allocations and dynamic dispatch unless they buy flexibility with negligible performance impact.</p>
 </blockquote>
 <hr>
 <h2 id="current-design-dynamic-dispatch"><a class="header" href="#current-design-dynamic-dispatch">Current Design (Dynamic Dispatch)</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 
 pub trait FsDir: Send + Sync {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt;;
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
 }
 
 // Where ReadDirIter is:
@@ -209,13 +209,13 @@ pub struct ReadDirIter(Box&lt;dyn Iterator&lt;Item = Result&lt;DirEntry, FsError
 </span>pub trait FsRead: Send + Sync {
     type Reader: Read + Send;
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt;;
 }
 
 pub trait FsDir: Send + Sync {
     type DirIter: Iterator&lt;Item = Result&lt;DirEntry, FsError&gt;&gt; + Send;
 
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::DirIter, FsError&gt;;
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::DirIter, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <h3 id="implementation"><a class="header" href="#implementation">Implementation</a></h3>
@@ -224,7 +224,7 @@ pub trait FsDir: Send + Sync {
 </span>impl FsRead for MemoryBackend {
     type Reader = std::io::Cursor&lt;Vec&lt;u8&gt;&gt;;
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt; {
         let data = self.read(path)?;
         Ok(std::io::Cursor::new(data))
     }
@@ -233,7 +233,7 @@ pub trait FsDir: Send + Sync {
 impl FsDir for MemoryBackend {
     type DirIter = std::vec::IntoIter&lt;Result&lt;DirEntry, FsError&gt;&gt;;
 
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::DirIter, FsError&gt; {
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::DirIter, FsError&gt; {
         let entries = self.collect_entries(path)?;
         Ok(entries.into_iter())
     }
@@ -246,7 +246,7 @@ impl FsDir for MemoryBackend {
     // Must define our own Reader type that wraps B::Reader
     type Reader = QuotaReader&lt;B::Reader&gt;;
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt; {
         let inner = self.inner.open_read(path)?;
         Ok(QuotaReader::new(inner, self.usage.clone()))
     }
@@ -294,11 +294,11 @@ type FinalDirIter = QuotaIter&lt;PathFilterIter&lt;TracingIter&lt;IntoIter&lt;Re
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;impl Read + Send, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt;;
 }
 
 pub trait FsDir: Send + Sync {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;)
+    fn read_dir(&amp;self, path: &amp;Path)
         -&gt; Result&lt;impl Iterator&lt;Item = Result&lt;DirEntry, FsError&gt;&gt; + Send, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
@@ -307,14 +307,14 @@ pub trait FsDir: Send + Sync {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MemoryBackend {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;impl Read + Send, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt; {
         let data = self.read(path)?;
         Ok(std::io::Cursor::new(data))  // Returns Cursor&lt;Vec&lt;u8&gt;&gt;, but caller sees impl Read
     }
 }
 
 impl FsRead for SqliteBackend {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;impl Read + Send, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt; {
         Ok(SqliteReader::new(self.conn.clone(), path))  // Different type, same interface
     }
 }
@@ -323,7 +323,7 @@ impl FsRead for SqliteBackend {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: FsRead&gt; FsRead for Tracing&lt;B&gt; {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;impl Read + Send, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt; {
         let span = tracing::span!(Level::DEBUG, "open_read");
         let _guard = span.enter();
         self.inner.open_read(path)  // Just forward - return type is inferred
@@ -362,7 +362,7 @@ let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
 </span>pub trait FsRead: Send + Sync {
     type Reader&lt;'a&gt;: Read + Send where Self: 'a;
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader&lt;'_&gt;, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader&lt;'_&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <h3 id="use-case-zero-copy-reads"><a class="header" href="#use-case-zero-copy-reads">Use Case: Zero-Copy Reads</a></h3>
@@ -371,7 +371,7 @@ let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
 </span>impl FsRead for MemoryBackend {
     type Reader&lt;'a&gt; = &amp;'a [u8];  // Borrow directly from internal storage!
 
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader&lt;'_&gt;, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader&lt;'_&gt;, FsError&gt; {
         let data = self.storage.read().unwrap();
         let bytes = data.get(path.as_ref())
             .ok_or(FsError::NotFound { path: path.as_ref().to_path_buf() })?;
@@ -408,7 +408,7 @@ let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     /// Dynamic dispatch version (simple, flexible)
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 
 /// Extension trait for zero-cost static dispatch
@@ -416,12 +416,12 @@ pub trait FsReadTyped: FsRead {
     type Reader: Read + Send;
 
     /// Static dispatch version (zero-cost, less flexible)
-    fn open_read_typed(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader, FsError&gt;;
+    fn open_read_typed(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt;;
 }
 
 // Blanket impl for convenience when types align
 impl&lt;T: FsReadTyped&gt; FsRead for T {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt; {
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt; {
         Ok(Box::new(self.open_read_typed(path)?))
     }
 }
@@ -457,7 +457,7 @@ let reader: MemoryReader = fs.open_read_typed("/file.txt")?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsDir: Send + Sync {
-    fn for_each_entry&lt;F&gt;(&amp;self, path: impl AsRef&lt;Path&gt;, f: F) -&gt; Result&lt;(), FsError&gt;
+    fn for_each_entry&lt;F&gt;(&amp;self, path: &amp;Path, f: F) -&gt; Result&lt;(), FsError&gt;
     where
         F: FnMut(DirEntry) -&gt; ControlFlow&lt;(), ()&gt;;
 }
@@ -518,11 +518,11 @@ pub struct ReadDirIter {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 
 pub trait FsDir: Send + Sync {
-    fn read_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;ReadDirIter, FsError&gt;;
+    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <p><strong>Why:</strong></p>
@@ -532,13 +532,13 @@ pub trait FsDir: Send + Sync {
 <li><strong>Middleware simplicity</strong> - No wrapper types needed</li>
 <li><strong>Actual cost is low</strong> - One allocation per stream open, not per read</li>
 </ol>
-<h3 id="optional-static-dispatch-extension"><a class="header" href="#optional-static-dispatch-extension">Optional: Static Dispatch Extension</a></h3>
-<p>For performance-critical code, offer typed variants:</p>
+<h3 id="optional-static-dispatch-extension-fast-path"><a class="header" href="#optional-static-dispatch-extension-fast-path">Optional: Static Dispatch Extension (Fast Path)</a></h3>
+<p>For performance-critical code, offer typed variants. This is the <strong>first-class fast path</strong> for hot loops when the backend type is known:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsReadTyped: FsRead {
     type Reader: Read + Send;
-    fn open_read_typed(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self::Reader, FsError&gt;;
+    fn open_read_typed(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <h3 id="future-rpitit-when-object-safety-not-needed"><a class="header" href="#future-rpitit-when-object-safety-not-needed">Future: RPITIT When Object Safety Not Needed</a></h3>
@@ -546,7 +546,7 @@ pub trait FsDir: Send + Sync {
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsReadStatic: Send + Sync {
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;impl Read + Send, FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -609,7 +609,7 @@ pub trait FsDir: Send + Sync {
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../traits/layered-traits.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -623,7 +623,7 @@ pub trait FsDir: Send + Sync {
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../traits/layered-traits.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -323,16 +323,16 @@ let fs = FileStorage::new(backend);
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait Fs: Send + Sync {
-    fn read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
-    fn write(&amp;self, path: impl AsRef&lt;Path&gt;, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
-    fn open_read(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
-    fn open_write(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
+    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
+    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
     // ... methods aligned with std::fs
 }
 <span class="boring">}</span></code></pre>
 <p><strong>Design principles:</strong></p>
 <ul>
-<li><code>impl AsRef&lt;Path&gt;</code> for ergonomics (accepts <code>&amp;str</code>, <code>String</code>, <code>PathBuf</code>)</li>
+<li><code>&amp;Path</code> in core traits (object-safe); <code>FileStorage</code>/<code>FsExt</code> accept <code>impl AsRef&lt;Path&gt;</code> for ergonomics</li>
 <li>Aligned with <code>std::fs</code> naming</li>
 <li>Streaming I/O via <code>open_read</code>/<code>open_write</code></li>
 <li><code>Send</code> bound for async compatibility</li>
@@ -402,7 +402,7 @@ let fs = FileStorage::new(backend);
 <tr><td><strong>statfs</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
 <tr><td><strong>read_range</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
 <tr><td><strong>symlink_metadata</strong></td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Missing</td></tr>
-<tr><td>Path type</td><td style="text-align: center"><code>&amp;str</code></td><td style="text-align: center"><code>impl AsRef&lt;Path&gt;</code></td><td>Different</td></tr>
+<tr><td>Path type</td><td style="text-align: center"><code>&amp;str</code></td><td style="text-align: center"><code>&amp;Path</code> (core) + <code>impl AsRef&lt;Path&gt;</code> in ergonomic layer</td><td>Different</td></tr>
 <tr><td>Middleware</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td>Architectural</td></tr>
 </tbody>
 </table>
@@ -413,7 +413,7 @@ let fs = FileStorage::new(backend);
 <li><strong>No permissions</strong> - Our <code>Restrictions</code> middleware needs <code>set_permissions</code> to gate</li>
 <li><strong>No durability primitives</strong> - No <code>sync</code>/<code>fsync</code> for data integrity</li>
 <li><strong>No middleware pattern</strong> - Their <code>VfsPath</code> bakes in behaviors we want composable</li>
-<li><strong><code>&amp;str</code> paths</strong> - We prefer <code>impl AsRef&lt;Path&gt;</code> for ergonomics</li>
+<li><strong><code>&amp;str</code> paths</strong> - Core traits use <code>&amp;Path</code> for object safety; ergonomics come from <code>FileStorage</code>/<code>FsExt</code></li>
 </ol>
 <p><strong>Our trait is a strict superset.</strong> Everything <code>vfs</code> can do, we can do. The reverse is not true.</p>
 <h3 id="vfs-backends"><a class="header" href="#vfs-backends"><code>vfs</code> Backends</a></h3>

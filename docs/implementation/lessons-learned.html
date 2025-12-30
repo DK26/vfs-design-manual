@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-a990b1f1.js";
+            window.path_to_searchindex_js = "../searchindex-044386cd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-b1aa7698.js"></script>
+        <script src="../toc-30b1f61e.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -232,7 +232,7 @@ fn test_concurrent_create_dir_all() {
         let backend = backend.clone();
         std::thread::spawn(move || {
             let mut backend = backend.write().unwrap();
-            let _ = backend.create_dir_all("/a/b/c/d");
+            let _ = backend.create_dir_all(std::path::Path::new("/a/b/c/d"));
         })
     }).collect();
     for handle in handles {
@@ -295,9 +295,9 @@ let entry = self.entries.get(&amp;path)
 <p><strong>Root cause:</strong> Each backend implemented path handling differently.</p>
 <h3 id="anyfs-response-2"><a class="header" href="#anyfs-response-2">AnyFS Response</a></h3>
 <ul>
-<li><strong>Normalize paths in ONE place</strong> (FileStorage or dedicated normalizer)</li>
+<li><strong>Normalize paths in ONE place</strong> (FileStorage resolver for virtual backends; <code>SelfResolving</code> backends delegate to the OS)</li>
 <li><strong>Consistent semantics:</strong> always absolute, always <code>/</code> separator</li>
-<li><strong>Use <code>impl AsRef&lt;Path&gt;</code></strong> but normalize internally</li>
+<li><strong>Use <code>&amp;Path</code> in core traits</strong> for object safety; provide <code>impl AsRef&lt;Path&gt;</code> at the ergonomic layer (FileStorage/FsExt)</li>
 </ul>
 <p><strong>Required conformance tests:</strong></p>
 <div class="table-wrapper">
@@ -351,9 +351,9 @@ let entry = self.entries.get(&amp;path)
 <p><strong>Root cause:</strong> Symlinks are complex and were deferred indefinitely.</p>
 <h3 id="anyfs-response-4"><a class="header" href="#anyfs-response-4">AnyFS Response</a></h3>
 <ul>
-<li><strong>Symlinks are opt-in</strong> via <code>Restrictions</code> middleware</li>
-<li><strong>Default deny is correct</strong> - most use cases don’t need symlinks</li>
-<li><strong>When enabled, bound resolution depth</strong> (default: 40 hops)</li>
+<li><strong>Symlinks are supported by default</strong> - use <code>Restrictions</code> to deny creation when needed</li>
+<li><strong>Symlink following is the security control</strong> (virtual backends expose <code>set_follow_symlinks(false)</code>)</li>
+<li><strong>Bound resolution depth</strong> (default: 40 hops)</li>
 <li><strong><code>strict-path</code> prevents symlink escapes</strong> in <code>VRootFsBackend</code></li>
 </ul>
 <hr>
