@@ -358,6 +358,7 @@ let sandbox = MemoryBackend::new()
 - Do NOT use old names: `VfsBackend` → `Fs`, `FilesContainer` → `FileStorage`, `FeatureGuard` → `Restrictions`
 - Middleware order matters: innermost applies first
 - Use `FsExt` for convenience methods, don't add them to core traits
+- Do NOT run `mdbook build` - the user or CI will build, you only edit `src/` files
 
 ---
 
