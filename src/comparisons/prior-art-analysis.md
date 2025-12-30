@@ -147,7 +147,7 @@ This document analyzes filesystem abstraction libraries in other languages to le
 This means symlinks can potentially point outside the base path!
 
 **Our Solution:**
-- `VRootFsBackend` uses [`strict-path`](https://github.com/nickelpack/strict-path) for real filesystem containment
+- `VRootFsBackend` uses [`strict-path`](https://github.com/DK26/strict-path-rs) for real filesystem containment
 - Virtual backends (Memory, SQLite) are inherently safe - paths are just keys
 - `PathFilter` middleware provides additional sandboxing layer
 
@@ -584,7 +584,7 @@ Based on these libraries, we've added tests for:
 - [strict-path-rs GitHub](https://github.com/DK26/strict-path-rs)
 
 ### Vulnerability References
-- [Apache Commons VFS CVE Details](https://www.cvedetails.com/version/1916065/Apache-Commons-Vfs-2.6.0.html)
+- [Apache Commons VFS CVEs (NVD search)](https://nvd.nist.gov/vuln/search/results?query=Apache%20Commons%20VFS)
 - [Afero BasePathFs Issue #282](https://github.com/spf13/afero/issues/282)
 - [PyFilesystem2 Symlink Loop Issue #171](https://github.com/PyFilesystem/pyfilesystem2/issues/171)
 - [CVE-2018-1000178 (Zip Slip)](https://nvd.nist.gov/vuln/detail/CVE-2018-1000178)

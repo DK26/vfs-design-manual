@@ -165,7 +165,7 @@ let mount = MountHandle::mount(backend, "/mnt/virtual")?;
 
 ### Security by Design
 
-**Path Containment**: `VRootFsBackend` uses [`strict-path`](https://github.com/nickelpack/strict-path) for real filesystem containment with full canonicalization and symlink resolution.
+**Path Containment**: `VRootFsBackend` uses [`strict-path`](https://github.com/DK26/strict-path-rs) for real filesystem containment with full canonicalization and symlink resolution.
 
 **Virtual Backends Are Inherently Safe**: `MemoryBackend` and `SqliteBackend` treat paths as keys. Path traversal attacks are structurally impossible.
 

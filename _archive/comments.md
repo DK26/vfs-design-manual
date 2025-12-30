@@ -60,7 +60,8 @@ We should, also, make our backend trait, "idiot proof" as much as we can, while 
 - `agentfs` crate seem to have a goal very similar to ours. It is worth seeing what we can learn from their projcet. They do have different prioroties, but I do like their approach for auditable file system operations and maybe some other things. However, this comes back to the question of who's job it is to implement that logic and rather that should be us or the user.
 
 https://github.com/tursodatabase/agentfs
-https://crates.io/crates/agentfs/0.2.0
+https://lib.rs/crates/agentfs
+https://crates.io/crates/agentfs
 
 Maybe our project can became a superset of `agentfs`? It feels like these projects relate. At the very least for one use case. I wonder if I can or should be using `agentfs` for my own use cases. Say, a tenant isolation use case? Our curret scope is for file storage, simulated executions (not real ones), isolation and security. If we could achieve this goals with inhences features then this could fit or be helpful for our project. However, my initial intend was not to overcomplicate designs and make it highly easy and accessable. So long as we can keep it simple and easy to use, I am open to the idea of using `agentfs` as a dependency. Or some parts of it.
 

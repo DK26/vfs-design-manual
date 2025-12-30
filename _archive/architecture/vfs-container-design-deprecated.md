@@ -1,7 +1,7 @@
 # Historical: VFS Container (graph-store) - Design Document
 
 > This RFC describes an older, superseded design (StorageBackend / NodeId / ChunkId graph-store model). It is kept for historical context only.
-> Current design: see [Design Overview](./design-overview.md) and [Architecture Decision Records](./adrs.md) (ADR-001). Do not implement this RFC.
+> Current design: see [Design Overview](../../src/architecture/design-overview.md) and [Architecture Decision Records](../../src/architecture/adrs.md) (ADR-001). Do not implement this RFC.
 
 **Version:** 0.1.0-draft  
 **Status:** RFC (Request for Comments)  
@@ -25,9 +25,10 @@
 11. [Crate Structure](#11-crate-structure)
 12. [Security Considerations](#12-security-considerations)
 13. [Implementation Plan](#13-implementation-plan)
-14. [Open Questions](#14-open-questions)
-15. [Future Considerations](#15-future-considerations)
-16. [Appendices](#appendices)
+14. [Comparison with Alternatives](#14-comparison-with-alternatives)
+15. [Open Questions](#15-open-questions)
+16. [Future Considerations](#16-future-considerations)
+17. [Appendices](#appendices)
 
 ---
 
@@ -1614,13 +1615,13 @@ mod tests {
 
 **Mitigation:** Start with filesystem backend via `strict-path` to validate abstractions before investing in SQLite complexity.
 
-*For detailed technical comparison, see [Technical Comparison with Alternatives](../comparisons/technical-comparison.md).*
+*For detailed technical comparison, see [Technical Comparison with Alternatives](../../src/comparisons/technical-comparison.md).*
 
 ---
 
 ## 15. Open Questions
 
-### 14.1 Decisions Needed
+### 15.1 Decisions Needed
 
 | ID | Question | Options | Recommendation |
 |----|----------|---------|----------------|
@@ -1632,7 +1633,7 @@ mod tests {
 | Q6 | Extended attr size limit? | Specific number | **64 KB per attr** — generous but bounded |
 | Q7 | Should backends expose raw handles? | (a) Yes — escape hatch, (b) No — pure abstraction | **(a)** — power users need it |
 
-### 14.2 Future Considerations Deferred
+### 15.2 Future Considerations Deferred
 
 - Streaming read/write API
 - Async backend trait
@@ -1644,9 +1645,9 @@ mod tests {
 
 ---
 
-## 15. Future Considerations
+## 16. Future Considerations
 
-### 15.1 Async Support
+### 16.1 Async Support
 
 When needed, add a parallel trait hierarchy:
 
@@ -1663,7 +1664,7 @@ pub trait AsyncStorageBackend: Send + Sync {
 
 FilesContainer becomes generic over sync/async.
 
-### 15.2 Content-Addressable Storage
+### 16.2 Content-Addressable Storage
 
 For deduplication:
 
@@ -1680,7 +1681,7 @@ impl ContentId {
 
 Backend stores content by hash. Multiple nodes can reference same ContentId.
 
-### 15.3 Streaming API
+### 16.3 Streaming API
 
 For large files:
 
@@ -1693,7 +1694,7 @@ impl<B: StorageBackend> FilesContainer<B> {
 
 Requires backend support for streaming chunks.
 
-### 15.4 Change Notifications
+### 16.4 Change Notifications
 
 ```rust
 impl<B: StorageBackend> FilesContainer<B> {
