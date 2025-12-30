@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-044386cd.js";
+            window.path_to_searchindex_js = "../searchindex-509daa54.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -355,7 +355,7 @@ cowFs := afero.NewCopyOnWriteFs(baseFs, afero.NewMemMapFs())
 <p>This means symlinks can potentially point outside the base path!</p>
 <p><strong>Our Solution:</strong></p>
 <ul>
-<li><code>VRootFsBackend</code> uses <a href="https://github.com/nickelpack/strict-path"><code>strict-path</code></a> for real filesystem containment</li>
+<li><code>VRootFsBackend</code> uses <a href="https://github.com/DK26/strict-path-rs"><code>strict-path</code></a> for real filesystem containment</li>
 <li>Virtual backends (Memory, SQLite) are inherently safe - paths are just keys</li>
 <li><code>PathFilter</code> middleware provides additional sandboxing layer</li>
 </ul>
@@ -823,7 +823,7 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 </ul>
 <h3 id="vulnerability-references"><a class="header" href="#vulnerability-references">Vulnerability References</a></h3>
 <ul>
-<li><a href="https://www.cvedetails.com/version/1916065/Apache-Commons-Vfs-2.6.0.html">Apache Commons VFS CVE Details</a></li>
+<li><a href="https://nvd.nist.gov/vuln/search/results?query=Apache%20Commons%20VFS">Apache Commons VFS CVEs (NVD search)</a></li>
 <li><a href="https://github.com/spf13/afero/issues/282">Afero BasePathFs Issue #282</a></li>
 <li><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">PyFilesystem2 Symlink Loop Issue #171</a></li>
 <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2018-1000178">CVE-2018-1000178 (Zip Slip)</a></li>

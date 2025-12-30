@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-044386cd.js";
+            window.path_to_searchindex_js = "searchindex-509daa54.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-30b1f61e.js"></script>
@@ -1653,6 +1653,179 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 <li>Change notification support (optional <code>FsWatch</code> trait or polling middleware).</li>
 </ul>
 <p>Detailed rationale lives in <code>src/comparisons/prior-art-analysis.md</code>.</p>
+<hr>
+<h3 id="language-bindings-python-c-etc"><a class="header" href="#language-bindings-python-c-etc">Language Bindings (Python, C, etc.)</a></h3>
+<p>The AnyFS design is <strong>FFI-friendly</strong> and can be exposed to other languages with minimal friction.</p>
+<p><strong>Why the design works well for FFI:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Design Choice</th><th>FFI Benefit</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;self</code> methods (ADR-023)</td><td>Interior mutability allows holding a single <code>Arc&lt;FileStorage&lt;...&gt;&gt;</code> across FFI</td></tr>
+<tr><td><code>Box&lt;dyn Fs&gt;</code> type erasure</td><td><code>FileStorage::boxed()</code> provides a concrete type suitable for FFI</td></tr>
+<tr><td>Owned return types</td><td><code>Vec&lt;u8&gt;</code>, <code>String</code>, <code>bool</code> - no lifetime issues across FFI boundary</td></tr>
+<tr><td>Simple structs</td><td><code>Metadata</code>, <code>DirEntry</code>, <code>Permissions</code> map directly to Python/C structs</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommended approach for Python (PyO3):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// anyfs-python/src/lib.rs
+use pyo3::prelude::*;
+use anyfs::{FileStorage, MemoryBackend, SqliteBackend, Fs};
+
+#[pyclass]
+struct PyFileStorage {
+    inner: FileStorage&lt;Box&lt;dyn Fs&gt;&gt;,  // Type-erased for FFI
+}
+
+#[pymethods]
+impl PyFileStorage {
+    #[staticmethod]
+    fn memory() -&gt; Self {
+        Self { inner: FileStorage::new(MemoryBackend::new()).boxed() }
+    }
+
+    #[staticmethod]
+    fn sqlite(path: &amp;str) -&gt; PyResult&lt;Self&gt; {
+        let backend = SqliteBackend::open(path)
+            .map_err(|e| PyErr::new::&lt;pyo3::exceptions::PyIOError, _&gt;(e.to_string()))?;
+        Ok(Self { inner: FileStorage::new(backend).boxed() })
+    }
+
+    fn read(&amp;self, path: &amp;str) -&gt; PyResult&lt;Vec&lt;u8&gt;&gt; {
+        self.inner.read(path)
+            .map_err(|e| PyErr::new::&lt;pyo3::exceptions::PyIOError, _&gt;(e.to_string()))
+    }
+
+    fn write(&amp;self, path: &amp;str, data: &amp;[u8]) -&gt; PyResult&lt;()&gt; {
+        self.inner.write(path, data)
+            .map_err(|e| PyErr::new::&lt;pyo3::exceptions::PyIOError, _&gt;(e.to_string()))
+    }
+}
+
+#[pymodule]
+fn anyfs_python(_py: Python, m: &amp;PyModule) -&gt; PyResult&lt;()&gt; {
+    m.add_class::&lt;PyFileStorage&gt;()?;
+    Ok(())
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Python usage:</strong></p>
+<pre><code class="language-python">from anyfs_python import PyFileStorage
+
+fs = PyFileStorage.memory()
+fs.write("/hello.txt", b"Hello from Python!")
+data = fs.read("/hello.txt")
+print(data)  # b"Hello from Python!"
+</code></pre>
+<p><strong>Key considerations for FFI:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Solution</th></tr>
+</thead>
+<tbody>
+<tr><td>Generics (<code>FileStorage&lt;B, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;&gt;</code> (boxed form) for FFI layer</td></tr>
+<tr><td>Streaming (<code>Box&lt;dyn Read&gt;</code>)</td><td>Wrap in language-native class with <code>read(n)</code> method</td></tr>
+<tr><td>Middleware composition</td><td>Pre-build common stacks, expose as factory functions</td></tr>
+<tr><td>Error handling</td><td>Convert <code>FsError</code> to language-native exceptions</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Future crate:</strong> <code>anyfs-python</code> (post-v1)</p>
+<h3 id="dynamic-middleware"><a class="header" href="#dynamic-middleware">Dynamic Middleware</a></h3>
+<p>The current design uses <strong>compile-time generics</strong> for zero-cost middleware composition:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Static: type known at compile time
+let fs: Tracing&lt;Quota&lt;MemoryBackend&gt;&gt; = MemoryBackend::new()
+    .layer(QuotaLayer::builder().max_total_size(100).build())
+    .layer(TracingLayer::new());
+<span class="boring">}</span></code></pre>
+<p>For <strong>runtime-configured</strong> middleware (e.g., based on config files), use <code>Box&lt;dyn Fs&gt;</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn build_from_config(config: &amp;Config) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;&gt; {
+    let mut backend: Box&lt;dyn Fs&gt; = Box::new(MemoryBackend::new());
+
+    if config.enable_quota {
+        backend = Box::new(Quota::new(backend, config.quota_limit));
+    }
+
+    if config.enable_antivirus {
+        backend = Box::new(AntivirusMiddleware::new(backend, config.av_scanner_path));
+    }
+
+    if config.enable_tracing {
+        backend = Box::new(Tracing::new(backend));
+    }
+
+    FileStorage::new(backend)
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Trade-off:</strong> One <code>Box</code> allocation per layer + vtable dispatch. For I/O-bound workloads, this overhead is negligible (&lt;1% of operation time).</p>
+<p><strong>Example: Antivirus Middleware</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Antivirus&lt;B&gt; {
+    inner: B,
+    scanner: Arc&lt;dyn VirusScanner + Send + Sync&gt;,
+}
+
+pub trait VirusScanner: Send + Sync {
+    fn scan(&amp;self, data: &amp;[u8]) -&gt; Option&lt;String&gt;;  // Returns threat name if detected
+}
+
+impl&lt;B: FsWrite&gt; FsWrite for Antivirus&lt;B&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        if let Some(threat) = self.scanner.scan(data) {
+            return Err(FsError::ThreatDetected { 
+                path: path.to_path_buf(), 
+                threat_name: threat,
+            });
+        }
+        self.inner.write(path, data)
+    }
+
+    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt; {
+        let inner = self.inner.open_write(path)?;
+        Ok(Box::new(ScanningWriter::new(inner, self.scanner.clone())))
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Future: Plugin System</strong></p>
+<p>For true runtime-loaded plugins (<code>.so</code>/<code>.dll</code>), a future <code>MiddlewarePlugin</code> trait could enable:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait MiddlewarePlugin: Send + Sync {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn wrap(&amp;self, backend: Box&lt;dyn Fs&gt;) -&gt; Box&lt;dyn Fs&gt;;
+}
+
+// Load at runtime
+let plugin = libloading::Library::new("antivirus_plugin.so")?;
+let create_plugin: fn() -&gt; Box&lt;dyn MiddlewarePlugin&gt; = plugin.get(b"create_plugin")?;
+let av_plugin = create_plugin();
+
+let backend = av_plugin.wrap(backend);
+<span class="boring">}</span></code></pre>
+<p><strong>When to use each approach:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Scenario</th><th>Approach</th><th>Overhead</th></tr>
+</thead>
+<tbody>
+<tr><td>Fixed middleware stack</td><td>Generics (compile-time)</td><td>Zero-cost</td></tr>
+<tr><td>Config-driven middleware</td><td><code>Box&lt;dyn Fs&gt;</code> chaining</td><td>~50ns per layer</td></tr>
+<tr><td>Runtime-loaded plugins</td><td><code>MiddlewarePlugin</code> trait</td><td>~50ns + plugin load</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Verdict:</strong> The current design supports dynamic middleware via <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading is a post-v1 enhancement.</p>
 <hr>
 <h2 id="performance-strategic-boxing-adr-025"><a class="header" href="#performance-strategic-boxing-adr-025">Performance: Strategic Boxing (ADR-025)</a></h2>
 <p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path, box at boundaries where flexibility is needed</strong>. We avoid heap allocations and dynamic dispatch unless they add flexibility without meaningful performance impact.</p>
@@ -11453,7 +11626,7 @@ cowFs := afero.NewCopyOnWriteFs(baseFs, afero.NewMemMapFs())
 <p>This means symlinks can potentially point outside the base path!</p>
 <p><strong>Our Solution:</strong></p>
 <ul>
-<li><code>VRootFsBackend</code> uses <a href="https://github.com/nickelpack/strict-path"><code>strict-path</code></a> for real filesystem containment</li>
+<li><code>VRootFsBackend</code> uses <a href="https://github.com/DK26/strict-path-rs"><code>strict-path</code></a> for real filesystem containment</li>
 <li>Virtual backends (Memory, SQLite) are inherently safe - paths are just keys</li>
 <li><code>PathFilter</code> middleware provides additional sandboxing layer</li>
 </ul>
@@ -11921,7 +12094,7 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 </ul>
 <h3 id="vulnerability-references"><a class="header" href="#vulnerability-references">Vulnerability References</a></h3>
 <ul>
-<li><a href="https://www.cvedetails.com/version/1916065/Apache-Commons-Vfs-2.6.0.html">Apache Commons VFS CVE Details</a></li>
+<li><a href="https://nvd.nist.gov/vuln/search/results?query=Apache%20Commons%20VFS">Apache Commons VFS CVEs (NVD search)</a></li>
 <li><a href="https://github.com/spf13/afero/issues/282">Afero BasePathFs Issue #282</a></li>
 <li><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">PyFilesystem2 Symlink Loop Issue #171</a></li>
 <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2018-1000178">CVE-2018-1000178 (Zip Slip)</a></li>
@@ -12360,6 +12533,8 @@ strategy:
 <li>Archive backends (zip/tar) as separate crates</li>
 <li>Indexing middleware (primary) with sidecar SQLite catalog and future pluggable engines</li>
 <li>Companion shell (<code>anyfs-shell</code>) for interactive exploration of backends and middleware</li>
+<li><strong>Language bindings</strong> (<code>anyfs-python</code> via PyO3, C bindings) - see design-overview.md for approach</li>
+<li><strong>Dynamic middleware plugin system</strong> (<code>MiddlewarePlugin</code> trait for runtime-loaded <code>.so</code>/<code>.dll</code> plugins)</li>
 </ul>
 <h3 id="anyfs-shell---local-companion-shell"><a class="header" href="#anyfs-shell---local-companion-shell"><code>anyfs-shell</code> - Local Companion Shell</a></h3>
 <p>Minimal interactive shell for exploring AnyFS behavior without writing a full app. This is a post-v1 companion crate, not part of the core libraries.</p>
