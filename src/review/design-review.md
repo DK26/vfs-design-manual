@@ -6,20 +6,22 @@ This document critically reviews AnyFS design decisions against Rust community e
 
 ## Summary
 
-| Category | Issues Found | Severity |
-|----------|--------------|----------|
-| Critical (must fix) | 2 | 🔴 |
-| Should fix | 4 | 🟡 |
-| Document clearly | 3 | 🟢 |
-| Non-issues | 5 | ✅ |
+| Category | Issues Found | Status |
+|----------|--------------|--------|
+| Critical (must fix) | 2 | ✅ Fixed |
+| Should fix | 4 | 🟡 In progress |
+| Document clearly | 3 | 🟢 Ongoing |
+| Non-issues | 5 | ✅ Verified |
 
 ---
 
-## 🔴 Critical Issues (Must Fix Before v1.0)
+## ✅ Critical Issues (Fixed)
 
-### 1. FsError Missing `#[non_exhaustive]`
+### 1. FsError Missing `#[non_exhaustive]` — FIXED
 
 **Problem:** Our `FsError` enum doesn't have `#[non_exhaustive]`. This is a **semver hazard**.
+
+**Status:** ✅ Fixed in `design-overview.md`. FsError now has `#[non_exhaustive]`, `thiserror::Error` derive, and `From<std::io::Error>` impl.
 
 ```rust
 // Current (problematic)
@@ -58,9 +60,11 @@ pub enum FsError {
 
 ---
 
-### 2. Documentation Shows `&mut self` Despite ADR-023
+### 2. Documentation Shows `&mut self` Despite ADR-023 — FIXED
 
-**Problem:** Several code examples still show `&mut self` or `&mut impl Fs`:
+**Problem:** Several code examples still show `&mut self` or `&mut impl Fs`.
+
+**Status:** ✅ Fixed. All examples in `design-overview.md` and `files-container.md` now use `&self`.
 
 ```rust
 // In design-overview.md line 346:

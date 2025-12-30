@@ -100,8 +100,8 @@ type UserDataFs = FileStorage<SecureBackend, UserData>;
 type TenantFs<T> = FileStorage<SecureBackend, T>;
 
 // Now signatures are clean AND informative
-fn run_agent(fs: &mut SandboxFs) { ... }
-fn save_document(fs: &mut UserDataFs, doc: &Document) { ... }
+fn run_agent(fs: &SandboxFs) { ... }
+fn save_document(fs: &UserDataFs, doc: &Document) { ... }
 ```
 
 ### When to Use Markers

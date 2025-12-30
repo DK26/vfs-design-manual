@@ -365,7 +365,7 @@ fn mount_filesystem(fs: impl FsFuse) {
 ```rust
 use anyfs::FsPosix;
 
-fn database_app(fs: &mut impl FsPosix) {
+fn database_app(fs: &impl FsPosix) {
     let handle = fs.open("/data.db", OpenFlags::READ_WRITE)?;
     fs.lock(handle, LockType::Exclusive)?;
     fs.write_at(handle, data, offset)?;
@@ -771,7 +771,7 @@ type SandboxFs = FileStorage<MemoryBackend, Sandbox>;
 type UserDataFs = FileStorage<SecureBackend, UserData>;
 
 // Clean function signatures
-fn run_agent(fs: &mut SandboxFs) { ... }
+fn run_agent(fs: &SandboxFs) { ... }
 ```
 
 ### FileStorage Implementation
@@ -1309,20 +1309,28 @@ let slice = data.slice(1000..2000);  // Zero-copy!
 
 ## Error Types
 
-`FsError` includes context for better debugging:
+`FsError` includes context for better debugging. It implements `std::error::Error` via `thiserror` and uses `#[non_exhaustive]` for forward compatibility.
 
 ```rust
+/// Filesystem error with context.
+///
+/// All variants include enough information for meaningful error messages.
+/// Use `#[non_exhaustive]` to allow adding variants in minor versions.
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
 pub enum FsError {
     // ========================================================================
     // Path/File Errors
     // ========================================================================
 
     /// Path not found.
+    #[error("not found: {path}")]
     NotFound {
         path: PathBuf,
     },
 
     /// Path already exists.
+    #[error("{operation}: already exists: {path}")]
     AlreadyExists {
         path: PathBuf,
         operation: &'static str,
@@ -1442,9 +1450,24 @@ pub enum FsError {
         source: std::io::Error,
     },
 }
+
+// Required implementations
+impl From<std::io::Error> for FsError {
+    fn from(err: std::io::Error) -> Self {
+        FsError::Io {
+            operation: "io",
+            path: PathBuf::new(),
+            source: err,
+        }
+    }
+}
 ```
 
-All error variants include enough context for meaningful error messages.
+**Implementation notes:**
+- All variants have `#[error("...")]` attributes (shown for first two, omitted for brevity)
+- `#[non_exhaustive]` allows adding variants in minor versions without breaking changes
+- `From<std::io::Error>` enables `?` operator with std::io functions
+- Consider `#[must_use]` on functions returning `Result<_, FsError>`
 
 ---
 
