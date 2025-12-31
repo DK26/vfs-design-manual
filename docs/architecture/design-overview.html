@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -186,11 +186,18 @@
 <hr>
 <h2 id="what-this-project-is"><a class="header" href="#what-this-project-is">What This Project Is</a></h2>
 <p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust. It uses a <strong>middleware/decorator pattern</strong> (like Axum/Tower) for composable functionality with complete separation of concerns.</p>
+<h3 id="philosophy-focused-app-smart-storage"><a class="header" href="#philosophy-focused-app-smart-storage">Philosophy: Focused App, Smart Storage</a></h3>
+<p>It decouples application logic from storage policy, enabling a <strong>Data Mesh</strong> at the filesystem level.</p>
+<ul>
+<li><strong>The App</strong> focuses on business value (“save the document”).</li>
+<li><strong>The Storage Layer</strong> enforces non-functional requirements (“encrypt, audit, limit, index”).</li>
+</ul>
 <p>Anyone can:</p>
 <ul>
-<li>Implement a custom backend for their storage needs</li>
-<li>Compose middleware to add limits, logging, feature gates</li>
-<li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper</li>
+<li><strong>Control how a drive acts, looks, and protects itself.</strong></li>
+<li>Implement a custom backend for their specific storage needs (Cloud, DB, RAM).</li>
+<li>Compose middleware to add limits, logging, and security.</li>
+<li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
 </ul>
 <hr>
 <h2 id="architecture-tower-style-middleware"><a class="header" href="#architecture-tower-style-middleware">Architecture (Tower-style Middleware)</a></h2>
@@ -271,7 +278,7 @@
 <p><strong>Example: Secure AI Agent Sandbox</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, RestrictionsLayer, PathFilterLayer, FileStorage};
+</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, FileStorage};
 
 struct AiSandbox;  // Marker type
 
@@ -280,10 +287,6 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::builder()
             .max_total_size(50 * 1024 * 1024)
-            .build())
-        .layer(RestrictionsLayer::builder()
-            .deny_hard_links()
-            .deny_permissions()
             .build())
         .layer(PathFilterLayer::builder()
             .allow("/workspace/**")
@@ -509,6 +512,127 @@ let backend = av_plugin.wrap(backend);
 </table>
 </div>
 <p><strong>Verdict:</strong> The current design supports dynamic middleware via <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading is a post-v1 enhancement.</p>
+<h3 id="middleware-with-configurable-backends"><a class="header" href="#middleware-with-configurable-backends">Middleware with Configurable Backends</a></h3>
+<p>Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.</p>
+<p><strong>Metrics Middleware with Prometheus Exporter:</strong>
+<em>(Requires <code>features = ["metrics"]</code>)</em></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use prometheus::{Counter, Histogram, Registry};
+
+pub struct Metrics&lt;B&gt; {
+    inner: B,
+    reads: Counter,
+    writes: Counter,
+    read_bytes: Counter,
+    write_bytes: Counter,
+    latency: Histogram,
+}
+
+impl&lt;B&gt; Metrics&lt;B&gt; {
+    pub fn new(inner: B, registry: &amp;Registry) -&gt; Self {
+        let reads = Counter::new("anyfs_reads_total", "Total read operations").unwrap();
+        let writes = Counter::new("anyfs_writes_total", "Total write operations").unwrap();
+        registry.register(Box::new(reads.clone())).unwrap();
+        registry.register(Box::new(writes.clone())).unwrap();
+        // ... register all metrics
+        Self { inner, reads, writes, /* ... */ }
+    }
+}
+
+impl&lt;B: FsRead&gt; FsRead for Metrics&lt;B&gt; {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        self.reads.inc();
+        let start = Instant::now();
+        let result = self.inner.read(path);
+        self.latency.observe(start.elapsed().as_secs_f64());
+        if let Ok(ref data) = result {
+            self.read_bytes.inc_by(data.len() as u64);
+        }
+        result
+    }
+}
+
+// Expose via HTTP endpoint
+async fn metrics_handler(registry: web::Data&lt;Registry&gt;) -&gt; impl Responder {
+    let encoder = TextEncoder::new();
+    let metrics = registry.gather();
+    encoder.encode_to_string(&amp;metrics).unwrap()
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Indexing Middleware with Remote Database:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait IndexBackend: Send + Sync {
+    fn record_write(&amp;self, path: &amp;Path, size: u64, hash: &amp;str) -&gt; Result&lt;(), IndexError&gt;;
+    fn record_delete(&amp;self, path: &amp;Path) -&gt; Result&lt;(), IndexError&gt;;
+    fn query(&amp;self, pattern: &amp;str) -&gt; Result&lt;Vec&lt;IndexEntry&gt;, IndexError&gt;;
+}
+
+// SQLite implementation
+pub struct SqliteIndex { conn: Connection }
+
+// PostgreSQL implementation  
+pub struct PostgresIndex { pool: PgPool }
+
+// MariaDB implementation
+pub struct MariaDbIndex { pool: MySqlPool }
+
+pub struct Indexing&lt;B, I: IndexBackend&gt; {
+    inner: B,
+    index: I,
+}
+
+impl&lt;B: FsWrite, I: IndexBackend&gt; FsWrite for Indexing&lt;B, I&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        self.inner.write(path, data)?;
+        let hash = sha256(data);
+        self.index.record_write(path, data.len() as u64, &amp;hash)
+            .map_err(|e| FsError::Backend(e.to_string()))?;
+        Ok(())
+    }
+}
+
+// Usage with PostgreSQL
+let index = PostgresIndex::connect("postgres://user:pass@db.example.com/files").await?;
+let backend = MemoryBackend::new()
+    .layer(IndexingLayer::new(index));
+<span class="boring">}</span></code></pre>
+<p><strong>Configurable Tracing with Multiple Sinks:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait TraceSink: Send + Sync {
+    fn log_operation(&amp;self, op: &amp;Operation);
+}
+
+// Structured JSON logs
+pub struct JsonSink { writer: Box&lt;dyn Write + Send&gt; }
+
+// CEF (Common Event Format) for SIEM integration
+pub struct CefSink { 
+    host: String,
+    port: u16,
+    device_vendor: String 
+}
+
+impl TraceSink for CefSink {
+    fn log_operation(&amp;self, op: &amp;Operation) {
+        let cef = format!(
+            "CEF:0|AnyFS|FileStorage|1.0|{}|{}|{}|src={} dst={}",
+            op.event_id, op.name, op.severity, op.source_path, op.dest_path
+        );
+        self.send_syslog(&amp;cef);
+    }
+}
+
+// Remote sink (e.g., Loki, Elasticsearch)
+pub struct RemoteSink { endpoint: String, client: reqwest::Client }
+
+pub struct Tracing&lt;B, S: TraceSink&gt; {
+    inner: B,
+    sink: S,
+}
+<span class="boring">}</span></code></pre>
 <hr>
 <h2 id="performance-strategic-boxing-adr-025"><a class="header" href="#performance-strategic-boxing-adr-025">Performance: Strategic Boxing (ADR-025)</a></h2>
 <p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path, box at boundaries where flexibility is needed</strong>. We avoid heap allocations and dynamic dispatch unless they add flexibility without meaningful performance impact.</p>
@@ -725,14 +849,15 @@ fn with_symlinks&lt;B: Fs + FsLink&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     fs.symlink("/target.txt", "/link.txt")?;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="fuse-mount"><a class="header" href="#fuse-mount">FUSE Mount</a></h3>
+<h3 id="fuse-mount-companion-crate-in-progress"><a class="header" href="#fuse-mount-companion-crate-in-progress">FUSE Mount (Companion Crate in Progress)</a></h3>
+<p>Mounting is delivered by <code>anyfs-mount</code> with a staged roadmap; see <code>src/guides/mounting.md</code>.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::FsFuse;
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 fn mount_filesystem(fs: impl FsFuse) {
-    FuseMount::mount(fs, "/mnt/myfs")?;
+    MountHandle::mount(fs, "/mnt/myfs")?;
 }
 <span class="boring">}</span></code></pre>
 <h3 id="full-posix-application"><a class="header" href="#full-posix-application">Full POSIX Application</a></h3>
@@ -770,23 +895,23 @@ pub struct Metadata {
     /// Size in bytes (0 for directories).
     pub size: u64,
 
-    /// Permission mode bits (e.g., 0o644). None if not supported.
-    pub permissions: Option&lt;u32&gt;,
+    /// Permission mode bits. Default to 0o755/0o644 if unsupported.
+    pub permissions: Permissions,
 
-    /// Creation time (if supported by backend).
-    pub created: Option&lt;SystemTime&gt;,
+    /// Creation time (UNIX_EPOCH if unsupported).
+    pub created: SystemTime,
 
     /// Last modification time.
-    pub modified: Option&lt;SystemTime&gt;,
+    pub modified: SystemTime,
 
-    /// Last access time (if supported by backend).
-    pub accessed: Option&lt;SystemTime&gt;,
+    /// Last access time.
+    pub accessed: SystemTime,
 
-    /// Inode number (optional - for FsInode backends).
-    pub inode: Option&lt;u64&gt;,
+    /// Inode number (0 if unsupported).
+    pub inode: u64,
 
-    /// Number of hard links (optional - for FsLink backends).
-    pub nlink: Option&lt;u64&gt;,
+    /// Number of hard links (1 if unsupported).
+    pub nlink: u64,
 }
 
 impl Metadata {
@@ -825,11 +950,11 @@ pub struct DirEntry {
     /// Type: File, Directory, or Symlink.
     pub file_type: FileType,
 
-    /// Size in bytes (optional - avoids extra stat calls).
-    pub size: Option&lt;u64&gt;,
+    /// Size in bytes (0 for directories, can be lazy).
+    pub size: u64,
 
-    /// Inode number (optional - for FsInode backends).
-    pub inode: Option&lt;u64&gt;,
+    /// Inode number (0 if unsupported).
+    pub inode: u64,
 }
 <span class="boring">}</span></code></pre>
 <h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
@@ -910,15 +1035,14 @@ let usage = backend.usage();
 let remaining = backend.remaining();
 <span class="boring">}</span></code></pre>
 <h3 id="restrictions"><a class="header" href="#restrictions">Restrictions<b></b></a></h3>
-<p>Blocks specific operations when needed.</p>
+<p>Blocks permission-related operations when needed.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, Restrictions};
 
-// By default, all operations work. Use deny_*() to block specific ones.
+// Symlink/hard-link capability is determined by trait bounds (FsLink).
+// Restrictions only controls permission changes.
 let backend = RestrictionsLayer::builder()
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
     .deny_permissions()    // Block set_permissions() calls
     .build()
     .layer(MemoryBackend::new());
@@ -1204,7 +1328,6 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
         .max_total_size(100 * 1024 * 1024)
         .max_file_size(10 * 1024 * 1024))
     .restricted(|g| g
-        .deny_hard_links()      // Block hard_link() calls
         .deny_permissions())    // Block set_permissions() calls
     .traced()
     .into_container();
@@ -1251,21 +1374,21 @@ fs.write(PathBuf::from("/file.txt"), data)?;
 <p><code>FileStorage</code> uses an internal resolution function to walk paths before passing them to backends:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>/// Internal: Resolve a path, optionally following symlinks.
+</span>/// Internal: Resolve a path (symlink-aware for virtual backends).
 /// Used by FileStorage before delegating to backend.
 fn resolve_path_internal(
     backend: &amp;(impl Fs + FsLink),
     path: impl AsRef&lt;Path&gt;,
-    follow_symlinks: bool,
 ) -&gt; Result&lt;PathBuf, FsError&gt; {
     // Walk path component by component
     // Use backend.metadata() to check node types
-    // Use backend.read_link() to follow symlinks (if enabled)
+    // Use backend.read_link() to follow symlinks
     // Detect circular symlinks
     // Return fully resolved canonical path
 }
 <span class="boring">}</span></code></pre>
 <p><strong>This is NOT a public API.</strong> The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
+<p><strong>Note:</strong> The internal resolution function requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
 <h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
 <div class="table-wrapper">
 <table>
@@ -1289,13 +1412,16 @@ pub trait SelfResolving {}
 
 impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-<p><code>FileStorage</code> (or a dedicated wrapper) applies resolution automatically for backends that don’t implement <code>SelfResolving</code>:</p>
+<p><code>FileStorage</code> (or a dedicated wrapper) applies resolution automatically for backends that don’t implement <code>SelfResolving</code>. Symlink following is part of backend semantics: virtual backends that implement <code>FsLink</code> are resolved with symlink awareness, and there is no runtime toggle.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;M&gt; FileStorage&lt;M&gt; {
-    pub fn new(backend: impl Fs + 'static) -&gt; FileStorage {
-        // Resolution applied automatically if backend doesn't implement SelfResolving
-    }
+</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+    pub fn new(backend: B) -&gt; Self { /* ... */ }
+}
+
+// Canonicalization requires FsLink (FsPath: FsRead + FsLink)
+impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
+    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; { /* ... */ }
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -1511,7 +1637,7 @@ pub struct CaseInsensitive&lt;B&gt; { /* user-implemented */ }
 <h3 id="ai-agent-sandbox-example"><a class="header" href="#ai-agent-sandbox-example">AI Agent Sandbox Example</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Restrictions, Tracing};
+</span>use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Tracing};
 
 // Build a secure sandbox for an AI agent
 let sandbox = MemoryBackend::new()
@@ -1523,10 +1649,6 @@ let sandbox = MemoryBackend::new()
         .allow("/workspace/**")
         .deny("**/.env")
         .deny("**/secrets/**")
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(RateLimitLayer::builder()
         .max_ops(1000)
@@ -1586,7 +1708,7 @@ impl&lt;B: Fs&gt; FsExt for B {
 <hr>
 <h2 id="optional-features"><a class="header" href="#optional-features">Optional Features</a></h2>
 <h3 id="bytes-support-feature-bytes"><a class="header" href="#bytes-support-feature-bytes">Bytes Support (feature: <code>bytes</code>)</a></h3>
-<p>For zero-copy efficiency, enable the <code>bytes</code> feature to use <code>Bytes</code> instead of <code>Vec&lt;u8&gt;</code>:</p>
+<p>For zero-copy efficiency, enable the <code>bytes</code> feature to get <code>Bytes</code>-returning convenience methods on <code>FileStorage</code>:</p>
 <pre><code class="language-toml">anyfs = { version = "0.1", features = ["bytes"] }
 </code></pre>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1594,11 +1716,16 @@ impl&lt;B: Fs&gt; FsExt for B {
 </span>use anyfs::{FileStorage, MemoryBackend};
 use bytes::Bytes;
 
-// With bytes feature, read returns Bytes (O(1) slicing)
 let fs = FileStorage::new(MemoryBackend::new());
-let data: Bytes = fs.read("/large-file.bin")?;
+
+// With bytes feature, FileStorage provides read_bytes() convenience method
+let data: Bytes = fs.read_bytes("/large-file.bin")?;
 let slice = data.slice(1000..2000);  // Zero-copy!
+
+// Core trait still uses Vec&lt;u8&gt; for object safety
+// read_bytes() wraps the Vec&lt;u8&gt; in Bytes::from()
 <span class="boring">}</span></code></pre>
+<p><strong>Note:</strong> Core traits (<code>FsRead</code>, etc.) always use <code>Vec&lt;u8&gt;</code> for object safety (<code>dyn Fs</code>). The <code>bytes</code> feature adds convenience methods to <code>FileStorage</code> that wrap results in <code>Bytes</code>.</p>
 <p><strong>When to use:</strong></p>
 <ul>
 <li>Large file handling with frequent slicing</li>
@@ -1626,6 +1753,13 @@ pub enum FsError {
     #[error("not found: {path}")]
     NotFound {
         path: PathBuf,
+    },
+
+    /// Security threat detected (e.g., virus).
+    #[error("threat detected: {reason} in {path}")]
+    ThreatDetected {
+        path: PathBuf,
+        reason: String,
     },
 
     /// Path already exists.
@@ -1892,15 +2026,7 @@ pub fn symlinks_available() -&gt; bool {
     }
 }
 <span class="boring">}</span></code></pre>
-<p>Or use <code>Restrictions</code> middleware to disable unsupported features uniformly:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>#[cfg(windows)]
-let backend = RestrictionsLayer::builder()
-    .deny_symlinks()
-    .build()
-    .layer(backend);
-<span class="boring">}</span></code></pre>
+<p>On platforms without symlink support, use a backend that doesn’t implement <code>FsLink</code>, or check <code>symlinks_available()</code> before calling symlink operations.</p>
 
                     </main>
 

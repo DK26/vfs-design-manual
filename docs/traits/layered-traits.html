@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -210,8 +210,14 @@
            ┌───────────┼───────────┐
            │           │           │
         FsRead      FsWrite     FsDir
+
+                                              Derived Traits (auto-impl)
+                                              ───────────────────────────
+                                              FsPath: FsRead + FsLink
+                                                (path canonicalization)
 </code></pre>
 <p><strong>Simple rule:</strong> Import <code>Fs</code> for basic use. Add traits as needed for advanced features.</p>
+<p><strong>Note:</strong> <code>FsPath</code> is a derived trait with a blanket impl. Any type implementing <code>FsRead + FsLink</code> automatically gets <code>FsPath</code>. <code>SelfResolving</code> is a marker trait that opts out of <code>FileStorage</code> path resolution.</p>
 <hr>
 <h2 id="layer-1-core-traits-required"><a class="header" href="#layer-1-core-traits-required">Layer 1: Core Traits (Required)</a></h2>
 <blockquote>
@@ -309,6 +315,30 @@ impl ReadDirIter {
 </span>pub trait FsStats: Send + Sync {
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, FsError&gt;;
 }
+<span class="boring">}</span></code></pre>
+<h3 id="fspath-optimizable"><a class="header" href="#fspath-optimizable">FsPath (Optimizable)</a></h3>
+<p>Path canonicalization with a default implementation. Backends can override for optimized resolution.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FsPath: FsRead + FsLink {
+    /// Resolve all symlinks and normalize path (.., .).
+    /// Default: iterative resolution via read_link() and symlink_metadata().
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // ... default impl ...
+    }
+
+    /// Like canonicalize, but allows non-existent final component.
+    fn soft_canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // ... default impl ...
+    }
+}
+impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
+<span class="boring">}</span></code></pre>
+<h3 id="selfresolving-marker"><a class="header" href="#selfresolving-marker">SelfResolving (Marker)</a></h3>
+<p>Marker trait for backends that handle their own path resolution (e.g., <code>VRootFsBackend</code>, <code>StdFsBackend</code>). <code>FileStorage</code> will NOT perform virtual path resolution for these backends.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait SelfResolving {}
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="layer-3-inode-trait-for-fuse"><a class="header" href="#layer-3-inode-trait-for-fuse">Layer 3: Inode Trait (For FUSE)</a></h2>
@@ -439,9 +469,9 @@ fn create_backup&lt;B: Fs + FsLink&gt;(fs: &amp;FileStorage&lt;B&gt;) -&gt; Resu
     Ok(())
 }
 
-// Requires FUSE-level support
+// Requires FUSE-level support (planned companion crate)
 fn mount_filesystem(fs: impl FsFuse) -&gt; Result&lt;(), FsError&gt; {
-    anyfs_mount::FuseMount::mount(fs, "/mnt/myfs")?;
+    anyfs_mount::MountHandle::mount(fs, "/mnt/myfs")?;
     Ok(())
 }
 <span class="boring">}</span></code></pre>

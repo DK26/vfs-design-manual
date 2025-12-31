@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -307,33 +307,23 @@ impl&lt;B: FsDir&gt; FsDir for ReadOnly&lt;B&gt; {
 <p><strong>Complexity:</strong> Simple
 <strong>State:</strong> Configuration flags only
 <strong>Dependencies:</strong> None</p>
+<blockquote>
+<p><strong>Note:</strong> Symlink/hard-link capability is determined by trait bounds (<code>B: FsLink</code>), not middleware.
+Restrictions only controls permission-related operations.</p>
+</blockquote>
 <h3 id="implementation-1"><a class="header" href="#implementation-1">Implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub struct Restrictions&lt;B&gt; {
     inner: B,
-    deny_symlinks: bool,
-    deny_hard_links: bool,
     deny_permissions: bool,
 }
 
 pub struct RestrictionsBuilder {
-    deny_symlinks: bool,
-    deny_hard_links: bool,
     deny_permissions: bool,
 }
 
 impl RestrictionsBuilder {
-    pub fn deny_symlinks(mut self) -&gt; Self {
-        self.deny_symlinks = true;
-        self
-    }
-
-    pub fn deny_hard_links(mut self) -&gt; Self {
-        self.deny_hard_links = true;
-        self
-    }
-
     pub fn deny_permissions(mut self) -&gt; Self {
         self.deny_permissions = true;
         self
@@ -342,42 +332,28 @@ impl RestrictionsBuilder {
     pub fn build&lt;B&gt;(self, inner: B) -&gt; Restrictions&lt;B&gt; {
         Restrictions {
             inner,
-            deny_symlinks: self.deny_symlinks,
-            deny_hard_links: self.deny_hard_links,
             deny_permissions: self.deny_permissions,
         }
     }
 }
 
-// FsRead and FsDir: pure delegation (no restrictions on reads)
+// FsRead, FsDir, FsLink: pure delegation (Restrictions doesn't block these)
 
 impl&lt;B: FsLink&gt; FsLink for Restrictions&lt;B&gt; {
     fn symlink(&amp;self, target: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        if self.deny_symlinks {
-            return Err(FsError::FeatureNotEnabled {
-                feature: "symlinks",
-                operation: "symlink",
-            });
-        }
-        self.inner.symlink(target, link)
+        self.inner.symlink(target, link)  // Pure delegation
     }
 
     fn hard_link(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        if self.deny_hard_links {
-            return Err(FsError::FeatureNotEnabled {
-                feature: "hard_links",
-                operation: "hard_link",
-            });
-        }
-        self.inner.hard_link(original, link)
+        self.inner.hard_link(original, link)  // Pure delegation
     }
 
     fn read_link(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
-        self.inner.read_link(path)  // Reading is always allowed
+        self.inner.read_link(path)
     }
 
     fn symlink_metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
-        self.inner.symlink_metadata(path)  // Reading is always allowed
+        self.inner.symlink_metadata(path)
     }
 }
 
@@ -394,7 +370,7 @@ impl&lt;B: FsPermissions&gt; FsPermissions for Restrictions&lt;B&gt; {
 }
 <span class="boring">}</span></code></pre>
 <h3 id="verdict--trivially-implementable-1"><a class="header" href="#verdict--trivially-implementable-1">Verdict: ✅ Trivially Implementable</a></h3>
-<p>Simple flag checks before delegation.</p>
+<p>Simple flag check on <code>set_permissions()</code>. Link operations delegate to inner backend.</p>
 <hr>
 <h2 id="3-tracing"><a class="header" href="#3-tracing">3. Tracing<b></b></a></h2>
 <p><strong>Complexity:</strong> Simple
@@ -889,7 +865,34 @@ struct QuotaConfig {
     max_total_size: Option&lt;u64&gt;,
     max_file_size: Option&lt;u64&gt;,
     max_node_count: Option&lt;u64&gt;,
+    max_dir_entries: Option&lt;u64&gt;,  // Max entries per directory
     max_path_depth: Option&lt;usize&gt;,
+}
+
+/// Current usage statistics.
+#[derive(Debug, Clone, Default)]
+pub struct Usage {
+    pub total_size: u64,
+    pub file_count: u64,
+    pub dir_count: u64,
+}
+
+/// Configured limits.
+#[derive(Debug, Clone)]
+pub struct Limits {
+    pub max_total_size: Option&lt;u64&gt;,
+    pub max_file_size: Option&lt;u64&gt;,
+    pub max_node_count: Option&lt;u64&gt;,
+    pub max_dir_entries: Option&lt;u64&gt;,
+    pub max_path_depth: Option&lt;usize&gt;,
+}
+
+/// Remaining capacity.
+#[derive(Debug, Clone)]
+pub struct Remaining {
+    pub bytes: Option&lt;u64&gt;,
+    pub nodes: Option&lt;u64&gt;,
+    pub can_write: bool,
 }
 
 struct QuotaUsage {
@@ -898,7 +901,41 @@ struct QuotaUsage {
     dir_count: u64,
 }
 
-impl&lt;B: Fs&gt; Quota&lt;B&gt; {
+impl&lt;B&gt; Quota&lt;B&gt; {
+    /// Get current usage statistics.
+    pub fn usage(&amp;self) -&gt; Usage {
+        let u = self.usage.read().unwrap();
+        Usage {
+            total_size: u.total_size,
+            file_count: u.file_count,
+            dir_count: u.dir_count,
+        }
+    }
+
+    /// Get configured limits.
+    pub fn limits(&amp;self) -&gt; Limits {
+        Limits {
+            max_total_size: self.config.max_total_size,
+            max_file_size: self.config.max_file_size,
+            max_node_count: self.config.max_node_count,
+            max_dir_entries: self.config.max_dir_entries,
+            max_path_depth: self.config.max_path_depth,
+        }
+    }
+
+    /// Get remaining capacity.
+    pub fn remaining(&amp;self) -&gt; Remaining {
+        let u = self.usage.read().unwrap();
+        let bytes = self.config.max_total_size.map(|max| max.saturating_sub(u.total_size));
+        let nodes = self.config.max_node_count.map(|max| max.saturating_sub(u.file_count + u.dir_count));
+        Remaining {
+            bytes,
+            nodes,
+            can_write: bytes.map(|b| b &gt; 0).unwrap_or(true),
+        }
+    }
+}
+```impl&lt;B: Fs&gt; Quota&lt;B&gt; {
     pub fn new(inner: B, config: QuotaConfig) -&gt; Result&lt;Self, FsError&gt; {
         // IMPORTANT: Scan backend to initialize usage counters
         let usage = Self::scan_usage(&amp;inner)?;
@@ -947,12 +984,61 @@ impl&lt;B: Fs&gt; Quota&lt;B&gt; {
 
         Ok(())
     }
+
+    fn check_node_limit(&amp;self) -&gt; Result&lt;(), FsError&gt; {
+        if let Some(max) = self.config.max_node_count {
+            let usage = self.usage.read().unwrap();
+            if usage.file_count + usage.dir_count &gt;= max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max,
+                    requested: 1,
+                    usage: usage.file_count + usage.dir_count,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_dir_entries(&amp;self, parent: &amp;Path) -&gt; Result&lt;(), FsError&gt;
+    where B: FsDir {
+        if let Some(max) = self.config.max_dir_entries {
+            // Count entries in parent directory
+            let count = self.inner.read_dir(parent)?
+                .filter(|e| e.is_ok())
+                .count() as u64;
+            if count &gt;= max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max,
+                    requested: 1,
+                    usage: count,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_path_depth(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
+        if let Some(max) = self.config.max_path_depth {
+            let depth = path.components().count();
+            if depth &gt; max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max as u64,
+                    requested: depth as u64,
+                    usage: depth as u64,
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
-impl&lt;B: FsWrite&gt; FsWrite for Quota&lt;B&gt; {
+impl&lt;B: FsWrite + FsRead + FsDir&gt; FsWrite for Quota&lt;B&gt; {
     fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref();
         let new_size = data.len() as u64;
+
+        // Check path depth limit
+        self.check_path_depth(path)?;
 
         // Check per-file limit
         if let Some(max) = self.config.max_file_size {
@@ -970,6 +1056,15 @@ impl&lt;B: FsWrite&gt; FsWrite for Quota&lt;B&gt; {
             .map(|m| m.size)
             .unwrap_or(0);
 
+        // If creating a new file, check node count and dir entries
+        let is_new_file = old_size == 0;
+        if is_new_file {
+            self.check_node_limit()?;
+            if let Some(parent) = path.parent() {
+                self.check_dir_entries(parent)?;
+            }
+        }
+
         let size_delta = new_size as i64 - old_size as i64;
 
         if size_delta &gt; 0 {
@@ -982,10 +1077,8 @@ impl&lt;B: FsWrite&gt; FsWrite for Quota&lt;B&gt; {
         // Update usage
         let mut usage = self.usage.write().unwrap();
         usage.total_size = (usage.total_size as i64 + size_delta) as u64;
-
-        // If this was a new file, increment count
-        if old_size == 0 &amp;&amp; !self.inner.exists(path).unwrap_or(false) {
-            // Actually need to check if it existed before... this is tricky
+        if is_new_file {
+            usage.file_count += 1;
         }
 
         Ok(())
@@ -1066,6 +1159,33 @@ impl Drop for QuotaWriter {
         // this is where we'd finalize the accounting
     }
 }
+
+impl&lt;B: FsDir + FsRead&gt; FsDir for Quota&lt;B&gt; {
+    fn create_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
+        // Check path depth
+        self.check_path_depth(path)?;
+
+        // Check node count
+        self.check_node_limit()?;
+
+        // Check parent directory entries
+        if let Some(parent) = path.parent() {
+            self.check_dir_entries(parent)?;
+        }
+
+        // Create directory
+        self.inner.create_dir(path)?;
+
+        // Update usage
+        let mut usage = self.usage.write().unwrap();
+        usage.dir_count += 1;
+
+        Ok(())
+    }
+
+    // create_dir_all, remove_dir, etc. delegate similarly
+    // ...
+}
 <span class="boring">}</span></code></pre>
 <h3 id="challenges-and-solutions"><a class="header" href="#challenges-and-solutions">Challenges and Solutions</a></h3>
 <div class="table-wrapper">
@@ -1080,6 +1200,9 @@ impl Drop for QuotaWriter {
 <tr><td>File replacement</td><td>Calculate delta (new_size - old_size)</td></tr>
 <tr><td>New file detection</td><td>Check <code>exists()</code> before write</td></tr>
 <tr><td>Accurate accounting</td><td>Update counters after successful operations</td></tr>
+<tr><td>Node count limit</td><td>Check before creating files/directories</td></tr>
+<tr><td>Dir entries limit</td><td>Count parent entries before creating child</td></tr>
+<tr><td>Path depth limit</td><td>Count path components on create</td></tr>
 </tbody>
 </table>
 </div>

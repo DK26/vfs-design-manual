@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -182,9 +182,58 @@
                     <main>
                         <h1 id="cross-platform-virtual-drive-mounting"><a class="header" href="#cross-platform-virtual-drive-mounting">Cross-Platform Virtual Drive Mounting</a></h1>
 <p><strong>Mounting AnyFS backends as real filesystem mount points</strong></p>
+<p><strong>Status:</strong> Planned companion crate (<code>anyfs-mount</code>). Design and roadmap are complete; implementation is pending.</p>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>AnyFS backends can be mounted as real filesystem drives that any application can access. This requires platform-specific adapters because each OS uses different userspace filesystem technologies.</p>
+<p>AnyFS backends are intended to be mountable as real filesystem drives that any application can access once <code>anyfs-mount</code> ships. This requires platform-specific adapters because each OS uses different userspace filesystem technologies. The design is captured here while <code>anyfs-mount</code> moves from spec to implementation.</p>
+<hr>
+<h2 id="product-promise"><a class="header" href="#product-promise">Product Promise</a></h2>
+<p>Mounting is a core AnyFS promise: make filesystem composition easy, safe, and genuinely enjoyable for programmers. The mount API prioritizes:</p>
+<ul>
+<li>Easy onboarding (one handle, one builder, minimal boilerplate)</li>
+<li>Safe defaults (explicit read-only modes, clear errors, no hidden behavior)</li>
+<li>Delightful DX (predictable behavior, fast feedback, good docs)</li>
+</ul>
+<hr>
+<h2 id="roadmap-mvp-to-cross-platform"><a class="header" href="#roadmap-mvp-to-cross-platform">Roadmap (MVP to Cross-Platform)</a></h2>
+<h3 id="phase-0-design-and-api-shape-complete"><a class="header" href="#phase-0-design-and-api-shape-complete">Phase 0: Design and API shape (complete)</a></h3>
+<ul>
+<li>API spec defines <code>MountHandle</code>, <code>MountBuilder</code>, <code>MountOptions</code>, <code>MountError</code></li>
+<li>Platform detection hooks (<code>is_available</code>) and consistent error mapping</li>
+<li>Examples and docs anchored in this guide
+<strong>Acceptance:</strong> Spec review complete; API signatures consistent across docs; error mapping defined.</li>
+</ul>
+<h3 id="phase-1-linux-fuse-mvp-read-only-pending"><a class="header" href="#phase-1-linux-fuse-mvp-read-only-pending">Phase 1: Linux FUSE MVP (read-only, pending)</a></h3>
+<ul>
+<li><code>fuser</code> adapter for lookup/getattr/readdir/read</li>
+<li>Read-only mount option; write ops return <code>PermissionDenied</code>
+<strong>Acceptance:</strong> Mount/unmount works on Linux; read-only operations pass smoke tests; unmount-on-drop is reliable.</li>
+</ul>
+<h3 id="phase-2-linux-fuse-readwrite-pending"><a class="header" href="#phase-2-linux-fuse-readwrite-pending">Phase 2: Linux FUSE read/write (pending)</a></h3>
+<ul>
+<li>Full write path: create, write, rename, remove, link operations</li>
+<li>Capability reporting and correct metadata mapping
+<strong>Acceptance:</strong> Conformance tests pass for FsFuse path/inode behavior; no panics; clean shutdown.</li>
+</ul>
+<h3 id="phase-3-macos-parity-macfuse-pending"><a class="header" href="#phase-3-macos-parity-macfuse-pending">Phase 3: macOS parity (macFUSE, pending)</a></h3>
+<ul>
+<li>Port Linux FUSE adapter to macFUSE requirements</li>
+<li>Driver detection and install guidance
+<strong>Acceptance:</strong> Mount/unmount works on macOS with core read/write flows.</li>
+</ul>
+<h3 id="phase-4-windows-support-winfsp-optional-dokan-pending"><a class="header" href="#phase-4-windows-support-winfsp-optional-dokan-pending">Phase 4: Windows support (WinFsp, optional Dokan, pending)</a></h3>
+<ul>
+<li>WinFsp adapter with required mapping for Windows semantics</li>
+<li>Optional Dokan path as alternative provider
+<strong>Acceptance:</strong> Mount/unmount works on Windows; driver detection errors are clear and actionable.</li>
+</ul>
+<hr>
+<h2 id="non-goals-for-v1"><a class="header" href="#non-goals-for-v1">Non-goals for v1</a></h2>
+<ul>
+<li>Kernel drivers or kernel-space code</li>
+<li>WASM or browser environments</li>
+<li>Network filesystem protocols (NFS/SMB)</li>
+</ul>
 <hr>
 <h2 id="platform-technologies"><a class="header" href="#platform-technologies">Platform Technologies</a></h2>
 <div class="table-wrapper">
@@ -287,6 +336,8 @@ impl Drop for MountHandle {
   Cargo.toml
   src/
     lib.rs                      # MountHandle, MountError
+    error.rs                    # MountError definitions
+    handle.rs                   # MountHandle, MountOptions, builder
 
     unix/
       mod.rs                    # cfg(unix)
@@ -535,6 +586,9 @@ let mount = MountHandle::mount(backend, "X:")?;
 
     /// Platform-specific error
     Platform(String),
+
+    /// Missing mount point in options
+    MissingMountPoint,
 }
 <span class="boring">}</span></code></pre>
 <hr>
@@ -568,13 +622,26 @@ let mount = MountHandle::mount(backend, "/mnt/secure")?;
 // - Path-filtered
 // - Rate-limited
 // - Traced/audited
+
+// Imagine: A mounted "USB drive" that reports real-time IOPS
+// to a Prometheus dashboard!
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
-<h3 id="temporary-workspace"><a class="header" href="#temporary-workspace">Temporary Workspace</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let workspace = MemoryBackend::new();
+<h3 id="real-time-observability"><a class="header" href="#real-time-observability">Real-Time Observability</a></h3>
+<p>Because the mount point sits <em>on top</em> of your middleware stack, you get <strong>live visibility</strong> into OS operations:</p>
+<ul>
+<li><strong>Metrics:</strong> See valid IOPS, throughput, and latency for your virtual drive in Grafana.</li>
+<li><strong>Audit Logs:</strong> Record every file your legacy app touches.</li>
+<li><strong>Virus Scanning:</strong> Scan files as the OS writes them, rejecting malware in real-time.</li>
+</ul>
+<pre><code>
+---
+
+## Use Cases
+
+### Temporary Workspace
+
+```rust
+let workspace = MemoryBackend::new();
 let mount = MountHandle::mount(workspace, "/tmp/workspace")?;
 
 // Run build tools that expect real filesystem
@@ -582,7 +649,7 @@ std::process::Command::new("cargo")
     .current_dir("/tmp/workspace")
     .arg("build")
     .status()?;
-<span class="boring">}</span></code></pre>
+</code></pre>
 <h3 id="portable-database-as-drive"><a class="header" href="#portable-database-as-drive">Portable Database as Drive</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {

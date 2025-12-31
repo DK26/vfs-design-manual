@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -225,7 +225,7 @@ use anyfs::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .restricted(|g| g.deny_hard_links().deny_permissions())
+    .restricted(|g| g.deny_permissions())
     .traced()
     .into_container();
 <span class="boring">}</span></code></pre>
@@ -252,11 +252,10 @@ backend.remaining()    // -&gt; Remaining { bytes, can_write, ... }
 <h2 id="restrictions-methods"><a class="header" href="#restrictions-methods">Restrictions Methods</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Builder pattern (required - at least one restriction must be set)
-// By default, all operations work. Use deny_*() to block specific ones.
+</span>// Builder pattern
+// Restrictions only controls permission-related operations.
+// Symlink/hard-link capability is via trait bounds (FsLink), not middleware.
 RestrictionsLayer::builder()
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
     .deny_permissions()    // Block set_permissions() calls
     .build()
     .layer(backend)
@@ -321,9 +320,11 @@ let fs = FileStorage::new(dry_run);
 // Write operations are logged but not executed
 fs.write("/file.txt", b"data")?;  // Logged, returns Ok
 
-// Inspect logged operations
-let ops = dry_run.operations();        // -&gt; &amp;[Operation]
-dry_run.clear();                       // Clear the log
+// Inspect logged operations (returns Vec&lt;String&gt;)
+let ops: Vec&lt;String&gt; = dry_run.operations();
+// e.g., ["write /file.txt (4 bytes)", "remove_file /old.txt"]
+
+dry_run.clear();  // Clear the log
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="cache-methods"><a class="header" href="#cache-methods">Cache Methods</a></h2>
@@ -393,10 +394,10 @@ meta.inode                               // unique identifier
 meta.nlink                               // hard link count
 meta.file_type                           // File | Directory | Symlink
 meta.size                                // file size in bytes
-meta.permissions                         // Permissions { mode: u32 }
-meta.created                             // Option&lt;SystemTime&gt;
-meta.modified                            // Option&lt;SystemTime&gt;
-meta.accessed                            // Option&lt;SystemTime&gt;
+meta.permissions                         // Permissions (default if unsupported)
+meta.created                             // SystemTime (UNIX_EPOCH if unsupported)
+meta.modified                            // SystemTime (UNIX_EPOCH if unsupported)
+meta.accessed                            // SystemTime (UNIX_EPOCH if unsupported)
 
 // Read
 let bytes = fs.read("/path")?;           // -&gt; Vec&lt;u8&gt;
@@ -404,11 +405,13 @@ let text = fs.read_to_string("/path")?;  // -&gt; String
 let chunk = fs.read_range("/path", 0, 1024)?;
 
 // List directory
-let entries = fs.read_dir("/path")?;     // -&gt; Vec&lt;DirEntry&gt;
-for entry in &amp;entries {
-    entry.name                           // OsString
-    entry.inode                          // u64 (avoids extra stat)
+for entry in fs.read_dir("/path")? {
+    let entry = entry?;
+    entry.name                           // String (file/dir name only)
+    entry.path                           // PathBuf (full path)
     entry.file_type                      // File | Directory | Symlink
+    entry.size                           // u64 (0 for directories)
+    entry.inode                          // u64 (0 if unsupported)
 }
 
 // Write
@@ -433,12 +436,10 @@ fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -&gt; PathBuf
 fs.symlink_metadata("/link")?;           // Metadata of link itself, not target
+// Symlink following is backend-defined (no toggle).
+// Use Restrictions to block symlink creation if needed.
 
-// Symlink following (virtual backends only)
-backend.set_follow_symlinks(false);      // Don't follow symlinks during resolution
-backend.set_follow_symlinks(true);       // Follow symlinks (default)
-
-// Permissions (requires Restrictions)
+// Permissions (requires FsPermissions)
 fs.set_permissions("/path", perms)?;
 
 // File size
@@ -450,7 +451,8 @@ fs.fsync("/path")?;                      // Flush writes for one file
 <span class="boring">}</span></code></pre>
 <hr>
 <h2 id="path-canonicalization"><a class="header" href="#path-canonicalization">Path Canonicalization</a></h2>
-<p><code>FileStorage</code> provides path canonicalization that works on the virtual filesystem:</p>
+<p><code>FileStorage</code> provides path canonicalization that works on the virtual filesystem.</p>
+<p><strong>Note:</strong> Canonicalization requires <code>FsLink</code> because symlink resolution needs <code>read_link()</code> and <code>symlink_metadata()</code>. Backends that only implement <code>Fs</code> (without <code>FsLink</code>) cannot use these methods.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Strict canonicalization - path must exist
@@ -535,8 +537,8 @@ assert_eq!(ino1, ino2);  // Same inode!
 
 match result {
     // Path errors
-    Err(FsError::NotFound { path, operation }) =&gt; {
-        // e.g., path="/file.txt", operation="read"
+    Err(FsError::NotFound { path }) =&gt; {
+        // e.g., path="/file.txt"
     }
     Err(FsError::AlreadyExists { path, operation }) =&gt; ...
     Err(FsError::NotADirectory { path }) =&gt; ...

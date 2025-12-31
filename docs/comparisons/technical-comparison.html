@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -253,9 +253,6 @@ let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
@@ -291,7 +288,7 @@ let fs = FileStorage::new(backend);
 <tr><td><strong>Streaming I/O</strong></td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td><td style="text-align: center">Yes</td></tr>
 <tr><td><strong>Async API</strong></td><td style="text-align: center">Future</td><td style="text-align: center">Partial</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td></tr>
 <tr><td><strong>POSIX extension</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
-<tr><td><strong>FUSE mountable</strong></td><td style="text-align: center">Future</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
+<tr><td><strong>FUSE mountable</strong></td><td style="text-align: center">Yes</td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">No</td></tr>
 <tr><td><strong>KV store</strong></td><td style="text-align: center">No</td><td style="text-align: center">No</td><td style="text-align: center">Yes</td><td style="text-align: center">No</td></tr>
 </tbody>
 </table>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -264,6 +264,7 @@
 <tr><td>ADR-029</td><td>Path resolution in FileStorage</td><td>Accepted</td></tr>
 <tr><td>ADR-030</td><td>Layered trait hierarchy</td><td>Accepted</td></tr>
 <tr><td>ADR-031</td><td>Indexing as middleware</td><td>Accepted (Post-v1)</td></tr>
+<tr><td>ADR-032</td><td>Path Canonicalization via FsPath Trait</td><td>Accepted</td></tr>
 </tbody>
 </table>
 </div>
@@ -318,8 +319,8 @@
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
         .build())
     .layer(TracingLayer::new());
 <span class="boring">}</span></code></pre>
@@ -351,26 +352,48 @@
 <li>Check limits before operations, update usage after successful operations.</li>
 </ul>
 <hr>
-<h2 id="adr-007-restrictions-for-opt-in-restrictions"><a class="header" href="#adr-007-restrictions-for-opt-in-restrictions">ADR-007: Restrictions for opt-in restrictions</a></h2>
-<p><strong>Decision:</strong> By default, all operations work. <code>Restrictions&lt;B&gt;</code> middleware provides opt-in restrictions.</p>
-<p><strong>Default behavior (no Restrictions):</strong></p>
+<h2 id="adr-007-capability-via-trait-bounds"><a class="header" href="#adr-007-capability-via-trait-bounds">ADR-007: Capability via Trait Bounds</a></h2>
+<p><strong>Decision:</strong> Symlink and hard-link capability is determined by whether the backend implements <code>FsLink</code>. There is NO runtime toggle.</p>
+<h3 id="the-rule"><a class="header" href="#the-rule">The Rule</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend implements <code>FsLink</code>?</th><th>Symlinks work?</th></tr>
+</thead>
+<tbody>
+<tr><td>Yes (<code>B: FsLink</code>)</td><td>Yes</td></tr>
+<tr><td>No</td><td>No (won’t compile)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// MemoryBackend implements FsLink
+let fs = FileStorage::new(MemoryBackend::new());
+fs.symlink("/target", "/link")?;  // ✅ Works
+
+// Custom backend that doesn't implement FsLink
+let fs = FileStorage::new(MySimpleBackend::new());
+fs.symlink("/target", "/link")?;  // ❌ Won't compile - no FsLink impl
+<span class="boring">}</span></code></pre>
+<h3 id="why-not-runtime-blocking"><a class="header" href="#why-not-runtime-blocking">Why Not Runtime Blocking?</a></h3>
+<p>A hypothetical <code>deny_symlinks()</code> middleware would create type/behavior mismatch:</p>
 <ul>
-<li>All operations work: <code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code></li>
+<li>Type says “I implement FsLink”</li>
+<li>Runtime says “but symlink() errors”</li>
 </ul>
-<p><strong>Opt-in restrictions:</strong></p>
-<ul>
-<li><code>.deny_symlinks()</code> - block <code>symlink()</code> calls</li>
-<li><code>.deny_hard_links()</code> - block <code>hard_link()</code> calls</li>
-<li><code>.deny_permissions()</code> - block <code>set_permissions()</code> calls</li>
-</ul>
-<p>When blocked, operations return <code>FsError::FeatureNotEnabled</code>.</p>
-<p><strong>Symlink following:</strong> Controlled separately via <code>set_follow_symlinks(bool)</code> on virtual backends. VRootFsBackend delegates to OS (strict-path prevents escapes).</p>
-<p><strong>Why:</strong></p>
-<ul>
-<li>Simple default: everything works out of the box.</li>
-<li>Security is opt-in via middleware composition.</li>
-<li>Clear separation: Restrictions blocks operations, backend settings control behavior.</li>
-</ul>
+<p>This is confusing and defeats the purpose of Rust’s type system. Instead, symlink capability is determined at compile time by trait bounds.</p>
+<h3 id="restrictions-middleware"><a class="header" href="#restrictions-middleware">Restrictions Middleware</a></h3>
+<p><code>Restrictions&lt;B&gt;</code> is limited to operations where runtime policy makes sense:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let backend = RestrictionsLayer::builder()
+    .deny_permissions()  // Prevent metadata changes
+    .build()
+    .layer(backend);
+<span class="boring">}</span></code></pre>
+<p><strong>Symlink following:</strong> Part of backend semantics. FileStorage resolves paths for non-<code>SelfResolving</code> backends; OS-backed backends delegate to the OS (strict-path prevents escapes). There is no runtime toggle.</p>
 <hr>
 <h2 id="adr-008-filestorage-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filestorage-as-thin-ergonomic-wrapper">ADR-008: FileStorage as thin ergonomic wrapper</a></h2>
 <p><strong>Decision:</strong> <code>FileStorage&lt;B, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>
@@ -565,7 +588,6 @@ pub trait FsRead: Send {
 </span><span class="boring">fn main() {
 </span>FsError::NotFound {
     path: PathBuf,
-    operation: &amp;'static str,  // "read", "metadata", etc.
 }
 
 FsError::QuotaExceeded {
@@ -578,7 +600,7 @@ FsError::QuotaExceeded {
 <ul>
 <li>Error messages include enough context to understand what failed.</li>
 <li>No need for separate error context crate (like anyhow) for basic usage.</li>
-<li>Operation field helps distinguish “file not found during read” vs “during metadata”.</li>
+<li>Path is sufficient for NotFound - the call site knows the operation.</li>
 <li>Quota errors include all relevant numbers for debugging.</li>
 </ul>
 <hr>
@@ -784,7 +806,7 @@ let quota = QuotaLayer::builder()
 
 // RestrictionsLayer - requires at least one restriction
 let restrictions = RestrictionsLayer::builder()
-    .deny_symlinks()
+    .deny_permissions()
     .build();
 
 // PathFilterLayer - requires at least one rule
@@ -1342,6 +1364,147 @@ pub trait FsReadTyped: FsRead {
 <li>Wraps <code>open_write()</code> with a counting writer to record final size on close.</li>
 <li>Updates a <code>nodes</code> table and logs <code>ops</code> entries per operation.</li>
 </ul>
+<hr>
+<h2 id="adr-032-path-canonicalization-via-fspath-trait"><a class="header" href="#adr-032-path-canonicalization-via-fspath-trait">ADR-032: Path Canonicalization via FsPath Trait</a></h2>
+<p><strong>Status:</strong> Accepted</p>
+<p><strong>Context:</strong> Path canonicalization (resolving <code>..</code>, <code>.</code>, and symlinks) is needed for consistent path handling. The naive approach of baking this into <code>FileStorage</code> has issues:</p>
+<ul>
+<li>It’s not testable in isolation</li>
+<li>It can’t be optimized per-backend</li>
+<li>N+1 queries for paths like <code>/a/b/c/d/e</code> (each component = separate call)</li>
+</ul>
+<p><strong>Decision:</strong> Introduce an <code>FsPath</code> trait with <code>canonicalize()</code> and <code>soft_canonicalize()</code> methods that have <strong>default implementations</strong> but allow <strong>backend-specific optimizations</strong>.</p>
+<p><strong>The Pattern:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FsPath: FsRead + FsLink {
+    /// Resolve all symlinks and normalize path components.
+    /// Returns error if final path doesn't exist.
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        default_canonicalize(self, path)
+    }
+
+    /// Like canonicalize, but allows non-existent final component.
+    fn soft_canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        default_soft_canonicalize(self, path)
+    }
+}
+
+// Auto-implement for all FsLink implementors
+impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
+<span class="boring">}</span></code></pre>
+<p><strong>Default Implementation:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn default_canonicalize&lt;F: FsRead + FsLink&gt;(fs: &amp;F, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+    let mut resolved = PathBuf::from("/");
+    for component in path.components() {
+        match component {
+            Component::RootDir =&gt; resolved = PathBuf::from("/"),
+            Component::ParentDir =&gt; { resolved.pop(); },
+            Component::CurDir =&gt; {},
+            Component::Normal(name) =&gt; {
+                resolved.push(name);
+                if let Ok(meta) = fs.symlink_metadata(&amp;resolved) {
+                    if meta.file_type.is_symlink() {
+                        let target = fs.read_link(&amp;resolved)?;
+                        resolved.pop();
+                        resolved = resolve_relative(&amp;resolved, &amp;target);
+                    }
+                }
+            },
+            _ =&gt; {},
+        }
+    }
+    // Verify final path exists
+    if !fs.exists(&amp;resolved)? {
+        return Err(FsError::NotFound { path: resolved, operation: "canonicalize" });
+    }
+    Ok(resolved)
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Backend Optimization Examples:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Optimization</th></tr>
+</thead>
+<tbody>
+<tr><td><code>SqliteBackend</code></td><td>Single recursive CTE query resolves entire path</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Delegates to <code>std::fs::canonicalize()</code> + containment check</td></tr>
+<tr><td><code>MemoryBackend</code></td><td>Uses default (in-memory is fast anyway)</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>SQLite Optimized Implementation:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsPath for SqliteBackend {
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Single query with recursive CTE
+        self.conn.query_row(
+            r#"
+            WITH RECURSIVE path_resolve(segment, remaining, resolved, depth) AS (
+                -- Initial: split path into segments
+                SELECT ..., 0
+                UNION ALL
+                -- Recursive: resolve each segment, following symlinks
+                SELECT ...
+                FROM path_resolve
+                JOIN nodes ON ...
+                WHERE depth &lt; 40  -- Loop protection
+            )
+            SELECT resolved FROM path_resolve 
+            WHERE remaining = '' 
+            ORDER BY depth DESC LIMIT 1
+            "#,
+            params![path.to_string_lossy()],
+            |row| Ok(PathBuf::from(row.get::&lt;_, String&gt;(0)?))
+        ).map_err(|e| FsError::NotFound { path: path.into(), operation: "canonicalize" })
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Why This Design:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Benefit</th><th>Explanation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Portable default</strong></td><td>Works with any <code>Fs</code> backend out of the box</td></tr>
+<tr><td><strong>Optimizable</strong></td><td>Backends can override for O(1) queries vs O(n)</td></tr>
+<tr><td><strong>Testable</strong></td><td>Canonicalization logic is separate, can be unit tested</td></tr>
+<tr><td><strong>Composable</strong></td><td>Middleware can wrap/intercept canonicalization</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>FileStorage Integration:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: Fs + FsPath, M&gt; FileStorage&lt;B, M&gt; {
+    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.backend.canonicalize(path.as_ref())
+    }
+
+    pub fn soft_canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.backend.soft_canonicalize(path.as_ref())
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Trade-offs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Queries</th><th>Complexity</th><th>Best For</th></tr>
+</thead>
+<tbody>
+<tr><td>Default impl</td><td>O(n) per component</td><td>Simple</td><td>Memory, small files</td></tr>
+<tr><td>SQLite CTE</td><td>O(1) single query</td><td>Moderate</td><td>Large trees, many symlinks</td></tr>
+<tr><td>OS delegation</td><td>O(1) syscall</td><td>Simple</td><td>Real filesystem</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Conclusion:</strong> The <code>FsPath</code> trait provides a clean abstraction that works everywhere but can be optimized where it matters. This follows Rust’s “zero-cost abstractions” philosophy: you don’t pay for what you don’t use, and you can optimize hot paths when needed.</p>
 
                     </main>
 

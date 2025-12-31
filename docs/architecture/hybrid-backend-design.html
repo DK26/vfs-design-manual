@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -710,7 +710,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 <p>Middleware works unchanged - it wraps the hybrid backend like any other:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{FileStorage, QuotaLayer, TracingLayer, RestrictionsLayer};
+</span>use anyfs::{FileStorage, QuotaLayer, TracingLayer, PathFilterLayer};
 
 let backend = HybridBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
 
@@ -719,8 +719,8 @@ let backend = backend
     .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024 * 1024)  // 50 GB
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
+    .layer(PathFilterLayer::builder()
+        .deny("**/.env")
         .build())
     .layer(TracingLayer::new());
 

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -729,32 +729,32 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Backend Type</th><th>Path Resolution Strategy</th><th>Can Use These Crates?</th></tr>
+<tr><th>Backend Type</th><th>Storage Mechanism</th><th>Path Resolution Provider</th></tr>
 </thead>
 <tbody>
-<tr><td><code>VRootFsBackend</code></td><td>Real filesystem</td><td>✅ Yes - wraps actual FS</td></tr>
-<tr><td><code>MemoryBackend</code></td><td><strong>Lexical only</strong></td><td>❌ No - paths are HashMap keys</td></tr>
-<tr><td><code>SqliteBackend</code></td><td><strong>Lexical only</strong></td><td>❌ No - paths are DB strings</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Real filesystem</td><td>OS (backend is <code>SelfResolving</code>)</td></tr>
+<tr><td><code>MemoryBackend</code></td><td>HashMap keys</td><td>FileStorage (symlink-aware)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>DB strings</td><td>FileStorage (symlink-aware)</td></tr>
 </tbody>
 </table>
 </div>
 <p><strong>For virtual backends (Memory, SQLite, etc.):</strong></p>
 <ul>
-<li>These crates perform <strong>real filesystem resolution</strong> (follow actual symlinks on disk)</li>
-<li>Virtual backends need <strong>lexical-only</strong> path algorithms (pure string manipulation)</li>
-<li>AnyFS must implement its own path resolution that:
+<li>These third-party crates perform <strong>real filesystem resolution</strong> (follow actual symlinks on disk)</li>
+<li>Virtual backends treat paths as keys, so these crates can’t help</li>
+<li>AnyFS implements its own path resolution in <code>FileStorage</code> that:
 <ol>
-<li>Normalizes <code>.</code> and <code>..</code> via string manipulation</li>
+<li>Walks path components via <code>metadata()</code> and <code>read_link()</code></li>
 <li>Resolves symlinks by reading targets from virtual storage</li>
+<li>Handles <code>..</code> correctly after symlink resolution</li>
 <li>Detects loops by tracking visited virtual paths</li>
-<li>Validates dangerous patterns (ADS, null bytes) via string checks</li>
 </ol>
 </li>
 </ul>
 <p><strong>For <code>VRootFsBackend</code> only:</strong></p>
 <ul>
-<li>Since it wraps the real filesystem, <code>strict-path</code> could provide safe containment</li>
-<li>But this is the ONLY backend where real FS resolution makes sense</li>
+<li>Since it wraps the real filesystem, <code>strict-path</code> provides safe containment</li>
+<li>The backend implements <code>SelfResolving</code>, so FileStorage skips its own resolution</li>
 </ul>
 <h3 id="security-tests-added-to-conformance-suite"><a class="header" href="#security-tests-added-to-conformance-suite">Security Tests Added to Conformance Suite</a></h3>
 <p>Based on these libraries, we’ve added tests for:</p>

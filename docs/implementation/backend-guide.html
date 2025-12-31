@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -631,12 +631,117 @@ impl FsLink for MemoryBackend {
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Ergonomic API</td><td><code>FileStorage&lt;M&gt;</code> wrapper</td></tr>
+<tr><td>Ergonomic API</td><td><code>FileStorage&lt;B, M&gt;</code> wrapper</td></tr>
 </tbody>
 </table>
 </div>
 <p><strong>Backends focus on storage.</strong> Keep them simple.</p>
 <hr>
+<h2 id="optional-optimizations"><a class="header" href="#optional-optimizations">Optional Optimizations</a></h2>
+<p>Some trait methods have default implementations that work universally but may be suboptimal for specific backends. You can <strong>override these for better performance</strong>.</p>
+<h3 id="path-canonicalization-fspath-trait"><a class="header" href="#path-canonicalization-fspath-trait">Path Canonicalization (FsPath Trait)</a></h3>
+<p>The <code>FsPath</code> trait provides <code>canonicalize()</code> and <code>soft_canonicalize()</code> with default implementations that call <code>read_link()</code> and <code>symlink_metadata()</code> per path component.</p>
+<p><strong>Default behavior:</strong> O(n) calls for a path with n components</p>
+<p><strong>When to override:</strong></p>
+<ul>
+<li>Your backend can resolve paths more efficiently (e.g., SQL query)</li>
+<li>Your backend delegates to OS (which has optimized syscalls)</li>
+</ul>
+<p><strong>SQLite Example - Single Query Resolution:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsPath for SqliteBackend {
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Resolve entire path in one recursive CTE query
+        self.conn.query_row(
+            r#"
+            WITH RECURSIVE resolve(current, depth) AS (
+                SELECT :path, 0
+                UNION ALL
+                SELECT 
+                    CASE WHEN n.type = 'symlink' 
+                         THEN n.target 
+                         ELSE resolve.current 
+                    END,
+                    depth + 1
+                FROM resolve
+                LEFT JOIN nodes n ON n.path = resolve.current
+                WHERE n.type = 'symlink' AND depth &lt; 40
+            )
+            SELECT current FROM resolve ORDER BY depth DESC LIMIT 1
+            "#,
+            params![path.to_string_lossy()],
+            |row| Ok(PathBuf::from(row.get::&lt;_, String&gt;(0)?))
+        ).map_err(|_| FsError::NotFound { 
+            path: path.into(), 
+            operation: "canonicalize" 
+        })
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>VRootFsBackend Example - OS Delegation:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsPath for VRootFsBackend {
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Delegate to OS, which uses optimized syscalls
+        let host_path = self.root.join(path.strip_prefix("/").unwrap_or(path));
+        let resolved = std::fs::canonicalize(&amp;host_path)
+            .map_err(|e| FsError::NotFound { 
+                path: path.into(), 
+                operation: "canonicalize" 
+            })?;
+        
+        // Verify containment (security check)
+        if !resolved.starts_with(&amp;self.root) {
+            return Err(FsError::AccessDenied {
+                path: path.into(),
+                reason: "path escapes root".into(),
+            });
+        }
+        
+        // Convert back to virtual path
+        Ok(PathBuf::from("/").join(resolved.strip_prefix(&amp;self.root).unwrap()))
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="other-optimization-opportunities"><a class="header" href="#other-optimization-opportunities">Other Optimization Opportunities</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Method</th><th>Default</th><th>Optimization Opportunity</th></tr>
+</thead>
+<tbody>
+<tr><td><code>canonicalize()</code></td><td>O(n) per component</td><td>SQL CTE, OS delegation</td></tr>
+<tr><td><code>create_dir_all()</code></td><td>Recursive <code>create_dir()</code></td><td>Single SQL INSERT with path hierarchy</td></tr>
+<tr><td><code>remove_dir_all()</code></td><td>Recursive traversal</td><td>SQL DELETE with LIKE pattern</td></tr>
+<tr><td><code>copy()</code></td><td>read + write</td><td>Database-level copy, reflink</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>General Pattern:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Override any trait method with optimized implementation
+impl FsDir for SqliteBackend {
+    fn create_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
+        // Instead of calling create_dir() for each level,
+        // insert all parent paths in a single transaction
+        self.conn.execute_batch(&amp;format!(
+            "INSERT OR IGNORE INTO nodes (path, type) VALUES {}",
+            generate_ancestor_values(path)
+        ))?;
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>When NOT to optimize:</strong></p>
+<ul>
+<li><code>MemoryBackend</code>: In-memory operations are already fast; keep it simple</li>
+<li>Low-volume operations: Optimize where it matters (hot paths)</li>
+<li>Prototype phase: Get correctness first, optimize later</li>
+</ul>
+<p>See <a href="../architecture/adrs.html#adr-032-path-canonicalization-via-fspath-trait">ADR-032</a> for the full design rationale.</p>
 <h2 id="testing-your-backend"><a class="header" href="#testing-your-backend">Testing Your Backend</a></h2>
 <p>Use the conformance test suite:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1182,7 +1287,7 @@ impl FsWrite for MemoryBackend {
 <p><strong>Backends do NOT handle path resolution.</strong> FileStorage handles:</p>
 <ul>
 <li>Resolving <code>..</code> and <code>.</code> components</li>
-<li>Following symlinks (when <code>set_follow_symlinks(true)</code>)</li>
+<li>Following symlinks for non-<code>SelfResolving</code> backends that implement <code>FsLink</code></li>
 <li>Normalizing paths (<code>//</code> → <code>/</code>, trailing slashes, etc.)</li>
 <li>Walking the virtual directory structure</li>
 </ul>
@@ -1336,18 +1441,35 @@ fn test_concurrent_create_dir_all() {
 }
 <span class="boring">}</span></code></pre>
 <h3 id="path-normalization"><a class="header" href="#path-normalization">Path Normalization</a></h3>
+<blockquote>
+<p><strong>Note:</strong> These tests apply to <code>FileStorage</code> integration tests, NOT direct backend tests.
+Backends receive already-resolved paths from <code>FileStorage</code>. The tests below verify
+that <code>FileStorage</code> correctly normalizes paths before passing them to backends.</p>
+</blockquote>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
-fn test_path_with_dotdot() {
+fn test_filestorage_path_normalization() {
+    // Use FileStorage, not raw backend
+    let fs = FileStorage::new(create_backend());
+    fs.create_dir_all("/foo/bar").unwrap();
+    fs.write("/foo/bar/test.txt", b"data").unwrap();
+
+    // FileStorage resolves these before calling backend
+    assert_eq!(fs.read("/foo/bar/test.txt").unwrap(), b"data");
+    assert_eq!(fs.read("/foo/bar/../bar/test.txt").unwrap(), b"data");
+    assert_eq!(fs.read("/foo/./bar/test.txt").unwrap(), b"data");
+}
+
+// Direct backend calls should use clean paths only
+#[test]
+fn test_backend_with_clean_paths() {
     let backend = create_backend();
     backend.create_dir_all(std::path::Path::new("/foo/bar")).unwrap();
     backend.write(std::path::Path::new("/foo/bar/test.txt"), b"data").unwrap();
 
-    // These should all access the same file
+    // Backends receive clean, resolved paths
     assert_eq!(backend.read(std::path::Path::new("/foo/bar/test.txt")).unwrap(), b"data");
-    assert_eq!(backend.read(std::path::Path::new("/foo/bar/../bar/test.txt")).unwrap(), b"data");
-    assert_eq!(backend.read(std::path::Path::new("/foo/./bar/test.txt")).unwrap(), b"data");
 }
 <span class="boring">}</span></code></pre>
 <hr>

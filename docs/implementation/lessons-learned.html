@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -352,7 +352,7 @@ let entry = self.entries.get(&amp;path)
 <h3 id="anyfs-response-4"><a class="header" href="#anyfs-response-4">AnyFS Response</a></h3>
 <ul>
 <li><strong>Symlinks are supported by default</strong> - use <code>Restrictions</code> to deny creation when needed</li>
-<li><strong>Symlink following is the security control</strong> (virtual backends expose <code>set_follow_symlinks(false)</code>)</li>
+<li><strong>Symlink behavior is backend-defined</strong> - no runtime toggle; avoid <code>FsLink</code> or block creation if needed</li>
 <li><strong>Bound resolution depth</strong> (default: 40 hops)</li>
 <li><strong><code>strict-path</code> prevents symlink escapes</strong> in <code>VRootFsBackend</code></li>
 </ul>
@@ -376,17 +376,17 @@ let entry = self.entries.get(&amp;path)
 </span><span class="boring">fn main() {
 </span>#[derive(Debug, thiserror::Error)]
 pub enum FsError {
-    #[error("{operation}: not found: {path}")]
-    NotFound { path: PathBuf, operation: &amp;'static str },
+    #[error("not found: {path}")]
+    NotFound { path: PathBuf },
 
     #[error("{operation}: already exists: {path}")]
     AlreadyExists { path: PathBuf, operation: &amp;'static str },
 
-    #[error("quota exceeded: limit {limit}, attempted {attempted}")]
-    QuotaExceeded { limit: u64, attempted: u64 },
+    #[error("quota exceeded: limit {limit}, requested {requested}, usage {usage}")]
+    QuotaExceeded { limit: u64, requested: u64, usage: u64 },
 
-    #[error("feature not enabled: {feature}")]
-    FeatureNotEnabled { feature: &amp;'static str },
+    #[error("feature not enabled: {feature} ({operation})")]
+    FeatureNotEnabled { feature: &amp;'static str, operation: &amp;'static str },
 
     #[error("permission denied: {path} ({operation})")]
     PermissionDenied { path: PathBuf, operation: &amp;'static str },
@@ -458,7 +458,7 @@ pub enum FsError {
 <li><strong>Batch operations</strong> where possible in <code>SqliteBackend</code></li>
 <li><strong>Use transactions</strong> for multi-file operations</li>
 <li><strong>Document performance characteristics</strong> per backend</li>
-<li><strong>Avoid FUSE</strong> - we’re a library, not a mount</li>
+<li><strong>Keep mounting optional</strong> - core AnyFS stays a library; mount concerns live in a companion crate</li>
 </ul>
 <p><strong>Documentation requirement:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -488,7 +488,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> FUSE mount cleanup issues.</p>
 <h3 id="anyfs-response-9"><a class="header" href="#anyfs-response-9">AnyFS Response</a></h3>
 <ul>
-<li><strong>Not our problem</strong> - we’re a library, not a daemon</li>
+<li><strong>Core stays a library</strong> - daemon/mount shutdown concerns belong in the companion crate</li>
 <li><strong>Ensure <code>Drop</code> implementations clean up properly</strong></li>
 <li><strong><code>SqliteBackend</code> flushes on drop</strong></li>
 </ul>
@@ -519,7 +519,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> Platform-specific FUSE variants.</p>
 <h3 id="anyfs-response-10"><a class="header" href="#anyfs-response-10">AnyFS Response</a></h3>
 <ul>
-<li><strong>We avoid this</strong> - no FUSE, pure library</li>
+<li><strong>We isolate this</strong> - core AnyFS stays pure; FUSE lives in an optional companion crate</li>
 <li><strong>Cross-platform by design</strong> - Memory and SQLite work everywhere</li>
 <li><strong><code>VRootFsBackend</code> uses <code>strict-path</code></strong> which handles Windows/Unix</li>
 </ul>
@@ -562,7 +562,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Symlink complexity</td><td><code>Restrictions&lt;B&gt;</code> (opt-in)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
-<tr><td>FUSE complexity</td><td>Pure library, no mount</td></tr>
+<tr><td>FUSE complexity</td><td>Isolated in optional companion crate</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>
 <tr><td>Monolithic features</td><td>Composable middleware</td></tr>
 </tbody>

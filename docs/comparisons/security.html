@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -223,15 +223,11 @@
 <p>Security policies are composable middleware layers:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer};
+</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RateLimitLayer, TracingLayer};
 
 let secure_backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()              // Limit resources
         .max_total_size(100 * 1024 * 1024)
-        .build())
-    .layer(RestrictionsLayer::builder()       // Block dangerous features
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(PathFilterLayer::builder()         // Sandbox paths
         .allow("/workspace/**")
@@ -262,24 +258,32 @@ let secure_backend = MemoryBackend::new()
 <li>No rule = denied (deny by default)</li>
 <li><code>read_dir</code> filters denied entries from results</li>
 </ul>
-<h3 id="3-feature-gating-restrictions"><a class="header" href="#3-feature-gating-restrictions">3. Feature Gating (Restrictions)</a></h3>
-<p>By default, all operations work. Use <code>Restrictions</code> middleware to <strong>opt-in to restrictions</strong>:</p>
+<h3 id="3-symlink-capability-via-trait-bounds"><a class="header" href="#3-symlink-capability-via-trait-bounds">3. Symlink Capability via Trait Bounds</a></h3>
+<p>Symlink/hard-link capability is determined by <strong>trait bounds</strong>, not middleware:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// MemoryBackend implements FsLink → symlinks work
+let fs = FileStorage::new(MemoryBackend::new());
+fs.symlink("/target", "/link")?;  // ✅ Works
+
+// Custom backend without FsLink → symlinks won't compile
+let fs = FileStorage::new(MySimpleBackend::new());
+fs.symlink("/target", "/link")?;  // ❌ Compile error
+<span class="boring">}</span></code></pre>
+<p><strong>If you don’t want symlinks:</strong> Use a backend that doesn’t implement <code>FsLink</code>.</p>
+<p>The <code>Restrictions</code> middleware only controls permission operations:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>RestrictionsLayer::builder()
-    .deny_hard_links()         // Block hard_link() calls
     .deny_permissions()        // Block set_permissions() calls
-    .deny_symlinks()           // Block symlink() calls
     .build()
     .layer(backend)
 <span class="boring">}</span></code></pre>
 <p><strong>Use cases:</strong></p>
 <ul>
 <li>Sandboxing untrusted code (block permission changes)</li>
-<li>Archive extraction (block symlink/hardlink creation)</li>
 <li>Read-only-ish environments (block permission mutations)</li>
 </ul>
-<p><strong>Note:</strong> This controls operation <strong>availability</strong>. For symlink <strong>following</strong> behavior, see “Symlink Security” below.</p>
 <h3 id="4-resource-limits-quota"><a class="header" href="#4-resource-limits-quota">4. Resource Limits (Quota)</a></h3>
 <p><code>Quota</code> middleware enforces capacity limits:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -342,7 +346,7 @@ the virtual structure. There is no host filesystem to escape to.
 <ul>
 <li><strong>No host filesystem access</strong> - symlinks point to paths within the virtual structure only</li>
 <li><strong>No TOCTOU via OS state</strong> - resolution uses the backend’s own data</li>
-<li><strong>Controllable via <code>set_follow_symlinks()</code></strong> - disable symlink following entirely if needed</li>
+<li><strong>No runtime toggle</strong> - symlink following is part of backend semantics (virtual backends that implement <code>FsLink</code> are resolved by <code>FileStorage</code>)</li>
 </ul>
 <p>For <code>VRootFsBackend</code> (real filesystem), <code>strict-path::VirtualRoot</code> provides equivalent guarantees by validating and containing all paths before they reach the OS.</p>
 <h3 id="8-symlink-security-virtual-vs-real-backends"><a class="header" href="#8-symlink-security-virtual-vs-real-backends">8. Symlink Security: Virtual vs Real Backends</a></h3>
@@ -354,25 +358,21 @@ the virtual structure. There is no host filesystem to escape to.
 <tr><th>Backend Type</th><th>Symlink Creation</th><th>Symlink Following</th></tr>
 </thead>
 <tbody>
-<tr><td><code>MemoryBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
-<tr><td><code>SqliteBackend</code></td><td>Always supported</td><td><strong>We control</strong> via <code>set_follow_symlinks()</code></td></tr>
-<tr><td><code>VRootFsBackend</code></td><td>Always supported</td><td><strong>OS controls</strong> - <code>strict-path</code> prevents escapes</td></tr>
+<tr><td><code>MemoryBackend</code></td><td>Supported (<code>FsLink</code>)</td><td><code>FileStorage</code> resolves (non-<code>SelfResolving</code>)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Supported (<code>FsLink</code>)</td><td><code>FileStorage</code> resolves (non-<code>SelfResolving</code>)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>Supported (<code>FsLink</code>)</td><td><strong>OS controls</strong> - <code>strict-path</code> prevents escapes</td></tr>
 </tbody>
 </table>
 </div>
 <h4 id="virtual-backends-memory-sqlite"><a class="header" href="#virtual-backends-memory-sqlite">Virtual Backends (Memory, SQLite)</a></h4>
-<p>Virtual backends always support symlinks. They also provide control over symlink following:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let backend = MemoryBackend::new();
-backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolution
-<span class="boring">}</span></code></pre>
-<p>When following is disabled:</p>
+<p>Virtual backends that implement <code>FsLink</code> follow symlinks during <code>FileStorage</code> resolution. Symlink capability is determined by trait bounds:</p>
 <ul>
-<li><code>read("/link")</code> on a symlink returns <code>FsError::IsSymlink</code> (or reads link as opaque data)</li>
-<li>Path resolution treats symlinks as terminal nodes</li>
+<li><code>MemoryBackend: FsLink</code> → supports symlinks</li>
+<li><code>SqliteBackend: FsLink</code> → supports symlinks</li>
+<li>Custom backend without <code>FsLink</code> → no symlinks (compile-time enforced)</li>
 </ul>
-<p><strong>This is the actual security feature</strong> - controlling whether symlinks are resolved.</p>
+<p>If you need symlink-free behavior, use a backend that does not implement <code>FsLink</code>.</p>
+<p><strong>This is the actual security feature</strong> - controlling whether symlinks are even possible via trait bounds.</p>
 <h4 id="real-filesystem-backend-vrootfsbackend"><a class="header" href="#real-filesystem-backend-vrootfsbackend">Real Filesystem Backend (VRootFsBackend)</a></h4>
 <p>VRootFsBackend calls OS functions (<code>std::fs::read()</code>, etc.) which follow symlinks automatically. <strong>We cannot control this</strong> - the OS does the symlink resolution, not us.</p>
 <p><code>strict-path::VirtualRoot</code> prevents <strong>escapes</strong>:</p>
@@ -390,9 +390,9 @@ strict-path: /etc/passwd is NOT within /sandbox → DENIED
 <tr><th>Concern</th><th>Virtual Backend</th><th>VRootFsBackend</th></tr>
 </thead>
 <tbody>
-<tr><td>Symlink creation</td><td>Always allowed (just data)</td><td>Always allowed (just data)</td></tr>
-<tr><td>Symlink following</td><td><code>set_follow_symlinks(bool)</code></td><td>OS controls (strict-path prevents escapes)</td></tr>
-<tr><td>Jail escape via symlink</td><td><code>set_follow_symlinks(false)</code></td><td>Prevented by strict-path</td></tr>
+<tr><td>Symlink creation</td><td>Supported (<code>FsLink</code>)</td><td>Supported (<code>FsLink</code>)</td></tr>
+<tr><td>Symlink following</td><td><code>FileStorage</code> resolves (non-<code>SelfResolving</code>)</td><td>OS controls (strict-path prevents escapes)</td></tr>
+<tr><td>Jail escape via symlink</td><td>No host FS to escape</td><td>Prevented by strict-path</td></tr>
 </tbody>
 </table>
 </div>
@@ -401,16 +401,12 @@ strict-path: /etc/passwd is NOT within /sandbox → DENIED
 <h3 id="ai-agent-sandbox"><a class="header" href="#ai-agent-sandbox">AI Agent Sandbox</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer, FileStorage};
+</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RateLimitLayer, TracingLayer, FileStorage};
 
 let sandbox = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024)
         .max_file_size(5 * 1024 * 1024)
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
@@ -425,6 +421,7 @@ let sandbox = MemoryBackend::new()
 
 let fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
+// Note: MemoryBackend implements FsLink, so symlinks work if needed
 <span class="boring">}</span></code></pre>
 <h3 id="multi-tenant-isolation"><a class="header" href="#multi-tenant-isolation">Multi-Tenant Isolation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

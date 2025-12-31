@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -226,12 +226,10 @@ let backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
-        .build());
+        .build())
+    .layer(TracingLayer::new());
 
 // FileStorage is ergonomics + path resolution (no policy)
 let fs = FileStorage::new(backend);

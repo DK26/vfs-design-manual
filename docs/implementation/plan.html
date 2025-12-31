@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-509daa54.js";
+            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -184,7 +184,7 @@
 <p>This plan describes a phased rollout of the AnyFS ecosystem:</p>
 <ul>
 <li><code>anyfs-backend</code>: Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>) + <code>Layer</code> + types</li>
-<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;M&gt;</code> ergonomic wrapper</li>
+<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;B, M&gt;</code> ergonomic wrapper</li>
 </ul>
 <hr>
 <h2 id="implementation-guidelines"><a class="header" href="#implementation-guidelines">Implementation Guidelines</a></h2>
@@ -238,29 +238,56 @@ let entry = self.entries.get(&amp;path)
 <li>Easy to pattern match</li>
 <li>Include context (path, operation)</li>
 <li>Derive <code>thiserror</code> for good messages</li>
+<li>Use <code>#[non_exhaustive]</code> for forward compatibility</li>
 </ul>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>#[derive(Debug, thiserror::Error)]
+</span>#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
 pub enum FsError {
-    #[error("{operation}: not found: {path}")]
-    NotFound { path: PathBuf, operation: &amp;'static str },
+    // Path/File Errors
+    #[error("not found: {path}")]
+    NotFound { path: PathBuf },
 
     #[error("{operation}: already exists: {path}")]
     AlreadyExists { path: PathBuf, operation: &amp;'static str },
 
-    #[error("quota exceeded: limit {limit}, attempted {attempted}")]
-    QuotaExceeded { limit: u64, attempted: u64 },
+    #[error("not a file: {path}")]
+    NotAFile { path: PathBuf },
 
-    #[error("feature not enabled: {feature}")]
-    FeatureNotEnabled { feature: &amp;'static str },
+    #[error("not a directory: {path}")]
+    NotADirectory { path: PathBuf },
 
-    #[error("permission denied: {path} ({operation})")]
+    #[error("directory not empty: {path}")]
+    DirectoryNotEmpty { path: PathBuf },
+
+    // Permission/Access Errors
+    #[error("{operation}: permission denied: {path}")]
     PermissionDenied { path: PathBuf, operation: &amp;'static str },
 
-    // ... etc
+    #[error("access denied: {path} ({reason})")]
+    AccessDenied { path: PathBuf, reason: String },
+
+    #[error("read-only filesystem: {operation}")]
+    ReadOnly { operation: &amp;'static str },
+
+    #[error("{operation}: feature not enabled: {feature}")]
+    FeatureNotEnabled { feature: &amp;'static str, operation: &amp;'static str },
+
+    // Resource Limit Errors (from Quota middleware)
+    #[error("quota exceeded: limit {limit}, requested {requested}, usage {usage}")]
+    QuotaExceeded { limit: u64, requested: u64, usage: u64 },
+
+    #[error("file size exceeded: {path} ({size} &gt; {limit})")]
+    FileSizeExceeded { path: PathBuf, size: u64, limit: u64 },
+
+    #[error("rate limit exceeded: {limit}/s (window: {window_secs}s)")]
+    RateLimitExceeded { limit: u32, window_secs: u64 },
+
+    // ... see design-overview.md for complete list
 }
 <span class="boring">}</span></code></pre>
+<p>See <a href="../architecture/design-overview.html#error-types">design-overview.md</a> for the complete <code>FsError</code> definition.</p>
 <h3 id="5-documentation-requirements"><a class="header" href="#5-documentation-requirements">5. Documentation Requirements</a></h3>
 <p>Every backend and middleware must document:</p>
 <ul>
@@ -347,6 +374,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <ul>
 <li>Define <code>Layer</code> trait (Tower-style middleware composition)</li>
 <li>Define <code>FsExt</code> trait (extension methods for JSON, type checks)</li>
+<li>Define <code>FsPath</code> trait (path canonicalization with default impl, requires <code>FsRead + FsLink</code>)</li>
 <li>Define core types (<code>Metadata</code>, <code>Permissions</code>, <code>FileType</code>, <code>DirEntry</code>, <code>StatFs</code>)</li>
 <li>Define <code>FsError</code> with contextual variants (see guidelines above)</li>
 <li>Define <code>ROOT_INODE = 1</code> constant</li>
@@ -361,10 +389,11 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <ul>
 <li>Walks path component by component using <code>metadata()</code> and <code>read_link()</code></li>
 <li>Handles <code>..</code> correctly after symlink resolution (symlink-aware, not lexical)</li>
-<li>Respects <code>set_follow_symlinks(bool)</code> setting</li>
+<li>Follows symlinks for non-<code>SelfResolving</code> backends that implement <code>FsLink</code> (no toggle)</li>
 <li>Detects circular symlinks (max depth or visited set)</li>
 <li>Returns canonical resolved path to the backend</li>
 </ul>
+<p><strong>Backends that don’t implement <code>FsLink</code>:</strong> FileStorage cannot resolve symlinks for these backends. Path resolution will traverse directories using <code>metadata()</code> and handle <code>..</code> based on directory structure, but symlinks are treated as regular files. These backends effectively have no symlink support.</p>
 <p><strong>Backends receive already-resolved paths</strong> - they just store/retrieve bytes.</p>
 <h3 id="backends-feature-gated"><a class="header" href="#backends-feature-gated">Backends (feature-gated)</a></h3>
 <p>Each backend implements the traits it supports:</p>
@@ -374,7 +403,6 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li>Implements: <code>Fs</code> + <code>FsLink</code> + <code>FsPermissions</code> + <code>FsSync</code> + <code>FsStats</code> + <code>FsInode</code> = <code>FsFuse</code></li>
 <li>FileStorage handles path resolution (symlink-aware)</li>
 <li>Inode source: internal node IDs (incrementing counter)</li>
-<li><code>set_follow_symlinks(bool)</code> - control symlink following during resolution</li>
 </ul>
 </li>
 <li><code>sqlite</code> (optional): <code>SqliteBackend</code>
@@ -382,7 +410,6 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li>Implements: <code>FsFuse</code> (all traits through Layer 3)</li>
 <li>FileStorage handles path resolution (symlink-aware)</li>
 <li>Inode source: SQLite row IDs (<code>INTEGER PRIMARY KEY</code>)</li>
-<li><code>set_follow_symlinks(bool)</code> - control symlink following during resolution</li>
 </ul>
 </li>
 <li><code>sqlite-cipher</code> (optional): <code>SqliteCipherBackend</code>
@@ -417,7 +444,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <h3 id="middleware"><a class="header" href="#middleware">Middleware</a></h3>
 <ul>
 <li><code>Quota&lt;B&gt;</code> + <code>QuotaLayer</code> - Resource limits</li>
-<li><code>Restrictions&lt;B&gt;</code> + <code>RestrictionsLayer</code> - Opt-in restrictions (<code>.deny_symlinks()</code>, <code>.deny_hard_links()</code>, etc.)</li>
+<li><code>Restrictions&lt;B&gt;</code> + <code>RestrictionsLayer</code> - Runtime policy (<code>.deny_permissions()</code>)</li>
 <li><code>PathFilter&lt;B&gt;</code> + <code>PathFilterLayer</code> - Path-based access control</li>
 <li><code>ReadOnly&lt;B&gt;</code> + <code>ReadOnlyLayer</code> - Block writes</li>
 <li><code>RateLimit&lt;B&gt;</code> + <code>RateLimitLayer</code> - Operation throttling</li>
@@ -477,8 +504,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li>Symlink chains resolve correctly (A → B → C → target)</li>
 <li>Circular symlink detection (A → B → A returns error, not infinite loop)</li>
 <li>Max symlink depth enforced (prevent deep chains)</li>
-<li><code>set_follow_symlinks(true)</code>: reading symlink follows to target</li>
-<li><code>set_follow_symlinks(false)</code>: reading symlink returns symlink metadata, not target</li>
+<li>Reading a symlink follows the target (virtual backends)</li>
 </ul>
 <h4 id="path-edge-cases-learned-from-vfs-issues"><a class="header" href="#path-edge-cases-learned-from-vfs-issues">Path Edge Cases (learned from <code>vfs</code> issues)</a></h4>
 <ul>
@@ -599,6 +625,149 @@ strategy:
 <li><input disabled="" type="checkbox"> Documentation builds without warnings</li>
 </ul>
 <hr>
+<h2 id="phase-6-anyfs-mount---mount-as-real-filesystem-planned"><a class="header" href="#phase-6-anyfs-mount---mount-as-real-filesystem-planned">Phase 6: <code>anyfs-mount</code> - Mount as Real Filesystem (planned)</a></h2>
+<p><strong>Goal:</strong> Ship a companion crate that makes mounting AnyFS stacks easy, safe, and enjoyable for programmers, without compromising backend semantics.</p>
+<h3 id="milestones"><a class="header" href="#milestones">Milestones</a></h3>
+<ul>
+<li><strong>Phase 0 (design complete):</strong> API shape and roadmap
+<ul>
+<li><code>MountHandle</code>, <code>MountBuilder</code>, <code>MountOptions</code>, <code>MountError</code></li>
+<li>Platform detection hooks (<code>is_available</code>) and error mapping</li>
+<li>Examples anchored in the mounting guide</li>
+</ul>
+</li>
+<li><strong>Phase 1:</strong> Linux FUSE MVP (read-only)
+<ul>
+<li>Lookup/getattr/readdir/read via <code>fuser</code></li>
+<li>Read-only mount option; write ops return <code>PermissionDenied</code></li>
+</ul>
+</li>
+<li><strong>Phase 2:</strong> Linux FUSE read/write
+<ul>
+<li>Create/write/rename/remove/link operations</li>
+<li>Capability reporting and metadata mapping</li>
+</ul>
+</li>
+<li><strong>Phase 3:</strong> macOS parity (macFUSE)
+<ul>
+<li>Adapter compatibility + driver detection</li>
+</ul>
+</li>
+<li><strong>Phase 4:</strong> Windows support (WinFsp, optional Dokan)
+<ul>
+<li>Windows-specific mapping + driver detection</li>
+</ul>
+</li>
+</ul>
+<p><strong>Exit criteria:</strong> Phase 2 delivered with reliable mount/unmount, no panics, and smoke tests; macOS/Windows continue in subsequent milestones.</p>
+<p><strong>API sketch (subject to change):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, QuotaLayer, FsFuse};
+use anyfs_mount::MountHandle;
+
+// RAM drive with 1GB quota
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(1024 * 1024 * 1024)
+        .build());
+
+// Backend must implement FsFuse (includes FsInode)
+let mount = MountHandle::mount(backend, "/mnt/ramdisk")?;
+
+// Now it's a real mount point:
+// $ df -h /mnt/ramdisk
+// $ cp large_file.bin /mnt/ramdisk/  # fast!
+// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
+<span class="boring">}</span></code></pre>
+<p><strong>Cross-Platform Support (planned):</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Platform</th><th>Provider</th><th>Rust Crate</th><th>User Must Install</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux</td><td>FUSE</td><td><code>fuser</code></td><td><code>fuse3</code> package</td></tr>
+<tr><td>macOS</td><td>macFUSE</td><td><code>fuser</code></td><td><a href="https://osxfuse.github.io/">macFUSE</a></td></tr>
+<tr><td>Windows</td><td>WinFsp</td><td><code>winfsp</code></td><td><a href="https://winfsp.dev/">WinFsp</a></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>anyfs-mount</code> provides a unified API across platforms:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl MountHandle {
+    #[cfg(unix)]
+    pub fn mount&lt;B: FsFuse&gt;(backend: B, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self, ...&gt; {
+        // Uses fuser crate
+    }
+
+    #[cfg(windows)]
+    pub fn mount&lt;B: FsFuse&gt;(backend: B, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self, ...&gt; {
+        // Uses winfsp crate
+    }
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Creative Use Cases:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Stack</th><th>What You Get</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>RAM drive</td></tr>
+<tr><td><code>MemoryBackend</code> + <code>Quota</code></td><td>RAM drive with size limit</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Single-file portable drive</td></tr>
+<tr><td><code>Overlay&lt;SqliteBackend, MemoryBackend&gt;</code></td><td>Persistent base + RAM scratch layer</td></tr>
+<tr><td><code>Cache&lt;SqliteBackend&gt;</code></td><td>SQLite with RAM read cache</td></tr>
+<tr><td><code>Tracing&lt;MemoryBackend&gt;</code></td><td>RAM drive with full audit log</td></tr>
+<tr><td><code>ReadOnly&lt;SqliteBackend&gt;</code></td><td>Immutable snapshot mount</td></tr>
+<tr><td><code>Encryption&lt;SqliteBackend&gt;</code></td><td>Encrypted portable drive</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example: AI Agent Sandbox</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Sandboxed workspace mounted as real filesystem
+let sandbox = MountHandle::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::builder()
+            .allow("/**")
+            .deny("**/..*")             // No hidden files
+            .build())
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .build()),
+    "/mnt/agent-workspace"
+)?;
+
+// Agent's tools can now use standard filesystem APIs
+// All operations are sandboxed, logged, and quota-limited
+<span class="boring">}</span></code></pre>
+<p><strong>Architecture:</strong></p>
+<pre><code>┌────────────────────────────────────────────────┐
+│  /mnt/myfs (FUSE mount point)                  │
+├────────────────────────────────────────────────┤
+│  anyfs-mount                                   │
+│    - Linux/macOS: fuser                        │
+│    - Windows: winfsp                           │
+├────────────────────────────────────────────────┤
+│  Middleware stack (Quota, PathFilter, etc.)    │
+├────────────────────────────────────────────────┤
+│  FsFuse (Memory, SQLite, etc.)                 │
+│    └─ includes FsInode for efficient lookups   │
+│                                                │
+│  Optional: FsPosix for locks/xattr             │
+└────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Backend must implement <code>FsFuse</code> (includes <code>FsInode</code> for efficient inode operations)</li>
+<li>Backends implementing <code>FsPosix</code> get full lock/xattr support</li>
+<li>Platform-specific FUSE provider must be installed</li>
+</ul>
+<hr>
 <h2 id="future-work-post-mvp"><a class="header" href="#future-work-post-mvp">Future work (post-MVP)</a></h2>
 <ul>
 <li>Async API (<code>AsyncFs</code>, <code>AsyncFsFull</code>, etc.)</li>
@@ -610,10 +779,12 @@ strategy:
 <li>URL-based backend registry helper (e.g., <code>sqlite://</code>, <code>mem://</code>)</li>
 <li>Copy-on-write overlay variant (Afero-style <code>CopyOnWriteFs</code>)</li>
 <li>Archive backends (zip/tar) as separate crates</li>
-<li>Indexing middleware (primary) with sidecar SQLite catalog and future pluggable engines</li>
+<li>Indexing middleware with pluggable index backends (SQLite, PostgreSQL, MariaDB, etc.)</li>
 <li>Companion shell (<code>anyfs-shell</code>) for interactive exploration of backends and middleware</li>
 <li><strong>Language bindings</strong> (<code>anyfs-python</code> via PyO3, C bindings) - see design-overview.md for approach</li>
 <li><strong>Dynamic middleware plugin system</strong> (<code>MiddlewarePlugin</code> trait for runtime-loaded <code>.so</code>/<code>.dll</code> plugins)</li>
+<li><strong>Metrics middleware</strong> with Prometheus exporter (<code>GET /metrics</code> endpoint)</li>
+<li><strong>Configurable tracing/logging backends</strong> (structured logs, CEF events, remote sinks)</li>
 </ul>
 <h3 id="anyfs-shell---local-companion-shell"><a class="header" href="#anyfs-shell---local-companion-shell"><code>anyfs-shell</code> - Local Companion Shell</a></h3>
 <p>Minimal interactive shell for exploring AnyFS behavior without writing a full app. This is a post-v1 companion crate, not part of the core libraries.</p>
@@ -656,113 +827,6 @@ anyfs:/ &gt; stat docs
 type=dir size=0 modified=2025-02-01T12:34:56Z
 anyfs:/ &gt; exit
 </code></pre>
-<h3 id="anyfs-mount---mount-as-real-filesystem"><a class="header" href="#anyfs-mount---mount-as-real-filesystem"><code>anyfs-mount</code> - Mount as Real Filesystem</a></h3>
-<p>Adapter to expose any <code>FsFuse</code> backend as a FUSE mount point.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, FsFuse};
-use anyfs_mount::FuseMount;
-
-// RAM drive with 1GB quota
-let backend = MemoryBackend::new()
-    .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
-
-// Backend must implement FsFuse (includes FsInode)
-let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
-
-// Now it's a real mount point:
-// $ df -h /mnt/ramdisk
-// $ cp large_file.bin /mnt/ramdisk/  # fast!
-// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
-<span class="boring">}</span></code></pre>
-<p><strong>Cross-Platform Support:</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Platform</th><th>FUSE Provider</th><th>Rust Crate</th><th>User Must Install</th></tr>
-</thead>
-<tbody>
-<tr><td>Linux</td><td>Native kernel</td><td><code>fuser</code></td><td><code>fuse3</code> package</td></tr>
-<tr><td>macOS</td><td>macFUSE</td><td><code>fuser</code></td><td><a href="https://osxfuse.github.io/">macFUSE</a></td></tr>
-<tr><td>FreeBSD</td><td>Native</td><td><code>fuser</code></td><td>(built-in)</td></tr>
-<tr><td>Windows</td><td>WinFsp</td><td><code>winfsp-rs</code></td><td><a href="https://winfsp.dev/">WinFsp</a></td></tr>
-</tbody>
-</table>
-</div>
-<p><code>anyfs-mount</code> provides a unified API across platforms:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl&lt;B: FsFuse&gt; FuseMount&lt;B&gt; {
-    #[cfg(unix)]
-    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
-        // Uses fuser crate
-    }
-
-    #[cfg(windows)]
-    pub fn mount(backend: B, path: &amp;Path) -&gt; Result&lt;Self, ...&gt; {
-        // Uses winfsp-rs crate
-    }
-}
-<span class="boring">}</span></code></pre>
-<p><strong>Creative Use Cases:</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Backend Stack</th><th>What You Get</th></tr>
-</thead>
-<tbody>
-<tr><td><code>MemoryBackend</code></td><td>RAM drive</td></tr>
-<tr><td><code>MemoryBackend</code> + <code>Quota</code></td><td>RAM drive with size limit</td></tr>
-<tr><td><code>SqliteBackend</code></td><td>Single-file portable drive</td></tr>
-<tr><td><code>Overlay&lt;SqliteBackend, MemoryBackend&gt;</code></td><td>Persistent base + RAM scratch layer</td></tr>
-<tr><td><code>Cache&lt;SqliteBackend&gt;</code></td><td>SQLite with RAM read cache</td></tr>
-<tr><td><code>Tracing&lt;MemoryBackend&gt;</code></td><td>RAM drive with full audit log</td></tr>
-<tr><td><code>ReadOnly&lt;SqliteBackend&gt;</code></td><td>Immutable snapshot mount</td></tr>
-<tr><td><code>Encryption&lt;SqliteBackend&gt;</code></td><td>Encrypted portable drive</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Example: AI Agent Sandbox</strong></p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Sandboxed workspace mounted as real filesystem
-let sandbox = FuseMount::mount(
-    MemoryBackend::new()
-        .layer(PathFilterLayer::new()
-            .allow("/**")
-            .deny("**/..*"))           // No hidden files
-        .layer(RestrictionsLayer::new()
-            .deny_symlinks())           // No symlink escapes
-        .layer(QuotaLayer::new()
-            .max_total_size(100 * 1024 * 1024)),
-    "/mnt/agent-workspace"
-)?;
-
-// Agent's tools can now use standard filesystem APIs
-// All operations are sandboxed, logged, and quota-limited
-<span class="boring">}</span></code></pre>
-<p><strong>Architecture:</strong></p>
-<pre><code>┌────────────────────────────────────────────────┐
-│  /mnt/myfs (FUSE mount point)                  │
-├────────────────────────────────────────────────┤
-│  anyfs-mount                                   │
-│    - Linux/macOS/BSD: fuser                    │
-│    - Windows: winfsp-rs                        │
-├────────────────────────────────────────────────┤
-│  Middleware stack (Quota, PathFilter, etc.)    │
-├────────────────────────────────────────────────┤
-│  FsFuse (Memory, SQLite, etc.)                │
-│    └─ includes FsInode for efficient lookups  │
-│                                                │
-│  Optional: FsPosix for locks/xattr            │
-└────────────────────────────────────────────────┘
-</code></pre>
-<p><strong>Requirements:</strong></p>
-<ul>
-<li>Backend must implement <code>FsFuse</code> (includes <code>FsInode</code> for efficient inode operations)</li>
-<li>Backends implementing <code>FsPosix</code> get full lock/xattr support</li>
-<li>Platform-specific FUSE provider must be installed</li>
-</ul>
 <h3 id="anyfs-vfs-compat---interop-with-vfs-crate"><a class="header" href="#anyfs-vfs-compat---interop-with-vfs-crate"><code>anyfs-vfs-compat</code> - Interop with <code>vfs</code> crate</a></h3>
 <p>Adapter crate for bidirectional compatibility with the <a href="https://github.com/manuel-woelker/rust-vfs"><code>vfs</code></a> crate ecosystem.</p>
 <p><strong>Why not adopt their trait?</strong> The <code>vfs::FileSystem</code> trait is too limited:</p>
@@ -876,17 +940,17 @@ let remote = RemoteBackend::connect("https://api.yourservice.com")
 
 // Use like any other backend
 let fs = FileStorage::new(remote);
-fs.write(std::path::Path::new("/documents/report.pdf"), data)?;
+fs.write("/documents/report.pdf", data)?;
 <span class="boring">}</span></code></pre>
 <p><strong>Combined with FUSE for transparent mount:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_remote::RemoteBackend;
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 // Mount remote storage as local directory
 let remote = RemoteBackend::connect("https://yourserver.com")?;
-FuseMount::mount(remote, "/mnt/cloud")?;
+MountHandle::mount(remote, "/mnt/cloud")?;
 
 // Now use standard filesystem tools:
 // $ cp file.txt /mnt/cloud/
@@ -955,17 +1019,17 @@ S3Server::new_multi_tenant(|request| {
 │  ┌───────────────┐    ┌───────────────────────────────────────┐ │
 │  │ SFTP Server   │───▶│ User's isolated FileStorage           │ │
 │  │ (anyfs-sftp)  │    │   └─▶ Quota&lt;SqliteBackend&gt;            │ │
-│  └───────────────┘    │       └─▶ /data/users/alice.db        │ │
-│         ▲             └───────────────────────────────────────┘ │
-└─────────┼───────────────────────────────────────────────────────┘
-          │
-          │ sftp://
-          │
-    ┌─────┴─────┐
-    │  Remote   │  $ cd /documents
-    │  User     │  $ ls
-    │  (shell)  │  $ put file.txt
-    └───────────┘
+│  │  └───────────────┘    │       └─▶ /data/users/alice.db        │ │
+│  │         ▲             └───────────────────────────────────────┘ │
+│  └─────────┼───────────────────────────────────────────────────────┘
+│            │
+│            │ sftp://
+│            │
+│      ┌─────┴─────┐
+│      │  Remote   │  $ cd /documents
+│      │  User     │  $ ls
+│      │  (shell)  │  $ put file.txt
+│      └───────────┘
 </code></pre>
 <p><strong>Server implementation:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1015,7 +1079,7 @@ sftp&gt; rm old_file.txt
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, Quota};
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 use anyfs_ssh_shell::SshShellServer;
 
 // On user login, mount their isolated storage as $HOME
@@ -1027,7 +1091,7 @@ fn on_user_login(username: &amp;str) -&gt; Result&lt;(), Error&gt; {
             .build());
 
     let mount_point = format!("/home/{}", username);
-    FuseMount::mount(backend, &amp;mount_point)?;
+    MountHandle::mount(backend, &amp;mount_point)?;
     Ok(())
 }
 
