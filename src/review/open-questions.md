@@ -13,192 +13,20 @@ This document captures previously open questions and design considerations. Unle
 
 ## Symlink Security: Following vs Creating
 
-**IMPORTANT:** The current discussion about symlinks has been fundamentally reconsidered.
+**Status:** Resolved
 
-### The Correct Understanding
+### Decision (v1)
+- Symlink support is a backend capability (via `FsLink`). There is no runtime toggle to disable following.
+- `FileStorage` resolves paths for non-`SelfResolving` backends; symlink following is inherent in that resolution.
+- `SelfResolving` backends delegate to the OS. `strict-path` prevents escapes but cannot disable following.
 
-| Action | Security Concern? | Why |
-|--------|-------------------|-----|
-| **Creating symlinks** | No | Symlinks are just data. Creating them is harmless. |
-| **Following symlinks** | **YES** | Following a symlink can escape containment. |
+### Implications
+- If you need symlink-free semantics, use a backend that does not implement `FsLink` or block symlink creation and ensure no preexisting symlinks exist.
+- `Restrictions` only controls creation, not resolution.
 
-**Example attack:**
-```
-/sandbox/escape -> /etc/passwd
-
-If we follow the symlink:
-  read("/sandbox/escape") → reads /etc/passwd → JAIL ESCAPE
-```
-
-The security feature is **controlling symlink resolution**, not symlink creation.
-
-### Virtual vs Real Backends: A Fundamental Difference
-
-| Backend | Who Controls Symlink Resolution? |
-|---------|----------------------------------|
-| `MemoryBackend` | **We do** (symlinks are stored data, we choose whether to follow) |
-| `SqliteBackend` | **We do** (symlinks are stored data, we choose whether to follow) |
-| `VRootFsBackend` | **The OS does** (we call `std::fs::read`, OS follows symlinks) |
-
-**This is the core problem:** For virtual backends, we have full control. For real filesystem backends, the OS controls symlink resolution and we cannot easily change that.
-
-### Options Analysis
-
-#### Option 1: Custom Path Resolution for VRootFsBackend
-
-Walk each path component manually using `lstat` (symlink_metadata):
-
-```rust
-fn resolve_no_follow(&self, path: &Path) -> Result<PathBuf, FsError> {
-    let mut current = self.root.clone();
-    for component in path.components() {
-        current = current.join(component);
-        let meta = std::fs::symlink_metadata(&current)?;
-        if meta.file_type().is_symlink() {
-            return Err(FsError::SymlinkNotAllowed { path: current });
-        }
-    }
-    Ok(current)
-}
-```
-
-| Pros | Cons |
-|------|------|
-| Would work | Complex implementation |
-| Consistent with virtual backends | TOCTOU vulnerability (symlink created between check and use) |
-| | Performance overhead (lstat per component) |
-| | Platform differences (Windows junctions, etc.) |
-
-#### Option 2: Two Different Traits
-
-```rust
-/// Virtual backends where we control everything
-pub trait VirtualFs: Fs {
-    fn set_symlink_resolution(&self, enabled: bool);
-}
-
-/// Real filesystem backends where OS controls symlink resolution
-pub trait RealFs: Fs {
-    // OS controls symlinks, we just ensure containment
-}
-```
-
-| Pros | Cons |
-|------|------|
-| Honest about capabilities | Complicates API |
-| Clear separation of concerns | Middleware must handle both |
-| No false promises | Harder to swap backends |
-| | Users must understand the difference |
-
-#### Option 3: Capability Query
-
-```rust
-pub trait Fs {
-    fn capabilities(&self) -> Capabilities;
-    // ...
-}
-
-pub struct Capabilities {
-    pub can_control_symlink_following: bool,
-    pub supports_hard_links: bool,
-    // ...
-}
-```
-
-| Pros | Cons |
-|------|------|
-| Single trait surface | Runtime capability discovery |
-| Backends self-describe | Middleware becomes conditional |
-| Extensible | Can't enforce at compile time |
-
-#### Option 4: Accept the Limitation
-
-- For virtual backends: We control symlink following
-- For VRootFsBackend: Rely on `strict-path` to prevent escapes
-- Document that `Restrictions` symlink control only applies to virtual backends
-
-| Pros | Cons |
-|------|------|
-| Simple | Inconsistent behavior |
-| Honest | Feature doesn't work everywhere |
-| No complexity | |
-
-#### Option 5: Drop the Symlink Control Feature
-
-User's suggestion: Low ROI, just drop it.
-
-- Virtual backends: Symlinks are data, inherently safe
-- VRootFsBackend: `strict-path` prevents escapes anyway
-
-| Pros | Cons |
-|------|------|
-| Simplest | Loses archive extraction use case |
-| No false expectations | |
-| Focus on what we can actually control | |
-
-### The Archive Extraction Use Case
-
-One valid use case for symlink control:
-
-> "Someone using our files container to contain their own user-based-tenants or as an archive extraction, where they wish to prevent symlinks as an easy resolution to make sure there is no jail-escape."
-
-For this use case:
-- **Virtual backends**: Works perfectly - we can refuse to follow symlinks
-- **VRootFsBackend**: Would need custom path resolution or OS-specific flags
-
-### What `strict-path` Actually Does
-
-`strict-path::VirtualRoot`:
-1. Takes a user path
-2. Canonicalizes it (follows symlinks, resolves `.` and `..`)
-3. Checks the canonical path is within the root
-4. Returns the safe path
-
-**Key insight:** `strict-path` FOLLOWS symlinks but ensures the final path is contained. It does NOT prevent symlink following.
-
-```
-/root/link -> ../escape
-User requests: /link
-strict-path: canonicalize(/root/link) = /escape
-strict-path: /escape is NOT within /root → DENIED
-```
-
-This is secure against escape, but it's "follow and check" not "don't follow".
-
-### v1 Decision: Accept the Limitation
-
-The design is straightforward:
-
-1. **Virtual backends always support symlinks** - creating symlinks is just storing data.
-
-2. **Virtual backends provide `set_follow_symlinks(bool)`** - the actual security control:
-   ```rust
-   let backend = MemoryBackend::new();
-   backend.set_follow_symlinks(false);  // Symlinks not resolved during path operations
-   ```
-
-3. **VRootFsBackend cannot control symlink following** - the OS handles resolution. `strict-path` prevents escapes but cannot disable following entirely.
-
-4. **Everything works by default** - all operations (`symlink()`, `hard_link()`, `set_permissions()`) work out of the box. Use `Restrictions` middleware to opt-in to restrictions when needed.
-
-### Summary
-
-| Concern | Virtual Backends | VRootFsBackend |
-|---------|------------------|----------------|
-| Symlink creation | Always allowed (just data) | Always allowed (just data) |
-| Symlink following | `set_follow_symlinks(bool)` | OS controls (strict-path prevents escapes) |
-| Jail escape protection | `set_follow_symlinks(false)` | strict-path containment |
-
-### Why VRootFsBackend Cannot Control Symlink Following
-
-VRootFsBackend calls OS functions (`std::fs::read()`, etc.) which follow symlinks automatically. We don't implement path resolution - the OS does.
-
-**Theoretical alternatives (not recommended):**
-- Walk path manually before each operation → TOCTOU race condition
-- Use `O_NOFOLLOW` flags → Only affects final component, platform-specific
-- FUSE mount → Way too complex for a library
-
-**The honest answer:** VRootFsBackend cannot disable symlink following. `strict-path` prevents escapes, but symlinks within the jail are followed by the OS. This is a fundamental limitation of wrapping a real filesystem.
+### Why
+- Virtual backends have no host filesystem to escape to; symlink resolution stays inside the virtual structure.
+- OS-backed backends cannot reliably disable symlink following without TOCTOU risks or platform-specific hacks.
 
 ---
 
@@ -208,12 +36,12 @@ VRootFsBackend calls OS functions (`std::fs::read()`, etc.) which follow symlink
 
 **Question:** Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?
 
-**Resolution:** `FileStorage` handles symlink-aware path resolution for ALL backends by default. Backends do NOT perform path resolution - they receive already-resolved paths.
+**Resolution:** `FileStorage` handles symlink-aware path resolution for non-`SelfResolving` backends. `SelfResolving` backends delegate to the OS, so FileStorage does not pre-resolve paths for them.
 
 | Backend Type | Path Resolution | Symlink Handling |
 |--------------|-----------------|------------------|
-| MemoryBackend | **FileStorage** (symlink-aware) | `set_follow_symlinks(bool)` |
-| SqliteBackend | **FileStorage** (symlink-aware) | `set_follow_symlinks(bool)` |
+| MemoryBackend | **FileStorage** (symlink-aware) | FileStorage follows symlinks |
+| SqliteBackend | **FileStorage** (symlink-aware) | FileStorage follows symlinks |
 | VRootFsBackend | **OS** (implements `SelfResolving`) | OS follows symlinks (strict-path prevents escapes) |
 
 **Key design decision:** Backends that wrap a real filesystem implement the `SelfResolving` marker trait to tell `FileStorage` to skip resolution:
@@ -343,7 +171,7 @@ The [vfs crate](https://docs.rs/vfs/) provides virtual filesystem abstractions w
 
 ## FUSE Mount Support
 
-**Status:** Resolved - Implemented in `anyfs-mount`
+**Status:** Planned - Roadmap and API shape documented in `anyfs-mount` guide
 
 **What is FUSE?**
 [FUSE (Filesystem in Userspace)](https://en.wikipedia.org/wiki/Filesystem_in_Userspace) allows implementing filesystems in userspace rather than kernel code. It enables:
@@ -351,7 +179,7 @@ The [vfs crate](https://docs.rs/vfs/) provides virtual filesystem abstractions w
 - Using standard Unix tools (ls, cat, etc.) on AnyFS containers
 - Integration with existing workflows
 
-**Resolution:** Implemented via `anyfs-mount` crate with cross-platform support:
+**Resolution:** Planned via an optional `anyfs-mount` companion crate with cross-platform support:
 - Linux: FUSE (native)
 - macOS: macFUSE
 - Windows: WinFsp
@@ -440,11 +268,11 @@ Based on review feedback, the following naming concerns were raised:
 
 | Topic | v1 Decision |
 |-------|-------------|
-| Symlink security | Virtual backends: `set_follow_symlinks()`. VRootFsBackend: `strict-path` escapes only. |
+| Symlink security | Backend-defined (`FsLink`); VRootFsBackend uses `strict-path` for containment |
 | Path resolution | FileStorage (symlink-aware); VRootFs = OS via `SelfResolving` |
 | Compression/encryption | Backend responsibility |
 | Hooks/callbacks | `Tracing` middleware |
-| FUSE mount | `anyfs-mount` crate (cross-platform) |
+| FUSE mount | Planned `anyfs-mount` companion crate (cross-platform) |
 | Type-system protection | `FileStorage<B, M>` marker types |
 | POSIX compatibility | Not a goal |
 | `truncate` | Added to `FsWrite` |

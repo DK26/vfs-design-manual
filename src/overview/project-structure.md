@@ -1,18 +1,35 @@
 # AnyFS - Project Structure
 
-**Status:** Current
+**Status:** Target layout (design spec)
 **Last updated:** 2025-12-24
 
 ---
 
+This manual describes the intended code repository layout; this repository contains documentation only.
+
 ## Repository Layout
 
 ```
-anyfs-backend/              # Crate 1: trait + types
+anyfs-backend/              # Crate 1: traits + types (no dependencies)
   Cargo.toml
   src/
     lib.rs
-    backend.rs              # Fs traits (FsRead, FsWrite, FsDir, etc.)
+    traits/
+      fs_read.rs            # FsRead trait
+      fs_write.rs           # FsWrite trait
+      fs_dir.rs             # FsDir trait
+      fs_link.rs            # FsLink trait
+      fs_permissions.rs     # FsPermissions trait
+      fs_sync.rs            # FsSync trait
+      fs_stats.rs           # FsStats trait
+      fs_path.rs            # FsPath trait (canonicalization, blanket impl)
+      fs_inode.rs           # FsInode trait
+      fs_handles.rs         # FsHandles trait
+      fs_lock.rs            # FsLock trait
+      fs_xattr.rs           # FsXattr trait
+    layer.rs                # Layer trait (Tower-style)
+    ext.rs                  # FsExt (extension methods)
+    markers.rs              # SelfResolving marker trait
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -48,12 +65,15 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
 anyfs-backend (trait + types)
      ^
      |-- anyfs (backends + middleware + ergonomics)
-           ^-- vrootfs feature uses strict-path
+     |     ^-- vrootfs feature uses strict-path
 ```
 
 **Key points:**
 - Custom backends depend only on `anyfs-backend`
 - `anyfs` provides built-in backends, middleware, and the ergonomic `FileStorage<B, M>` wrapper
+
+**Companion crate (planned):**
+- `anyfs-mount` (FUSE/WinFsp mounting) is planned; design and roadmap are documented in `src/guides/mounting.md`.
 
 ---
 

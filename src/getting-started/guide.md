@@ -75,18 +75,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 use anyfs::{MemoryBackend, Restrictions, FileStorage};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Block specific operations for untrusted code
+    // Block permission changes for untrusted code
     let backend = RestrictionsLayer::builder()
-        .deny_hard_links()    // Block hard_link() calls
         .deny_permissions()   // Block set_permissions() calls
         .build()
         .layer(MemoryBackend::new());
 
     let fs = FileStorage::new(backend);
 
-    // Symlinks work (not blocked)
-    fs.write("/original.txt", b"content")?;
-    fs.symlink("/original.txt", "/shortcut")?;
+    // All other operations work normally
+    fs.write("/file.txt", b"content")?;
 
     Ok(())
 }
@@ -104,7 +102,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .max_file_size(10 * 1024 * 1024)
             .build())
         .layer(RestrictionsLayer::builder()
-            .deny_hard_links()
             .deny_permissions()
             .build())
         .layer(TracingLayer::new());
@@ -201,15 +198,14 @@ if !remaining.can_write {
 }
 ```
 
-### Restrictions — Block Operations
+### Restrictions — Block Permission Changes
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
 
-// By default, all operations work. Use deny_*() to block specific ones.
+// Restrictions controls permission-related operations.
+// Symlink/hard-link capability is determined by trait bounds (FsLink).
 let backend = RestrictionsLayer::builder()
-    .deny_symlinks()      // Block symlink() calls
-    .deny_hard_links()    // Block hard_link() calls
     .deny_permissions()   // Block set_permissions() calls
     .build()
     .layer(MemoryBackend::new());
@@ -295,12 +291,12 @@ fn test_quota_exceeded() {
 
 ### 1. Use Appropriate Backend
 
-| Use Case | Backend |
-|----------|---------|
-| Testing | `MemoryBackend` |
-| Production (portable) | `SqliteBackend` |
+| Use Case                           | Backend          |
+| ---------------------------------- | ---------------- |
+| Testing                            | `MemoryBackend`  |
+| Production (portable)              | `SqliteBackend`  |
 | Host filesystem (with containment) | `VRootFsBackend` |
-| Host filesystem (direct access) | `StdFsBackend` |
+| Host filesystem (direct access)    | `StdFsBackend`   |
 
 ### 2. Compose Middleware for Your Needs
 
@@ -323,7 +319,6 @@ let fs = FileStorage::new(
             .max_total_size(100 * 1024 * 1024)
             .build())
         .layer(RestrictionsLayer::builder()
-            .deny_hard_links()
             .deny_permissions()
             .build())
 );
@@ -337,7 +332,7 @@ Always check for quota exceeded, feature not enabled, and other errors.
 
 ## Advanced Use Cases (Future)
 
-These use cases require `anyfs-mount` (future crate).
+These use cases require `anyfs-mount` (planned companion crate; roadmap defined).
 
 ### Database-Backed Drive with Live Monitoring
 
@@ -366,11 +361,11 @@ Mount a database-backed filesystem and query it directly for real-time analytics
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**SQLite Example:**
+**SQLite Example (API sketch, planned):**
 
 ```rust
 use anyfs::{SqliteBackend, QuotaLayer, TracingLayer};
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 // Mount the drive
 let backend = SqliteBackend::open("tenant.db")?
@@ -379,7 +374,7 @@ let backend = SqliteBackend::open("tenant.db")?
         .max_total_size(1_000_000_000)
         .build());
 
-let mount = FuseMount::mount(backend, "/mnt/workspace")?;
+let mount = MountHandle::mount(backend, "/mnt/workspace")?;
 ```
 
 ```rust
@@ -410,11 +405,11 @@ loop {
 
 **Works with any database backend:**
 
-| Backend | Direct Query Method |
-|---------|---------------------|
-| `SqliteBackend` | `rusqlite` with `SQLITE_OPEN_READ_ONLY` |
-| `PostgresBackend` (future) | Standard `postgres` crate connection |
-| `MySqlBackend` (future) | Standard `mysql` crate connection |
+| Backend                    | Direct Query Method                     |
+| -------------------------- | --------------------------------------- |
+| `SqliteBackend`            | `rusqlite` with `SQLITE_OPEN_READ_ONLY` |
+| `PostgresBackend` (future) | Standard `postgres` crate connection    |
+| `MySqlBackend` (future)    | Standard `mysql` crate connection       |
 
 **What you can visualize:**
 - Real-time storage usage (gauges, bar charts)
@@ -430,10 +425,10 @@ This pattern is powerful because the database is the source of truth — you get
 
 ```rust
 use anyfs::{MemoryBackend, QuotaLayer};
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 // 4GB RAM drive
-let mount = FuseMount::mount(
+let mount = MountHandle::mount(
     MemoryBackend::new()
         .layer(QuotaLayer::builder()
             .max_total_size(4 * 1024 * 1024 * 1024)
@@ -449,18 +444,14 @@ let mount = FuseMount::mount(
 
 ```rust
 use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer};
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
-let mount = FuseMount::mount(
+let mount = MountHandle::mount(
     MemoryBackend::new()
         .layer(PathFilterLayer::builder()
             .allow("/workspace/**")
             .deny("**/..*")           // No hidden files
             .deny("**/.*")            // No dotfiles
-            .build())
-        .layer(RestrictionsLayer::builder()
-            .deny_symlinks()          // Prevent symlink attacks
-            .deny_hard_links()
             .build())
         .layer(QuotaLayer::builder()
             .max_total_size(100 * 1024 * 1024)

@@ -64,21 +64,21 @@ Thus AnyFS: **A composable middleware framework for filesystem operations.**
 
 ### Rust Ecosystem
 
-| Library | Stars | Downloads | Purpose |
-|---------|-------|-----------|---------|
-| [`vfs`](https://github.com/manuel-woelker/rust-vfs) | 464 | 1,700+ deps | Swappable filesystem backends |
-| [`virtual-filesystem`](https://lib.rs/crates/virtual-filesystem) | ~30 | ~260/mo | Backends with basic sandboxing |
-| [`AgentFS`](https://github.com/tursodatabase/agentfs) | New | Alpha | AI agent state management |
+| Library                                                          | Stars | Downloads   | Purpose                        |
+| ---------------------------------------------------------------- | ----- | ----------- | ------------------------------ |
+| [`vfs`](https://github.com/manuel-woelker/rust-vfs)              | 464   | 1,700+ deps | Swappable filesystem backends  |
+| [`virtual-filesystem`](https://lib.rs/crates/virtual-filesystem) | ~30   | ~260/mo     | Backends with basic sandboxing |
+| [`AgentFS`](https://github.com/tursodatabase/agentfs)            | New   | Alpha       | AI agent state management      |
 
 ### Other Languages
 
-| Library | Language | Strength |
-|---------|----------|----------|
-| [fsspec](https://filesystem-spec.readthedocs.io/) | Python | Async, caching, 20+ backends |
-| [PyFilesystem2](https://github.com/PyFilesystem/pyfilesystem2) | Python | Clean URL-based API |
-| [Afero](https://github.com/spf13/afero) | Go | Composition patterns |
-| [Apache Commons VFS](https://commons.apache.org/vfs/) | Java | Enterprise, many backends |
-| [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) | .NET | Testing, mirrors System.IO |
+| Library                                                                        | Language | Strength                     |
+| ------------------------------------------------------------------------------ | -------- | ---------------------------- |
+| [fsspec](https://filesystem-spec.readthedocs.io/)                              | Python   | Async, caching, 20+ backends |
+| [PyFilesystem2](https://github.com/PyFilesystem/pyfilesystem2)                 | Python   | Clean URL-based API          |
+| [Afero](https://github.com/spf13/afero)                                        | Go       | Composition patterns         |
+| [Apache Commons VFS](https://commons.apache.org/vfs/)                          | Java     | Enterprise, many backends    |
+| [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) | .NET     | Testing, mirrors System.IO   |
 
 ---
 
@@ -132,35 +132,36 @@ impl PathResolver for SandboxedPathResolver {
 
 That's it. ~10 lines covering **2 out of 19+** attack vectors.
 
-| Attack Vector | virtual-filesystem | strict-path |
-|---------------|:------------------:|:-----------:|
-| Basic `..` traversal | ✅ | ✅ |
-| Symlink following | ✅ | ✅ |
-| NTFS Alternate Data Streams | ❌ | ✅ |
-| Windows 8.3 short names | ❌ | ✅ |
-| Unicode normalization | ❌ | ✅ |
-| TOCTOU race conditions | ❌ | ✅ |
-| Non-existing paths | ❌ FAILS | ✅ |
-| URL-encoded traversal | ❌ | ✅ |
-| Windows UNC paths | ❌ | ✅ |
-| Linux /proc magic symlinks | ❌ | ✅ |
-| Null byte injection | ❌ | ✅ |
-| Unicode direction override | ❌ | ✅ |
-| Windows reserved names | ❌ | ✅ |
-| Junction point escapes | ❌ | ✅ |
-| **Coverage** | **2/19** | **19/19** |
+| Attack Vector               | virtual-filesystem | strict-path |
+| --------------------------- | :----------------: | :---------: |
+| Basic `..` traversal        |         ✅          |      ✅      |
+| Symlink following           |         ✅          |      ✅      |
+| NTFS Alternate Data Streams |         ❌          |      ✅      |
+| Windows 8.3 short names     |         ❌          |      ✅      |
+| Unicode normalization       |         ❌          |      ✅      |
+| TOCTOU race conditions      |         ❌          |      ✅      |
+| Non-existing paths          |      ❌ FAILS       |      ✅      |
+| URL-encoded traversal       |         ❌          |      ✅      |
+| Windows UNC paths           |         ❌          |      ✅      |
+| Linux /proc magic symlinks  |         ❌          |      ✅      |
+| Null byte injection         |         ❌          |      ✅      |
+| Unicode direction override  |         ❌          |      ✅      |
+| Windows reserved names      |         ❌          |      ✅      |
+| Junction point escapes      |         ❌          |      ✅      |
+| **Coverage**                |      **2/19**      |  **19/19**  |
 
 The `vfs` crate's `AltrootFS` is similarly basic - just path prefix translation.
 
 **No middleware composition exists anywhere.**
 
-None of the filesystem libraries offer Tower-style middleware. You can't do:
+None of the filesystem libraries offer Tower-style middleware. You can't do something like:
 
 ```rust
+// Hypothetical - doesn't exist in other libraries
 backend
-    .layer(QuotaLayer::new())
-    .layer(RateLimitLayer::new())
-    .layer(TracingLayer::new())
+    .layer(QuotaLayer)
+    .layer(RateLimitLayer)
+    .layer(TracingLayer)
 ```
 
 If you want quotas in `vfs`, you'd have to build it INTO each backend. Then build it again for the next backend.
@@ -208,20 +209,20 @@ Compile-time prevention of mixing storage domains.
 
 ### 3. Backend-Agnostic Policies (Nobody Else Has This)
 
-| Middleware | Function | Works on ANY backend |
-|------------|----------|:--------------------:|
-| `Quota<B>` | Size/count limits | ✅ |
-| `RateLimit<B>` | Ops per second | ✅ |
-| `PathFilter<B>` | Path-based access control | ✅ |
-| `Restrictions<B>` | Disable operations | ✅ |
-| `Tracing<B>` | Audit logging | ✅ |
-| `ReadOnly<B>` | Block all writes | ✅ |
-| `Cache<B>` | LRU caching | ✅ |
-| `Overlay<B1,B2>` | Union filesystem | ✅ |
+| Middleware        | Function                  | Works on ANY backend |
+| ----------------- | ------------------------- | :------------------: |
+| `Quota<B>`        | Size/count limits         |          ✅           |
+| `RateLimit<B>`    | Ops per second            |          ✅           |
+| `PathFilter<B>`   | Path-based access control |          ✅           |
+| `Restrictions<B>` | Disable operations        |          ✅           |
+| `Tracing<B>`      | Audit logging             |          ✅           |
+| `ReadOnly<B>`     | Block all writes          |          ✅           |
+| `Cache<B>`        | LRU caching               |          ✅           |
+| `Overlay<B1,B2>`  | Union filesystem          |          ✅           |
 
 ### 4. Comprehensive Security Testing
 
-Our conformance test suite includes 50+ security tests covering:
+The planned conformance test suite targets 50+ security tests covering:
 
 - Path traversal (URL-encoded, backslash, mixed)
 - Symlink attacks (escape, loops, TOCTOU)
@@ -237,12 +238,12 @@ Derived from vulnerabilities in Apache Commons VFS, Afero, PyFilesystem2, and ou
 
 ### 1. We're New, They're Established
 
-| Metric | `vfs` | AnyFS |
-|--------|-------|-------|
-| Stars | 464 | 0 (new) |
+| Metric             | `vfs`  | AnyFS   |
+| ------------------ | ------ | ------- |
+| Stars              | 464    | 0 (new) |
 | Dependent projects | 1,700+ | 0 (new) |
-| Years maintained | 5+ | New |
-| Contributors | 17 | 1 |
+| Years maintained   | 5+     | New     |
+| Contributors       | 17     | 1       |
 
 **Reality:** The `vfs` crate works fine for 90% of use cases. If you just need swappable backends for testing, `vfs` is battle-tested.
 
@@ -273,15 +274,15 @@ AnyFS is sync-first. In an async-dominated ecosystem (Tokio, etc.), this may lim
 
 If you're building AI agents specifically:
 
-| Feature | AgentFS | AnyFS |
-|---------|---------|-------|
-| SQLite backend | ✅ | ✅ |
-| FUSE mounting | ✅ | Planned |
-| Key-value store | ✅ | ❌ (different abstraction) |
-| Tool call auditing | ✅ Built-in | Via Tracing middleware |
-| TypeScript SDK | ✅ | ❌ |
-| Python SDK | Coming | ❌ |
-| Corporate backing | Turso | None |
+| Feature            | AgentFS    | AnyFS                     |
+| ------------------ | ---------- | ------------------------- |
+| SQLite backend     | ✅          | ✅                         |
+| FUSE mounting      | ✅          | Planned                   |
+| Key-value store    | ✅          | ❌ (different abstraction) |
+| Tool call auditing | ✅ Built-in | Via Tracing middleware    |
+| TypeScript SDK     | ✅          | ❌                         |
+| Python SDK         | Coming     | ❌                         |
+| Corporate backing  | Turso      | None                      |
 
 AgentFS is purpose-built for AI agents with corporate resources. We're a general-purpose framework.
 
@@ -307,20 +308,20 @@ For `VRootFsBackend` (wrapping real filesystem):
 
 ## Feature Matrix
 
-| Feature | AnyFS | `vfs` | `virtual-fs` | AgentFS | OpenDAL |
-|---------|:-----:|:-----:|:------------:|:-------:|:-------:|
-| Composable middleware | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Multiple backends | ✅ | ✅ | ✅ | ❌ | ✅ |
-| SQLite backend | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Memory backend | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Quota enforcement | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Rate limiting | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Type-safe markers | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Path sandboxing | ✅ (19 vectors) | Basic | Basic (2 vectors) | ❌ | ❌ |
-| Async API | Planned | Partial | ❌ | ❌ | ✅ |
-| std::fs-aligned API | ✅ | Custom | ✅ | ✅ | Custom |
-| FUSE mounting | Planned | ❌ | ❌ | ✅ | ❌ |
-| Conformance tests | 80+ | Unknown | Unknown | Unknown | Unknown |
+| Feature               |     AnyFS      |  `vfs`  |   `virtual-fs`    | AgentFS | OpenDAL |
+| --------------------- | :------------: | :-----: | :---------------: | :-----: | :-----: |
+| Composable middleware |       ✅        |    ❌    |         ❌         |    ❌    |    ✅    |
+| Multiple backends     |       ✅        |    ✅    |         ✅         |    ❌    |    ✅    |
+| SQLite backend        |       ✅        |    ❌    |         ❌         |    ✅    |    ❌    |
+| Memory backend        |       ✅        |    ✅    |         ✅         |    ❌    |    ✅    |
+| Quota enforcement     |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
+| Rate limiting         |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
+| Type-safe markers     |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
+| Path sandboxing       | ✅ (19 vectors) |  Basic  | Basic (2 vectors) |    ❌    |    ❌    |
+| Async API             |       ✅        | Partial |         ❌         |    ❌    |    ✅    |
+| std::fs-aligned API   |       ✅        | Custom  |         ✅         |    ✅    | Custom  |
+| FUSE mounting         |   MVP scope    |    ❌    |         ❌         |    ✅    |    ❌    |
+| Conformance tests     | Planned (80+)  | Unknown |      Unknown      | Unknown | Unknown |
 
 ---
 
@@ -340,7 +341,7 @@ For `VRootFsBackend` (wrapping real filesystem):
 - **AI agent runtime** - AgentFS has more features for that specific use case
 - **Cloud storage** - OpenDAL is async-first with cloud backends
 - **Async-first codebases** - Wait for AnyFS async support
-- **Must mount filesystem** - Use FUSE solution directly
+- **Must mount filesystem** - Use a FUSE solution directly today (anyfs-mount is planned)
 
 ---
 
@@ -376,3 +377,4 @@ For `VRootFsBackend` (wrapping real filesystem):
 - [In-Memory Filesystems in Rust](https://andre.arko.net/2025/08/18/in-memory-filesystems-in-rust/) - Performance analysis
 - [Rust Forum: Virtual Filesystems](https://users.rust-lang.org/t/virtual-filesystems-for-rust/117173)
 - [Prior Art Analysis](./prior-art-analysis.md) - Detailed vulnerability research
+

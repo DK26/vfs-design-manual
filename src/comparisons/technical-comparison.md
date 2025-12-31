@@ -18,12 +18,12 @@ AnyFS is **to filesystems what Axum/Tower is to HTTP**: a composable middleware 
 
 ## Compared Solutions
 
-| Solution | What it is | Middleware | Multiple Backends |
-|----------|------------|:----------:|:-----------------:|
-| `vfs` | VFS trait + backends | No | Yes |
-| AgentFS | SQLite agent runtime | No | No (SQLite only) |
-| OpenDAL | Object storage layer | Yes | Yes (cloud-focused) |
-| **AnyFS** | VFS + middleware stack | **Yes** | **Yes** |
+| Solution  | What it is             | Middleware |  Multiple Backends  |
+| --------- | ---------------------- | :--------: | :-----------------: |
+| `vfs`     | VFS trait + backends   |     No     |         Yes         |
+| AgentFS   | SQLite agent runtime   |     No     |  No (SQLite only)   |
+| OpenDAL   | Object storage layer   |    Yes     | Yes (cloud-focused) |
+| **AnyFS** | VFS + middleware stack |  **Yes**   |       **Yes**       |
 
 ---
 
@@ -76,9 +76,6 @@ let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
@@ -97,23 +94,23 @@ let fs = FileStorage::new(backend);
 
 ## 2. Feature Comparison
 
-| Feature | AnyFS | `vfs` | AgentFS | OpenDAL |
-|---------|:-----:|:-----:|:-------:|:-------:|
-| **Middleware pattern** | Yes | No | No | Yes |
-| **Multiple backends** | Yes | Yes | No | Yes |
-| **SQLite backend** | Yes | No | Yes | No |
-| **Memory backend** | Yes | Yes | No | Yes |
-| **Real FS backend** | Yes | Yes | No | No |
-| **Quota enforcement** | Middleware | Manual | No | No |
-| **Path sandboxing** | Middleware | Manual | No | No |
-| **Feature gating** | Middleware | No | No | No |
-| **Rate limiting** | Middleware | No | No | No |
-| **Tracing/logging** | Middleware | Manual | Built-in | Middleware |
-| **Streaming I/O** | Yes | Yes | Yes | Yes |
-| **Async API** | Future | Partial | No | Yes |
-| **POSIX extension** | Future | No | No | No |
-| **FUSE mountable** | Future | No | No | No |
-| **KV store** | No | No | Yes | No |
+| Feature                |   AnyFS    |  `vfs`  | AgentFS  |  OpenDAL   |
+| ---------------------- | :--------: | :-----: | :------: | :--------: |
+| **Middleware pattern** |    Yes     |   No    |    No    |    Yes     |
+| **Multiple backends**  |    Yes     |   Yes   |    No    |    Yes     |
+| **SQLite backend**     |    Yes     |   No    |   Yes    |     No     |
+| **Memory backend**     |    Yes     |   Yes   |    No    |    Yes     |
+| **Real FS backend**    |    Yes     |   Yes   |    No    |     No     |
+| **Quota enforcement**  | Middleware | Manual  |    No    |     No     |
+| **Path sandboxing**    | Middleware | Manual  |    No    |     No     |
+| **Feature gating**     | Middleware |   No    |    No    |     No     |
+| **Rate limiting**      | Middleware |   No    |    No    |     No     |
+| **Tracing/logging**    | Middleware | Manual  | Built-in | Middleware |
+| **Streaming I/O**      |    Yes     |   Yes   |   Yes    |    Yes     |
+| **Async API**          |   Future   | Partial |    No    |    Yes     |
+| **POSIX extension**    |   Future   |   No    |    No    |     No     |
+| **FUSE mountable**     |    Yes     |   No    |    No    |     No     |
+| **KV store**           |     No     |   No    |   Yes    |     No     |
 
 ---
 
@@ -121,18 +118,18 @@ let fs = FileStorage::new(backend);
 
 AnyFS middleware can **intercept, transform, and control** operations:
 
-| Middleware | Intercepts | Action |
-|------------|------------|--------|
-| `Quota` | Writes | Reject if over limit |
-| `PathFilter` | All ops | Block denied paths |
+| Middleware     | Intercepts              | Action                        |
+| -------------- | ----------------------- | ----------------------------- |
+| `Quota`        | Writes                  | Reject if over limit          |
+| `PathFilter`   | All ops                 | Block denied paths            |
 | `Restrictions` | Configurable operations | Block via `.deny_*()` methods |
-| `RateLimit` | All ops | Throttle per second |
-| `ReadOnly` | Writes | Block all writes |
-| `Tracing` | All ops | Log with tracing crate |
-| `DryRun` | Writes | Log without executing |
-| `Cache` | Reads | LRU caching |
-| `Overlay` | All ops | Union filesystem |
-| Custom | Any | Encryption, compression, ... |
+| `RateLimit`    | All ops                 | Throttle per second           |
+| `ReadOnly`     | Writes                  | Block all writes              |
+| `Tracing`      | All ops                 | Log with tracing crate        |
+| `DryRun`       | Writes                  | Log without executing         |
+| `Cache`        | Reads                   | LRU caching                   |
+| `Overlay`      | All ops                 | Union filesystem              |
+| Custom         | Any                     | Encryption, compression, ...  |
 
 ---
 
@@ -158,15 +155,15 @@ pub trait Fs: Send + Sync {
 
 ## 5. When to Use What
 
-| Use Case | Recommendation |
-|----------|----------------|
-| Need composable middleware | **AnyFS** |
-| Need backend flexibility | **AnyFS** |
-| Need SQLite + Memory + RealFS | **AnyFS** |
-| Need just VFS abstraction (no policies) | `vfs` |
-| Need AI agent runtime with KV + auditing | AgentFS |
-| Need cloud object storage | OpenDAL |
-| Need async-first design | OpenDAL (or wait for AnyFS async) |
+| Use Case                                 | Recommendation                    |
+| ---------------------------------------- | --------------------------------- |
+| Need composable middleware               | **AnyFS**                         |
+| Need backend flexibility                 | **AnyFS**                         |
+| Need SQLite + Memory + RealFS            | **AnyFS**                         |
+| Need just VFS abstraction (no policies)  | `vfs`                             |
+| Need AI agent runtime with KV + auditing | AgentFS                           |
+| Need cloud object storage                | OpenDAL                           |
+| Need async-first design                  | OpenDAL (or wait for AnyFS async) |
 
 ---
 
@@ -201,23 +198,23 @@ pub trait FileSystem: Send + Sync {
 
 ### Feature Gap Analysis
 
-| Feature | `vfs` | AnyFS | Gap |
-|---------|:-----:|:-----:|-----|
-| Basic read/write | Yes | Yes | - |
-| Directory ops | Yes | Yes | - |
-| Streaming I/O | Yes | Yes | - |
-| `rename` | `move_file` | Yes | - |
-| `copy` | `copy_file` | Yes | - |
-| **Symlinks** | No | Yes | Critical |
-| **Hard links** | No | Yes | Critical |
-| **Permissions** | No | Yes | Critical |
-| **truncate** | No | Yes | Missing |
-| **sync/fsync** | No | Yes | Missing |
-| **statfs** | No | Yes | Missing |
-| **read_range** | No | Yes | Missing |
-| **symlink_metadata** | No | Yes | Missing |
-| Path type | `&str` | `&Path` (core) + `impl AsRef<Path>` in ergonomic layer | Different |
-| Middleware | No | Yes | Architectural |
+| Feature              |    `vfs`    |                         AnyFS                          | Gap           |
+| -------------------- | :---------: | :----------------------------------------------------: | ------------- |
+| Basic read/write     |     Yes     |                          Yes                           | -             |
+| Directory ops        |     Yes     |                          Yes                           | -             |
+| Streaming I/O        |     Yes     |                          Yes                           | -             |
+| `rename`             | `move_file` |                          Yes                           | -             |
+| `copy`               | `copy_file` |                          Yes                           | -             |
+| **Symlinks**         |     No      |                          Yes                           | Critical      |
+| **Hard links**       |     No      |                          Yes                           | Critical      |
+| **Permissions**      |     No      |                          Yes                           | Critical      |
+| **truncate**         |     No      |                          Yes                           | Missing       |
+| **sync/fsync**       |     No      |                          Yes                           | Missing       |
+| **statfs**           |     No      |                          Yes                           | Missing       |
+| **read_range**       |     No      |                          Yes                           | Missing       |
+| **symlink_metadata** |     No      |                          Yes                           | Missing       |
+| Path type            |   `&str`    | `&Path` (core) + `impl AsRef<Path>` in ergonomic layer | Different     |
+| Middleware           |     No      |                          Yes                           | Architectural |
 
 ### Why Not Adopt Their Trait?
 
@@ -231,14 +228,14 @@ pub trait FileSystem: Send + Sync {
 
 ### `vfs` Backends
 
-| vfs Backend | AnyFS Equivalent | Notes |
-|-------------|------------------|-------|
-| `PhysicalFS` | `StdFsBackend` | Both use real filesystem directly |
-| `MemoryFS` | `MemoryBackend` | Both in-memory |
-| `OverlayFS` | `Overlay<B1,B2>` | Both union filesystems |
-| `AltrootFS` | `VRootFsBackend` | Both provide path containment |
-| `EmbeddedFS` | (none) | Read-only embedded assets |
-| (none) | `SqliteBackend` | We have SQLite |
+| vfs Backend  | AnyFS Equivalent | Notes                             |
+| ------------ | ---------------- | --------------------------------- |
+| `PhysicalFS` | `StdFsBackend`   | Both use real filesystem directly |
+| `MemoryFS`   | `MemoryBackend`  | Both in-memory                    |
+| `OverlayFS`  | `Overlay<B1,B2>` | Both union filesystems            |
+| `AltrootFS`  | `VRootFsBackend` | Both provide path containment     |
+| `EmbeddedFS` | (none)           | Read-only embedded assets         |
+| (none)       | `SqliteBackend`  | We have SQLite                    |
 
 ### Interoperability Plan
 
@@ -282,3 +279,4 @@ let vfs_fs: Box<dyn vfs::FileSystem> = Box::new(AnyFsCompat::new(anyfs_backend))
 ---
 
 If this document conflicts with `AGENTS.md` or `src/architecture/design-overview.md`, treat those as authoritative.
+

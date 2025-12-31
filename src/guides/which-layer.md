@@ -4,13 +4,13 @@
 
 ## Decision Guide
 
-| You want to... | Use |
-|----------------|-----|
-| Build an application | `anyfs` |
-| Use built-in backends (Memory, SQLite, VRootFs) | `anyfs` |
-| Use built-in middleware (Quota, PathFilter, etc.) | `anyfs` |
-| Implement a custom backend | `anyfs-backend` only |
-| Implement custom middleware | `anyfs-backend` only |
+| You want to...                                    | Use                  |
+| ------------------------------------------------- | -------------------- |
+| Build an application                              | `anyfs`              |
+| Use built-in backends (Memory, SQLite, VRootFs)   | `anyfs`              |
+| Use built-in middleware (Quota, PathFilter, etc.) | `anyfs`              |
+| Implement a custom backend                        | `anyfs-backend` only |
+| Implement custom middleware                       | `anyfs-backend` only |
 
 ---
 
@@ -40,9 +40,6 @@ let stack = SqliteBackend::open("tenant.db")?
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
         .build())
     .layer(TracingLayer::new());
 

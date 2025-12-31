@@ -3,7 +3,7 @@
 This plan describes a phased rollout of the AnyFS ecosystem:
 
 - `anyfs-backend`: Layered traits (`Fs`, `FsFull`, `FsFuse`, `FsPosix`) + `Layer` + types
-- `anyfs`: Built-in backends + middleware (feature-gated) + `FileStorage<M>` ergonomic wrapper
+- `anyfs`: Built-in backends + middleware (feature-gated) + `FileStorage<B, M>` ergonomic wrapper
 
 ---
 
@@ -62,28 +62,56 @@ FileStorage handles path resolution (symlink-aware, not just lexical normalizati
 - Easy to pattern match
 - Include context (path, operation)
 - Derive `thiserror` for good messages
+- Use `#[non_exhaustive]` for forward compatibility
 
 ```rust
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum FsError {
-    #[error("{operation}: not found: {path}")]
-    NotFound { path: PathBuf, operation: &'static str },
+    // Path/File Errors
+    #[error("not found: {path}")]
+    NotFound { path: PathBuf },
 
     #[error("{operation}: already exists: {path}")]
     AlreadyExists { path: PathBuf, operation: &'static str },
 
-    #[error("quota exceeded: limit {limit}, attempted {attempted}")]
-    QuotaExceeded { limit: u64, attempted: u64 },
+    #[error("not a file: {path}")]
+    NotAFile { path: PathBuf },
 
-    #[error("feature not enabled: {feature}")]
-    FeatureNotEnabled { feature: &'static str },
+    #[error("not a directory: {path}")]
+    NotADirectory { path: PathBuf },
 
-    #[error("permission denied: {path} ({operation})")]
+    #[error("directory not empty: {path}")]
+    DirectoryNotEmpty { path: PathBuf },
+
+    // Permission/Access Errors
+    #[error("{operation}: permission denied: {path}")]
     PermissionDenied { path: PathBuf, operation: &'static str },
 
-    // ... etc
+    #[error("access denied: {path} ({reason})")]
+    AccessDenied { path: PathBuf, reason: String },
+
+    #[error("read-only filesystem: {operation}")]
+    ReadOnly { operation: &'static str },
+
+    #[error("{operation}: feature not enabled: {feature}")]
+    FeatureNotEnabled { feature: &'static str, operation: &'static str },
+
+    // Resource Limit Errors (from Quota middleware)
+    #[error("quota exceeded: limit {limit}, requested {requested}, usage {usage}")]
+    QuotaExceeded { limit: u64, requested: u64, usage: u64 },
+
+    #[error("file size exceeded: {path} ({size} > {limit})")]
+    FileSizeExceeded { path: PathBuf, size: u64, limit: u64 },
+
+    #[error("rate limit exceeded: {limit}/s (window: {window_secs}s)")]
+    RateLimitExceeded { limit: u32, window_secs: u64 },
+
+    // ... see design-overview.md for complete list
 }
 ```
+
+See [design-overview.md](../architecture/design-overview.md#error-types) for the complete `FsError` definition.
 
 ### 5. Documentation Requirements
 
@@ -175,6 +203,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 
 - Define `Layer` trait (Tower-style middleware composition)
 - Define `FsExt` trait (extension methods for JSON, type checks)
+- Define `FsPath` trait (path canonicalization with default impl, requires `FsRead + FsLink`)
 - Define core types (`Metadata`, `Permissions`, `FileType`, `DirEntry`, `StatFs`)
 - Define `FsError` with contextual variants (see guidelines above)
 - Define `ROOT_INODE = 1` constant
@@ -194,9 +223,11 @@ FileStorage handles path resolution for ALL backends (unless they implement `Sel
 
 - Walks path component by component using `metadata()` and `read_link()`
 - Handles `..` correctly after symlink resolution (symlink-aware, not lexical)
-- Respects `set_follow_symlinks(bool)` setting
+- Follows symlinks for non-`SelfResolving` backends that implement `FsLink` (no toggle)
 - Detects circular symlinks (max depth or visited set)
 - Returns canonical resolved path to the backend
+
+**Backends that don't implement `FsLink`:** FileStorage cannot resolve symlinks for these backends. Path resolution will traverse directories using `metadata()` and handle `..` based on directory structure, but symlinks are treated as regular files. These backends effectively have no symlink support.
 
 **Backends receive already-resolved paths** - they just store/retrieve bytes.
 
@@ -208,12 +239,10 @@ Each backend implements the traits it supports:
   - Implements: `Fs` + `FsLink` + `FsPermissions` + `FsSync` + `FsStats` + `FsInode` = `FsFuse`
   - FileStorage handles path resolution (symlink-aware)
   - Inode source: internal node IDs (incrementing counter)
-  - `set_follow_symlinks(bool)` - control symlink following during resolution
 - `sqlite` (optional): `SqliteBackend`
   - Implements: `FsFuse` (all traits through Layer 3)
   - FileStorage handles path resolution (symlink-aware)
   - Inode source: SQLite row IDs (`INTEGER PRIMARY KEY`)
-  - `set_follow_symlinks(bool)` - control symlink following during resolution
 - `sqlite-cipher` (optional): `SqliteCipherBackend`
   - Implements: `FsFuse` (same as SqliteBackend)
   - Full AES-256 encryption via [SQLCipher](https://www.zetetic.net/sqlcipher/)
@@ -237,7 +266,7 @@ Each backend implements the traits it supports:
 ### Middleware
 
 - `Quota<B>` + `QuotaLayer` - Resource limits
-- `Restrictions<B>` + `RestrictionsLayer` - Opt-in restrictions (`.deny_symlinks()`, `.deny_hard_links()`, etc.)
+- `Restrictions<B>` + `RestrictionsLayer` - Runtime policy (`.deny_permissions()`)
 - `PathFilter<B>` + `PathFilterLayer` - Path-based access control
 - `ReadOnly<B>` + `ReadOnlyLayer` - Block writes
 - `RateLimit<B>` + `RateLimitLayer` - Operation throttling
@@ -297,8 +326,7 @@ Conformance tests are organized by trait layer:
 - Symlink chains resolve correctly (A → B → C → target)
 - Circular symlink detection (A → B → A returns error, not infinite loop)
 - Max symlink depth enforced (prevent deep chains)
-- `set_follow_symlinks(true)`: reading symlink follows to target
-- `set_follow_symlinks(false)`: reading symlink returns symlink metadata, not target
+- Reading a symlink follows the target (virtual backends)
 
 #### Path Edge Cases (learned from `vfs` issues)
 - `//double//slashes//` normalizes correctly
@@ -425,6 +453,133 @@ Required CI checks:
 
 ---
 
+## Phase 6: `anyfs-mount` - Mount as Real Filesystem (planned)
+
+**Goal:** Ship a companion crate that makes mounting AnyFS stacks easy, safe, and enjoyable for programmers, without compromising backend semantics.
+
+### Milestones
+
+- **Phase 0 (design complete):** API shape and roadmap
+  - `MountHandle`, `MountBuilder`, `MountOptions`, `MountError`
+  - Platform detection hooks (`is_available`) and error mapping
+  - Examples anchored in the mounting guide
+- **Phase 1:** Linux FUSE MVP (read-only)
+  - Lookup/getattr/readdir/read via `fuser`
+  - Read-only mount option; write ops return `PermissionDenied`
+- **Phase 2:** Linux FUSE read/write
+  - Create/write/rename/remove/link operations
+  - Capability reporting and metadata mapping
+- **Phase 3:** macOS parity (macFUSE)
+  - Adapter compatibility + driver detection
+- **Phase 4:** Windows support (WinFsp, optional Dokan)
+  - Windows-specific mapping + driver detection
+
+**Exit criteria:** Phase 2 delivered with reliable mount/unmount, no panics, and smoke tests; macOS/Windows continue in subsequent milestones.
+
+**API sketch (subject to change):**
+
+```rust
+use anyfs::{MemoryBackend, QuotaLayer, FsFuse};
+use anyfs_mount::MountHandle;
+
+// RAM drive with 1GB quota
+let backend = MemoryBackend::new()
+    .layer(QuotaLayer::builder()
+        .max_total_size(1024 * 1024 * 1024)
+        .build());
+
+// Backend must implement FsFuse (includes FsInode)
+let mount = MountHandle::mount(backend, "/mnt/ramdisk")?;
+
+// Now it's a real mount point:
+// $ df -h /mnt/ramdisk
+// $ cp large_file.bin /mnt/ramdisk/  # fast!
+// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
+```
+
+**Cross-Platform Support (planned):**
+
+| Platform | Provider | Rust Crate | User Must Install                     |
+| -------- | -------- | ---------- | ------------------------------------- |
+| Linux    | FUSE     | `fuser`    | `fuse3` package                       |
+| macOS    | macFUSE  | `fuser`    | [macFUSE](https://osxfuse.github.io/) |
+| Windows  | WinFsp   | `winfsp`   | [WinFsp](https://winfsp.dev/)         |
+
+`anyfs-mount` provides a unified API across platforms:
+
+```rust
+impl MountHandle {
+    #[cfg(unix)]
+    pub fn mount<B: FsFuse>(backend: B, path: impl AsRef<Path>) -> Result<Self, ...> {
+        // Uses fuser crate
+    }
+
+    #[cfg(windows)]
+    pub fn mount<B: FsFuse>(backend: B, path: impl AsRef<Path>) -> Result<Self, ...> {
+        // Uses winfsp crate
+    }
+}
+```
+
+**Creative Use Cases:**
+
+| Backend Stack                           | What You Get                        |
+| --------------------------------------- | ----------------------------------- |
+| `MemoryBackend`                         | RAM drive                           |
+| `MemoryBackend` + `Quota`               | RAM drive with size limit           |
+| `SqliteBackend`                         | Single-file portable drive          |
+| `Overlay<SqliteBackend, MemoryBackend>` | Persistent base + RAM scratch layer |
+| `Cache<SqliteBackend>`                  | SQLite with RAM read cache          |
+| `Tracing<MemoryBackend>`                | RAM drive with full audit log       |
+| `ReadOnly<SqliteBackend>`               | Immutable snapshot mount            |
+| `Encryption<SqliteBackend>`             | Encrypted portable drive            |
+
+**Example: AI Agent Sandbox**
+
+```rust
+// Sandboxed workspace mounted as real filesystem
+let sandbox = MountHandle::mount(
+    MemoryBackend::new()
+        .layer(PathFilterLayer::builder()
+            .allow("/**")
+            .deny("**/..*")             // No hidden files
+            .build())
+        .layer(QuotaLayer::builder()
+            .max_total_size(100 * 1024 * 1024)
+            .build()),
+    "/mnt/agent-workspace"
+)?;
+
+// Agent's tools can now use standard filesystem APIs
+// All operations are sandboxed, logged, and quota-limited
+```
+
+**Architecture:**
+
+```
+┌────────────────────────────────────────────────┐
+│  /mnt/myfs (FUSE mount point)                  │
+├────────────────────────────────────────────────┤
+│  anyfs-mount                                   │
+│    - Linux/macOS: fuser                        │
+│    - Windows: winfsp                           │
+├────────────────────────────────────────────────┤
+│  Middleware stack (Quota, PathFilter, etc.)    │
+├────────────────────────────────────────────────┤
+│  FsFuse (Memory, SQLite, etc.)                 │
+│    └─ includes FsInode for efficient lookups   │
+│                                                │
+│  Optional: FsPosix for locks/xattr             │
+└────────────────────────────────────────────────┘
+```
+
+**Requirements:**
+- Backend must implement `FsFuse` (includes `FsInode` for efficient inode operations)
+- Backends implementing `FsPosix` get full lock/xattr support
+- Platform-specific FUSE provider must be installed
+
+---
+
 ## Future work (post-MVP)
 
 - Async API (`AsyncFs`, `AsyncFsFull`, etc.)
@@ -483,109 +638,6 @@ anyfs:/ > stat docs
 type=dir size=0 modified=2025-02-01T12:34:56Z
 anyfs:/ > exit
 ```
-
-### `anyfs-mount` - Mount as Real Filesystem
-
-Adapter to expose any `FsFuse` backend as a FUSE mount point.
-
-```rust
-use anyfs::{MemoryBackend, QuotaLayer, FsFuse};
-use anyfs_mount::FuseMount;
-
-// RAM drive with 1GB quota
-let backend = MemoryBackend::new()
-    .layer(QuotaLayer::new().max_total_size(1024 * 1024 * 1024));
-
-// Backend must implement FsFuse (includes FsInode)
-let mount = FuseMount::mount(backend, "/mnt/ramdisk")?;
-
-// Now it's a real mount point:
-// $ df -h /mnt/ramdisk
-// $ cp large_file.bin /mnt/ramdisk/  # fast!
-// $ gcc -o /mnt/ramdisk/build ...    # compile in RAM
-```
-
-**Cross-Platform Support:**
-
-| Platform | FUSE Provider | Rust Crate | User Must Install |
-|----------|---------------|------------|-------------------|
-| Linux | Native kernel | `fuser` | `fuse3` package |
-| macOS | macFUSE | `fuser` | [macFUSE](https://osxfuse.github.io/) |
-| FreeBSD | Native | `fuser` | (built-in) |
-| Windows | WinFsp | `winfsp-rs` | [WinFsp](https://winfsp.dev/) |
-
-`anyfs-mount` provides a unified API across platforms:
-
-```rust
-impl<B: FsFuse> FuseMount<B> {
-    #[cfg(unix)]
-    pub fn mount(backend: B, path: &Path) -> Result<Self, ...> {
-        // Uses fuser crate
-    }
-
-    #[cfg(windows)]
-    pub fn mount(backend: B, path: &Path) -> Result<Self, ...> {
-        // Uses winfsp-rs crate
-    }
-}
-```
-
-**Creative Use Cases:**
-
-| Backend Stack | What You Get |
-|---------------|--------------|
-| `MemoryBackend` | RAM drive |
-| `MemoryBackend` + `Quota` | RAM drive with size limit |
-| `SqliteBackend` | Single-file portable drive |
-| `Overlay<SqliteBackend, MemoryBackend>` | Persistent base + RAM scratch layer |
-| `Cache<SqliteBackend>` | SQLite with RAM read cache |
-| `Tracing<MemoryBackend>` | RAM drive with full audit log |
-| `ReadOnly<SqliteBackend>` | Immutable snapshot mount |
-| `Encryption<SqliteBackend>` | Encrypted portable drive |
-
-**Example: AI Agent Sandbox**
-
-```rust
-// Sandboxed workspace mounted as real filesystem
-let sandbox = FuseMount::mount(
-    MemoryBackend::new()
-        .layer(PathFilterLayer::new()
-            .allow("/**")
-            .deny("**/..*"))           // No hidden files
-        .layer(RestrictionsLayer::new()
-            .deny_symlinks())           // No symlink escapes
-        .layer(QuotaLayer::new()
-            .max_total_size(100 * 1024 * 1024)),
-    "/mnt/agent-workspace"
-)?;
-
-// Agent's tools can now use standard filesystem APIs
-// All operations are sandboxed, logged, and quota-limited
-```
-
-**Architecture:**
-
-```
-┌────────────────────────────────────────────────┐
-│  /mnt/myfs (FUSE mount point)                  │
-├────────────────────────────────────────────────┤
-│  anyfs-mount                                   │
-│    - Linux/macOS/BSD: fuser                    │
-│    - Windows: winfsp-rs                        │
-├────────────────────────────────────────────────┤
-│  Middleware stack (Quota, PathFilter, etc.)    │
-├────────────────────────────────────────────────┤
-│  FsFuse (Memory, SQLite, etc.)                │
-│    └─ includes FsInode for efficient lookups  │
-│                                                │
-│  Optional: FsPosix for locks/xattr            │
-└────────────────────────────────────────────────┘
-```
-
-**Requirements:**
-- Backend must implement `FsFuse` (includes `FsInode` for efficient inode operations)
-- Backends implementing `FsPosix` get full lock/xattr support
-- Platform-specific FUSE provider must be installed
 
 ### `anyfs-vfs-compat` - Interop with `vfs` crate
 
@@ -647,15 +699,15 @@ The layered trait design enables building cloud storage services - each adapter 
 
 **Future crates for remote access:**
 
-| Crate | Required Trait | Purpose |
-|-------|----------------|---------|
-| `anyfs-s3-server` | `Fs` | Expose as S3-compatible API (objects = files) |
-| `anyfs-sftp-server` | `FsFull` | SFTP server with permissions/links |
-| `anyfs-ssh-shell` | `FsFuse` | SSH server with FUSE-mounted home directories |
-| `anyfs-remote` | `Fs` | `RemoteBackend` client (implements `Fs`) |
-| `anyfs-grpc` | `Fs` | gRPC protocol adapter |
-| `anyfs-webdav` | `FsFull` | WebDAV server (needs permissions) |
-| `anyfs-nfs` | `FsFuse` | NFS server (needs inodes) |
+| Crate               | Required Trait | Purpose                                       |
+| ------------------- | -------------- | --------------------------------------------- |
+| `anyfs-s3-server`   | `Fs`           | Expose as S3-compatible API (objects = files) |
+| `anyfs-sftp-server` | `FsFull`       | SFTP server with permissions/links            |
+| `anyfs-ssh-shell`   | `FsFuse`       | SSH server with FUSE-mounted home directories |
+| `anyfs-remote`      | `Fs`           | `RemoteBackend` client (implements `Fs`)      |
+| `anyfs-grpc`        | `Fs`           | gRPC protocol adapter                         |
+| `anyfs-webdav`      | `FsFull`       | WebDAV server (needs permissions)             |
+| `anyfs-nfs`         | `FsFuse`       | NFS server (needs inodes)                     |
 
 #### `anyfs-s3-server` - S3-Compatible Object Storage
 
@@ -708,18 +760,18 @@ let remote = RemoteBackend::connect("https://api.yourservice.com")
 
 // Use like any other backend
 let fs = FileStorage::new(remote);
-fs.write(std::path::Path::new("/documents/report.pdf"), data)?;
+fs.write("/documents/report.pdf", data)?;
 ```
 
 **Combined with FUSE for transparent mount:**
 
 ```rust
 use anyfs_remote::RemoteBackend;
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 // Mount remote storage as local directory
 let remote = RemoteBackend::connect("https://yourserver.com")?;
-FuseMount::mount(remote, "/mnt/cloud")?;
+MountHandle::mount(remote, "/mnt/cloud")?;
 
 // Now use standard filesystem tools:
 // $ cp file.txt /mnt/cloud/
@@ -798,17 +850,17 @@ Expose a `FsFull` backend as an SFTP server. Users connect with standard SSH/SFT
 │  ┌───────────────┐    ┌───────────────────────────────────────┐ │
 │  │ SFTP Server   │───▶│ User's isolated FileStorage           │ │
 │  │ (anyfs-sftp)  │    │   └─▶ Quota<SqliteBackend>            │ │
-│  └───────────────┘    │       └─▶ /data/users/alice.db        │ │
-│         ▲             └───────────────────────────────────────┘ │
-└─────────┼───────────────────────────────────────────────────────┘
-          │
-          │ sftp://
-          │
-    ┌─────┴─────┐
-    │  Remote   │  $ cd /documents
-    │  User     │  $ ls
-    │  (shell)  │  $ put file.txt
-    └───────────┘
+│  │  └───────────────┘    │       └─▶ /data/users/alice.db        │ │
+│  │         ▲             └───────────────────────────────────────┘ │
+│  └─────────┼───────────────────────────────────────────────────────┘
+│            │
+│            │ sftp://
+│            │
+│      ┌─────┴─────┐
+│      │  Remote   │  $ cd /documents
+│      │  User     │  $ ls
+│      │  (shell)  │  $ put file.txt
+│      └───────────┘
 ```
 
 **Server implementation:**
@@ -866,7 +918,7 @@ Give users a real SSH shell where their home directory is backed by `FsFuse`.
 
 ```rust
 use anyfs::{SqliteBackend, Quota};
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 use anyfs_ssh_shell::SshShellServer;
 
 // On user login, mount their isolated storage as $HOME
@@ -878,7 +930,7 @@ fn on_user_login(username: &str) -> Result<(), Error> {
             .build());
 
     let mount_point = format!("/home/{}", username);
-    FuseMount::mount(backend, &mount_point)?;
+    MountHandle::mount(backend, &mount_point)?;
     Ok(())
 }
 
@@ -917,26 +969,26 @@ alice@server:~$ du -sh .
 
 #### Isolated Shell Hosting Use Cases
 
-| Use Case | Backend Stack | What Users Get |
-|----------|---------------|----------------|
-| Shared hosting | `Quota<SqliteBackend>` | Shell + isolated home in SQLite |
-| Dev containers | `Overlay<BaseImage, MemoryBackend>` | Shared base + ephemeral scratch |
-| Coding education | `Quota<MemoryBackend>` | Temporary sandboxed environment |
-| CI/CD runners | `Tracing<MemoryBackend>` | Audited ephemeral workspace |
-| Secure file drop | `PathFilter<SqliteBackend>` | Write-only inbox directory |
+| Use Case         | Backend Stack                       | What Users Get                  |
+| ---------------- | ----------------------------------- | ------------------------------- |
+| Shared hosting   | `Quota<SqliteBackend>`              | Shell + isolated home in SQLite |
+| Dev containers   | `Overlay<BaseImage, MemoryBackend>` | Shared base + ephemeral scratch |
+| Coding education | `Quota<MemoryBackend>`              | Temporary sandboxed environment |
+| CI/CD runners    | `Tracing<MemoryBackend>`            | Audited ephemeral workspace     |
+| Secure file drop | `PathFilter<SqliteBackend>`         | Write-only inbox directory      |
 
 #### Access Pattern Summary
 
-| Access Method | Crate | Client Requirement | Best For |
-|---------------|-------|-------------------|----------|
-| S3 API | `anyfs-s3-server` | AWS SDK (any language) | Object storage, web apps |
-| SFTP | `anyfs-sftp-server` | Any SFTP client | Shell-like file access |
-| SSH Shell | `anyfs-ssh-shell` + `anyfs-mount` | SSH client | Full shell with sandboxed home |
-| gRPC | `anyfs-grpc` | Generated client | High-performance apps |
-| REST | Custom adapter | HTTP client | Simple integrations |
-| FUSE mount | `anyfs-mount` + `anyfs-remote` | FUSE installed | Transparent local access |
-| WebDAV | `anyfs-webdav` | WebDAV client/OS | File manager access |
-| NFS | `anyfs-nfs` | NFS client | Unix network shares |
+| Access Method | Crate                             | Client Requirement     | Best For                       |
+| ------------- | --------------------------------- | ---------------------- | ------------------------------ |
+| S3 API        | `anyfs-s3-server`                 | AWS SDK (any language) | Object storage, web apps       |
+| SFTP          | `anyfs-sftp-server`               | Any SFTP client        | Shell-like file access         |
+| SSH Shell     | `anyfs-ssh-shell` + `anyfs-mount` | SSH client             | Full shell with sandboxed home |
+| gRPC          | `anyfs-grpc`                      | Generated client       | High-performance apps          |
+| REST          | Custom adapter                    | HTTP client            | Simple integrations            |
+| FUSE mount    | `anyfs-mount` + `anyfs-remote`    | FUSE installed         | Transparent local access       |
+| WebDAV        | `anyfs-webdav`                    | WebDAV client/OS       | File manager access            |
+| NFS           | `anyfs-nfs`                       | NFS client             | Unix network shares            |
 
 ---
 
@@ -944,16 +996,16 @@ alice@server:~$ du -sh .
 
 This plan incorporates lessons from issues in similar projects:
 
-| Source | Issue | Lesson Applied |
-|--------|-------|----------------|
-| vfs #72 | RwLock panic | Thread safety tests |
-| vfs #47 | `create_dir_all` race | Concurrent stress tests |
-| vfs #8, #23 | Panics instead of errors | No-panic policy |
-| vfs #24, #42 | Path inconsistencies | Path edge case tests |
-| vfs #33 | Hard to match errors | Ergonomic `FsError` design |
-| vfs #68 | WASM panics | WASM compatibility tests |
-| vfs #66 | `'static` confusion | Minimal trait bounds |
-| agentfs #130 | Slow file deletion | Performance documentation |
-| agentfs #129 | Signal handling | Proper `Drop` implementations |
+| Source       | Issue                    | Lesson Applied                |
+| ------------ | ------------------------ | ----------------------------- |
+| vfs #72      | RwLock panic             | Thread safety tests           |
+| vfs #47      | `create_dir_all` race    | Concurrent stress tests       |
+| vfs #8, #23  | Panics instead of errors | No-panic policy               |
+| vfs #24, #42 | Path inconsistencies     | Path edge case tests          |
+| vfs #33      | Hard to match errors     | Ergonomic `FsError` design    |
+| vfs #68      | WASM panics              | WASM compatibility tests      |
+| vfs #66      | `'static` confusion      | Minimal trait bounds          |
+| agentfs #130 | Slow file deletion       | Performance documentation     |
+| agentfs #129 | Signal handling          | Proper `Drop` implementations |
 
 See [Lessons from Similar Projects](./lessons-learned.md) for full analysis.

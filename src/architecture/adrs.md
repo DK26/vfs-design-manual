@@ -8,78 +8,78 @@ This file captures the decisions for the current AnyFS design.
 
 Primary docs are where each decision is explained in narrative form. ADRs remain the source of truth for the decision itself.
 
-| ADR | Primary doc |
-| --- | ----------- |
-| ADR-001 | [Design Overview](./design-overview.md) |
-| ADR-002 | [Project Structure](../overview/project-structure.md) |
-| ADR-003 | [Layered Traits](../traits/layered-traits.md) |
-| ADR-004 | [Design Overview](./design-overview.md) |
-| ADR-005 | [API Quick Reference](../getting-started/api-reference.md) |
+| ADR     | Primary doc                                                                 |
+| ------- | --------------------------------------------------------------------------- |
+| ADR-001 | [Design Overview](./design-overview.md)                                     |
+| ADR-002 | [Project Structure](../overview/project-structure.md)                       |
+| ADR-003 | [Layered Traits](../traits/layered-traits.md)                               |
+| ADR-004 | [Design Overview](./design-overview.md)                                     |
+| ADR-005 | [API Quick Reference](../getting-started/api-reference.md)                  |
 | ADR-006 | [Middleware Implementation](../implementation/middleware-implementation.md) |
 | ADR-007 | [Middleware Implementation](../implementation/middleware-implementation.md) |
-| ADR-008 | [FileStorage](../traits/files-container.md) |
-| ADR-009 | [Project Structure](../overview/project-structure.md) |
-| ADR-010 | [Implementation Plan](../implementation/plan.md) |
-| ADR-011 | [Design Overview](./design-overview.md) |
+| ADR-008 | [FileStorage](../traits/files-container.md)                                 |
+| ADR-009 | [Project Structure](../overview/project-structure.md)                       |
+| ADR-010 | [Implementation Plan](../implementation/plan.md)                            |
+| ADR-011 | [Design Overview](./design-overview.md)                                     |
 | ADR-012 | [Middleware Implementation](../implementation/middleware-implementation.md) |
-| ADR-013 | [Layered Traits](../traits/layered-traits.md) |
-| ADR-014 | [Design Overview](./design-overview.md) |
-| ADR-015 | [Design Overview](./design-overview.md) |
-| ADR-016 | [Security Considerations](../comparisons/security.md) |
+| ADR-013 | [Layered Traits](../traits/layered-traits.md)                               |
+| ADR-014 | [Design Overview](./design-overview.md)                                     |
+| ADR-015 | [Design Overview](./design-overview.md)                                     |
+| ADR-016 | [Security Considerations](../comparisons/security.md)                       |
 | ADR-017 | [Middleware Implementation](../implementation/middleware-implementation.md) |
 | ADR-018 | [Middleware Implementation](../implementation/middleware-implementation.md) |
 | ADR-019 | [Middleware Implementation](../implementation/middleware-implementation.md) |
 | ADR-020 | [Middleware Implementation](../implementation/middleware-implementation.md) |
 | ADR-021 | [Middleware Implementation](../implementation/middleware-implementation.md) |
-| ADR-022 | [API Quick Reference](../getting-started/api-reference.md) |
-| ADR-023 | [Layered Traits](../traits/layered-traits.md) |
-| ADR-024 | [Implementation Plan](../implementation/plan.md) |
-| ADR-025 | [Zero-Cost Alternatives](./zero-cost-alternatives.md) |
-| ADR-026 | [Implementation Plan](../implementation/plan.md) |
-| ADR-027 | [Design Overview](./design-overview.md) |
-| ADR-028 | [Design Overview](./design-overview.md) |
-| ADR-029 | [Two-Layer Path Handling](./two-layer-design.md) |
-| ADR-030 | [Layered Traits](../traits/layered-traits.md) |
-| ADR-031 | [Indexing Middleware](./indexed-realfs-backend.md) |
+| ADR-022 | [API Quick Reference](../getting-started/api-reference.md)                  |
+| ADR-023 | [Layered Traits](../traits/layered-traits.md)                               |
+| ADR-024 | [Implementation Plan](../implementation/plan.md)                            |
+| ADR-025 | [Zero-Cost Alternatives](./zero-cost-alternatives.md)                       |
+| ADR-026 | [Implementation Plan](../implementation/plan.md)                            |
+| ADR-027 | [Design Overview](./design-overview.md)                                     |
+| ADR-028 | [Design Overview](./design-overview.md)                                     |
+| ADR-029 | [Two-Layer Path Handling](./two-layer-design.md)                            |
+| ADR-030 | [Layered Traits](../traits/layered-traits.md)                               |
+| ADR-031 | [Indexing Middleware](./indexed-realfs-backend.md)                          |
 
 ---
 
 ## ADR Index
 
-| ADR | Title | Status |
-|-----|-------|--------|
-| ADR-001 | Path-based `Fs` trait | Accepted |
-| ADR-002 | Two-crate structure | Accepted |
-| ADR-003 | Object-safe path parameters | Accepted |
-| ADR-004 | Tower-style middleware pattern | Accepted |
-| ADR-005 | `std::fs`-aligned method names | Accepted |
-| ADR-006 | Quota for quota enforcement | Accepted |
-| ADR-007 | Restrictions for least-privilege | Accepted |
-| ADR-008 | FileStorage as thin ergonomic wrapper | Accepted |
-| ADR-009 | Built-in backends are feature-gated | Accepted |
-| ADR-010 | Sync-first, async-ready design | Accepted |
-| ADR-011 | Layer trait for standardized composition | Accepted |
-| ADR-012 | Tracing for instrumentation | Accepted |
-| ADR-013 | FsExt for extension methods | Accepted |
-| ADR-014 | Optional Bytes support | Accepted |
-| ADR-015 | Contextual FsError | Accepted |
-| ADR-016 | PathFilter for path-based access control | Accepted |
-| ADR-017 | ReadOnly for preventing writes | Accepted |
-| ADR-018 | RateLimit for operation throttling | Accepted |
-| ADR-019 | DryRun for testing and debugging | Accepted |
-| ADR-020 | Cache for read performance | Accepted |
-| ADR-021 | Overlay for union filesystem | Accepted |
-| ADR-022 | Builder pattern for configurable middleware | Accepted |
-| ADR-023 | Interior mutability for all trait methods | Accepted |
-| ADR-024 | Async Strategy | Accepted |
-| ADR-025 | Strategic Boxing (Tower-style) | Accepted |
-| ADR-026 | Companion shell (anyfs-shell) | Accepted (Post-v1) |
-| ADR-027 | Permissive core; security via middleware | Accepted |
-| ADR-028 | Linux-like semantics for virtual backends | Accepted |
-| ADR-029 | Path resolution in FileStorage | Accepted |
-| ADR-030 | Layered trait hierarchy | Accepted |
-| ADR-031 | Indexing as middleware | Accepted (Post-v1) |
-| ADR-032 | Path Canonicalization via FsPath Trait | Accepted |
+| ADR     | Title                                       | Status             |
+| ------- | ------------------------------------------- | ------------------ |
+| ADR-001 | Path-based `Fs` trait                       | Accepted           |
+| ADR-002 | Two-crate structure                         | Accepted           |
+| ADR-003 | Object-safe path parameters                 | Accepted           |
+| ADR-004 | Tower-style middleware pattern              | Accepted           |
+| ADR-005 | `std::fs`-aligned method names              | Accepted           |
+| ADR-006 | Quota for quota enforcement                 | Accepted           |
+| ADR-007 | Restrictions for least-privilege            | Accepted           |
+| ADR-008 | FileStorage as thin ergonomic wrapper       | Accepted           |
+| ADR-009 | Built-in backends are feature-gated         | Accepted           |
+| ADR-010 | Sync-first, async-ready design              | Accepted           |
+| ADR-011 | Layer trait for standardized composition    | Accepted           |
+| ADR-012 | Tracing for instrumentation                 | Accepted           |
+| ADR-013 | FsExt for extension methods                 | Accepted           |
+| ADR-014 | Optional Bytes support                      | Accepted           |
+| ADR-015 | Contextual FsError                          | Accepted           |
+| ADR-016 | PathFilter for path-based access control    | Accepted           |
+| ADR-017 | ReadOnly for preventing writes              | Accepted           |
+| ADR-018 | RateLimit for operation throttling          | Accepted           |
+| ADR-019 | DryRun for testing and debugging            | Accepted           |
+| ADR-020 | Cache for read performance                  | Accepted           |
+| ADR-021 | Overlay for union filesystem                | Accepted           |
+| ADR-022 | Builder pattern for configurable middleware | Accepted           |
+| ADR-023 | Interior mutability for all trait methods   | Accepted           |
+| ADR-024 | Async Strategy                              | Accepted           |
+| ADR-025 | Strategic Boxing (Tower-style)              | Accepted           |
+| ADR-026 | Companion shell (anyfs-shell)               | Accepted (Post-v1) |
+| ADR-027 | Permissive core; security via middleware    | Accepted           |
+| ADR-028 | Linux-like semantics for virtual backends   | Accepted           |
+| ADR-029 | Path resolution in FileStorage              | Accepted           |
+| ADR-030 | Layered trait hierarchy                     | Accepted           |
+| ADR-031 | Indexing as middleware                      | Accepted (Post-v1) |
+| ADR-032 | Path Canonicalization via FsPath Trait      | Accepted           |
 
 ---
 
@@ -95,10 +95,10 @@ Primary docs are where each decision is explained in narrative form. ADRs remain
 
 **Decision:**
 
-| Crate | Purpose |
-|-------|---------|
-| `anyfs-backend` | Minimal contract: `Fs` trait, `Layer` trait, `FsExt`, types |
-| `anyfs` | Backends + middleware + ergonomics (`FileStorage<B, M>`, `BackendStack`) |
+| Crate           | Purpose                                                                  |
+| --------------- | ------------------------------------------------------------------------ |
+| `anyfs-backend` | Minimal contract: `Fs` trait, `Layer` trait, `FsExt`, types              |
+| `anyfs`         | Backends + middleware + ergonomics (`FileStorage<B, M>`, `BackendStack`) |
 
 **Why:**
 - Backend authors only need `anyfs-backend` (no heavy dependencies).
@@ -135,8 +135,8 @@ let backend = SqliteBackend::open("data.db")?
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
+    .layer(PathFilterLayer::builder()
+        .allow("/workspace/**")
         .build())
     .layer(TracingLayer::new());
 ```
@@ -174,26 +174,49 @@ let backend = SqliteBackend::open("data.db")?
 
 ---
 
-## ADR-007: Restrictions for opt-in restrictions
+## ADR-007: Capability via Trait Bounds
 
-**Decision:** By default, all operations work. `Restrictions<B>` middleware provides opt-in restrictions.
+**Decision:** Symlink and hard-link capability is determined by whether the backend implements `FsLink`. There is NO runtime toggle.
 
-**Default behavior (no Restrictions):**
-- All operations work: `symlink()`, `hard_link()`, `set_permissions()`
+### The Rule
 
-**Opt-in restrictions:**
-- `.deny_symlinks()` - block `symlink()` calls
-- `.deny_hard_links()` - block `hard_link()` calls
-- `.deny_permissions()` - block `set_permissions()` calls
+| Backend implements `FsLink`? | Symlinks work?     |
+| ---------------------------- | ------------------ |
+| Yes (`B: FsLink`)            | Yes                |
+| No                           | No (won't compile) |
 
-When blocked, operations return `FsError::FeatureNotEnabled`.
+### Examples
 
-**Symlink following:** Controlled separately via `set_follow_symlinks(bool)` on virtual backends. VRootFsBackend delegates to OS (strict-path prevents escapes).
+```rust
+// MemoryBackend implements FsLink
+let fs = FileStorage::new(MemoryBackend::new());
+fs.symlink("/target", "/link")?;  // ✅ Works
 
-**Why:**
-- Simple default: everything works out of the box.
-- Security is opt-in via middleware composition.
-- Clear separation: Restrictions blocks operations, backend settings control behavior.
+// Custom backend that doesn't implement FsLink
+let fs = FileStorage::new(MySimpleBackend::new());
+fs.symlink("/target", "/link")?;  // ❌ Won't compile - no FsLink impl
+```
+
+### Why Not Runtime Blocking?
+
+A hypothetical `deny_symlinks()` middleware would create type/behavior mismatch:
+- Type says "I implement FsLink"
+- Runtime says "but symlink() errors"
+
+This is confusing and defeats the purpose of Rust's type system. Instead, symlink capability is determined at compile time by trait bounds.
+
+### Restrictions Middleware
+
+`Restrictions<B>` is limited to operations where runtime policy makes sense:
+
+```rust
+let backend = RestrictionsLayer::builder()
+    .deny_permissions()  // Prevent metadata changes
+    .build()
+    .layer(backend);
+```
+
+**Symlink following:** Part of backend semantics. FileStorage resolves paths for non-`SelfResolving` backends; OS-backed backends delegate to the OS (strict-path prevents escapes). There is no runtime toggle.
 
 ---
 
@@ -402,7 +425,6 @@ pub trait FsRead: Send {
 ```rust
 FsError::NotFound {
     path: PathBuf,
-    operation: &'static str,  // "read", "metadata", etc.
 }
 
 FsError::QuotaExceeded {
@@ -415,7 +437,7 @@ FsError::QuotaExceeded {
 **Why:**
 - Error messages include enough context to understand what failed.
 - No need for separate error context crate (like anyhow) for basic usage.
-- Operation field helps distinguish "file not found during read" vs "during metadata".
+- Path is sufficient for NotFound - the call site knows the operation.
 - Quota errors include all relevant numbers for debugging.
 
 ---
@@ -626,7 +648,7 @@ let quota = QuotaLayer::builder()
 
 // RestrictionsLayer - requires at least one restriction
 let restrictions = RestrictionsLayer::builder()
-    .deny_symlinks()
+    .deny_permissions()
     .build();
 
 // PathFilterLayer - requires at least one rule
@@ -649,12 +671,12 @@ let cache = CacheLayer::builder()
 
 **Middleware that MAY keep `::new()`:**
 
-| Middleware | Rationale |
-|------------|-----------|
-| `TracingLayer` | Default (global tracing subscriber) is meaningful |
-| `ReadOnlyLayer` | No configuration needed |
-| `DryRunLayer` | No configuration needed |
-| `OverlayLayer` | Takes two backends as required params: `Overlay::new(lower, upper)` |
+| Middleware      | Rationale                                                           |
+| --------------- | ------------------------------------------------------------------- |
+| `TracingLayer`  | Default (global tracing subscriber) is meaningful                   |
+| `ReadOnlyLayer` | No configuration needed                                             |
+| `DryRunLayer`   | No configuration needed                                             |
+| `OverlayLayer`  | Takes two backends as required params: `Overlay::new(lower, upper)` |
 
 **Implementation:**
 
@@ -801,12 +823,12 @@ pub struct SqliteBackend {
 
 **Trade-offs:**
 
-| Aspect | &mut self | &self (interior mutability) |
-|--------|-----------|----------------------------|
-| Compile-time safety | Single writer enforced | Runtime synchronization |
-| Concurrent access | Not possible | Backend decides |
-| API simplicity | Simple | Slightly more complex backends |
-| Real-world match | Poor | Good |
+| Aspect              | &mut self              | &self (interior mutability)    |
+| ------------------- | ---------------------- | ------------------------------ |
+| Compile-time safety | Single writer enforced | Runtime synchronization        |
+| Concurrent access   | Not possible           | Backend decides                |
+| API simplicity      | Simple                 | Slightly more complex backends |
+| Real-world match    | Poor                   | Good                           |
 
 **Backend implementer responsibility:**
 
@@ -900,12 +922,12 @@ FsPosix       →      AsyncFsPosix
 
 **Implementation phases:**
 
-| Phase | Scope | Dependency |
-|-------|-------|------------|
-| 1 | Sync traits stable | Now |
-| 2 | Design async traits | When needed |
-| 3 | `anyfs-async` crate | When needed |
-| 4 | Async middleware | When needed |
+| Phase | Scope               | Dependency  |
+| ----- | ------------------- | ----------- |
+| 1     | Sync traits stable  | Now         |
+| 2     | Design async traits | When needed |
+| 3     | `anyfs-async` crate | When needed |
+| 4     | Async middleware    | When needed |
 
 **Why parallel traits (not feature flags):**
 
@@ -916,12 +938,12 @@ FsPosix       →      AsyncFsPosix
 
 **Trade-offs:**
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Parallel traits | Clean separation, no async deps in core | Code duplication in middleware |
-| Feature flags | Single codebase | Complex conditional compilation |
-| Async-only | Modern, no duplication | Forces async runtime on sync users |
-| Sync-only | Simple | Can't support network backends efficiently |
+| Approach        | Pros                                    | Cons                                       |
+| --------------- | --------------------------------------- | ------------------------------------------ |
+| Parallel traits | Clean separation, no async deps in core | Code duplication in middleware             |
+| Feature flags   | Single codebase                         | Complex conditional compilation            |
+| Async-only      | Modern, no duplication                  | Forces async runtime on sync users         |
+| Sync-only       | Simple                                  | Can't support network backends efficiently |
 
 **Conclusion:** Parallel async traits provide the best balance of simplicity now (sync-only core) with a clear migration path for async support later. The `Layer` trait design already accommodates this pattern.
 
@@ -970,17 +992,17 @@ OPT-IN TYPE ERASURE (when explicitly needed):
 
 ### What Gets Boxed and Why
 
-| API | Boxed? | Rationale |
-|-----|--------|-----------|
-| `read()` → `Vec<u8>` | No | Hot path, most common operation |
-| `write(data)` → `()` | No | Hot path, most common operation |
-| `metadata()` → `Metadata` | No | Hot path, frequently called |
-| `exists()` → `bool` | No | Hot path, frequently called |
-| `open_read()` → `Box<dyn Read>` | Yes | Cold path (once per file), enables middleware wrappers |
-| `open_write()` → `Box<dyn Write>` | Yes | Cold path (once per file), enables `QuotaWriter` |
-| `read_dir()` → `ReadDirIter` | Yes (inner) | Enables filtering in PathFilter, merging in Overlay |
-| Middleware stack | No | Generics compose at compile time |
-| `FileStorage::boxed()` | Opt-in | Explicit type erasure when needed |
+| API                               | Boxed?      | Rationale                                              |
+| --------------------------------- | ----------- | ------------------------------------------------------ |
+| `read()` → `Vec<u8>`              | No          | Hot path, most common operation                        |
+| `write(data)` → `()`              | No          | Hot path, most common operation                        |
+| `metadata()` → `Metadata`         | No          | Hot path, frequently called                            |
+| `exists()` → `bool`               | No          | Hot path, frequently called                            |
+| `open_read()` → `Box<dyn Read>`   | Yes         | Cold path (once per file), enables middleware wrappers |
+| `open_write()` → `Box<dyn Write>` | Yes         | Cold path (once per file), enables `QuotaWriter`       |
+| `read_dir()` → `ReadDirIter`      | Yes (inner) | Enables filtering in PathFilter, merging in Overlay    |
+| Middleware stack                  | No          | Generics compose at compile time                       |
+| `FileStorage::boxed()`            | Opt-in      | Explicit type erasure when needed                      |
 
 ### Why This Works
 
@@ -1001,22 +1023,22 @@ Boxing enables this without type explosion.
 
 ### Comparison to Tower/Axum
 
-| AnyFS | Tower/Axum | Purpose |
-|-------|------------|---------|
-| `Quota<Tracing<B>>` | `Timeout<RateLimit<S>>` | Zero-cost middleware composition |
-| `Box<dyn Read>` | `Pin<Box<dyn Future>>` | Flexibility at boundaries |
-| `ReadDirIter` | `BoxedIntoRoute` | Type erasure for storage |
-| `FileStorage::boxed()` | `BoxService` / `BoxCloneService` | Opt-in type erasure |
+| AnyFS                  | Tower/Axum                       | Purpose                          |
+| ---------------------- | -------------------------------- | -------------------------------- |
+| `Quota<Tracing<B>>`    | `Timeout<RateLimit<S>>`          | Zero-cost middleware composition |
+| `Box<dyn Read>`        | `Pin<Box<dyn Future>>`           | Flexibility at boundaries        |
+| `ReadDirIter`          | `BoxedIntoRoute`                 | Type erasure for storage         |
+| `FileStorage::boxed()` | `BoxService` / `BoxCloneService` | Opt-in type erasure              |
 
 Tower's Timeout middleware [uses `Pin<Box<dyn Future>>`](https://docs.rs/tower/latest/tower/trait.Service.html) in practice. Axum's Router [uses `BoxedIntoRoute`](https://github.com/tokio-rs/axum/discussions/1438) to store handlers. We follow the same pattern.
 
 ### Cost Analysis
 
-| Operation | Box Allocation | Actual I/O | Box % of Total |
-|-----------|----------------|------------|----------------|
-| Open + read 4KB file | ~50ns | ~10,000ns | 0.5% |
-| Open + read 1MB file | ~50ns | ~1,000,000ns | 0.005% |
-| List directory (10 entries) | ~50ns | ~5,000ns | 1% |
+| Operation                   | Box Allocation | Actual I/O   | Box % of Total |
+| --------------------------- | -------------- | ------------ | -------------- |
+| Open + read 4KB file        | ~50ns          | ~10,000ns    | 0.5%           |
+| Open + read 1MB file        | ~50ns          | ~1,000,000ns | 0.005%         |
+| List directory (10 entries) | ~50ns          | ~5,000ns     | 1%             |
 
 **The boxing cost is negligible relative to actual I/O.**
 
@@ -1251,11 +1273,11 @@ fn default_canonicalize<F: FsRead + FsLink>(fs: &F, path: &Path) -> Result<PathB
 
 **Backend Optimization Examples:**
 
-| Backend | Optimization |
-|---------|--------------|
-| `SqliteBackend` | Single recursive CTE query resolves entire path |
+| Backend          | Optimization                                               |
+| ---------------- | ---------------------------------------------------------- |
+| `SqliteBackend`  | Single recursive CTE query resolves entire path            |
 | `VRootFsBackend` | Delegates to `std::fs::canonicalize()` + containment check |
-| `MemoryBackend` | Uses default (in-memory is fast anyway) |
+| `MemoryBackend`  | Uses default (in-memory is fast anyway)                    |
 
 **SQLite Optimized Implementation:**
 
@@ -1288,17 +1310,17 @@ impl FsPath for SqliteBackend {
 
 **Why This Design:**
 
-| Benefit | Explanation |
-|---------|-------------|
-| **Portable default** | Works with any `Fs` backend out of the box |
-| **Optimizable** | Backends can override for O(1) queries vs O(n) |
-| **Testable** | Canonicalization logic is separate, can be unit tested |
-| **Composable** | Middleware can wrap/intercept canonicalization |
+| Benefit              | Explanation                                            |
+| -------------------- | ------------------------------------------------------ |
+| **Portable default** | Works with any `Fs` backend out of the box             |
+| **Optimizable**      | Backends can override for O(1) queries vs O(n)         |
+| **Testable**         | Canonicalization logic is separate, can be unit tested |
+| **Composable**       | Middleware can wrap/intercept canonicalization         |
 
 **FileStorage Integration:**
 
 ```rust
-impl<B: Fs + FsPath> FileStorage<B> {
+impl<B: Fs + FsPath, M> FileStorage<B, M> {
     pub fn canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError> {
         self.backend.canonicalize(path.as_ref())
     }
@@ -1311,11 +1333,11 @@ impl<B: Fs + FsPath> FileStorage<B> {
 
 **Trade-offs:**
 
-| Approach | Queries | Complexity | Best For |
-|----------|---------|------------|----------|
-| Default impl | O(n) per component | Simple | Memory, small files |
-| SQLite CTE | O(1) single query | Moderate | Large trees, many symlinks |
-| OS delegation | O(1) syscall | Simple | Real filesystem |
+| Approach      | Queries            | Complexity | Best For                   |
+| ------------- | ------------------ | ---------- | -------------------------- |
+| Default impl  | O(n) per component | Simple     | Memory, small files        |
+| SQLite CTE    | O(1) single query  | Moderate   | Large trees, many symlinks |
+| OS delegation | O(1) syscall       | Simple     | Real filesystem            |
 
 **Conclusion:** The `FsPath` trait provides a clean abstraction that works everywhere but can be optimized where it matters. This follows Rust's "zero-cost abstractions" philosophy: you don't pay for what you don't use, and you can optimize hot paths when needed.
 

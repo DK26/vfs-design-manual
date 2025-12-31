@@ -34,9 +34,16 @@ See ADR-030 for the design rationale.
            ┌───────────┼───────────┐
            │           │           │
         FsRead      FsWrite     FsDir
+
+                                              Derived Traits (auto-impl)
+                                              ───────────────────────────
+                                              FsPath: FsRead + FsLink
+                                                (path canonicalization)
 ```
 
 **Simple rule:** Import `Fs` for basic use. Add traits as needed for advanced features.
+
+**Note:** `FsPath` is a derived trait with a blanket impl. Any type implementing `FsRead + FsLink` automatically gets `FsPath`. `SelfResolving` is a marker trait that opts out of `FileStorage` path resolution.
 
 ---
 
@@ -145,6 +152,34 @@ pub trait FsSync: Send + Sync {
 pub trait FsStats: Send + Sync {
     fn statfs(&self) -> Result<StatFs, FsError>;
 }
+```
+
+### FsPath (Optimizable)
+
+Path canonicalization with a default implementation. Backends can override for optimized resolution.
+
+```rust
+pub trait FsPath: FsRead + FsLink {
+    /// Resolve all symlinks and normalize path (.., .).
+    /// Default: iterative resolution via read_link() and symlink_metadata().
+    fn canonicalize(&self, path: &Path) -> Result<PathBuf, FsError> {
+        // ... default impl ...
+    }
+
+    /// Like canonicalize, but allows non-existent final component.
+    fn soft_canonicalize(&self, path: &Path) -> Result<PathBuf, FsError> {
+        // ... default impl ...
+    }
+}
+impl<T: FsRead + FsLink> FsPath for T {}
+```
+
+### SelfResolving (Marker)
+
+Marker trait for backends that handle their own path resolution (e.g., `VRootFsBackend`, `StdFsBackend`). `FileStorage` will NOT perform virtual path resolution for these backends.
+
+```rust
+pub trait SelfResolving {}
 ```
 
 ---
@@ -257,12 +292,12 @@ impl<T: FsFuse + FsHandles + FsLock + FsXattr> FsPosix for T {}
 
 ## When to Use Each Level
 
-| Level | Trait | Use When |
-|-------|-------|----------|
-| 1 | `Fs` | Basic file operations (read, write, dirs) |
-| 2 | `FsFull` | Need links, permissions, sync, or stats |
-| 3 | `FsFuse` | FUSE mounting or hardlink support |
-| 4 | `FsPosix` | Full POSIX (file handles, locks, xattr) |
+| Level | Trait     | Use When                                  |
+| ----- | --------- | ----------------------------------------- |
+| 1     | `Fs`      | Basic file operations (read, write, dirs) |
+| 2     | `FsFull`  | Need links, permissions, sync, or stats   |
+| 3     | `FsFuse`  | FUSE mounting or hardlink support         |
+| 4     | `FsPosix` | Full POSIX (file handles, locks, xattr)   |
 
 ---
 
@@ -286,9 +321,9 @@ fn create_backup<B: Fs + FsLink>(fs: &FileStorage<B>) -> Result<(), FsError> {
     Ok(())
 }
 
-// Requires FUSE-level support
+// Requires FUSE-level support (planned companion crate)
 fn mount_filesystem(fs: impl FsFuse) -> Result<(), FsError> {
-    anyfs_mount::FuseMount::mount(fs, "/mnt/myfs")?;
+    anyfs_mount::MountHandle::mount(fs, "/mnt/myfs")?;
     Ok(())
 }
 ```

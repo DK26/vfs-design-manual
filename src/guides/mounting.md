@@ -2,11 +2,60 @@
 
 **Mounting AnyFS backends as real filesystem mount points**
 
+**Status:** Planned companion crate (`anyfs-mount`). Design and roadmap are complete; implementation is pending.
+
 ---
 
 ## Overview
 
-AnyFS backends can be mounted as real filesystem drives that any application can access. This requires platform-specific adapters because each OS uses different userspace filesystem technologies.
+AnyFS backends are intended to be mountable as real filesystem drives that any application can access once `anyfs-mount` ships. This requires platform-specific adapters because each OS uses different userspace filesystem technologies. The design is captured here while `anyfs-mount` moves from spec to implementation.
+
+---
+
+## Product Promise
+
+Mounting is a core AnyFS promise: make filesystem composition easy, safe, and genuinely enjoyable for programmers. The mount API prioritizes:
+- Easy onboarding (one handle, one builder, minimal boilerplate)
+- Safe defaults (explicit read-only modes, clear errors, no hidden behavior)
+- Delightful DX (predictable behavior, fast feedback, good docs)
+
+---
+
+## Roadmap (MVP to Cross-Platform)
+
+### Phase 0: Design and API shape (complete)
+- API spec defines `MountHandle`, `MountBuilder`, `MountOptions`, `MountError`
+- Platform detection hooks (`is_available`) and consistent error mapping
+- Examples and docs anchored in this guide
+**Acceptance:** Spec review complete; API signatures consistent across docs; error mapping defined.
+
+### Phase 1: Linux FUSE MVP (read-only, pending)
+- `fuser` adapter for lookup/getattr/readdir/read
+- Read-only mount option; write ops return `PermissionDenied`
+**Acceptance:** Mount/unmount works on Linux; read-only operations pass smoke tests; unmount-on-drop is reliable.
+
+### Phase 2: Linux FUSE read/write (pending)
+- Full write path: create, write, rename, remove, link operations
+- Capability reporting and correct metadata mapping
+**Acceptance:** Conformance tests pass for FsFuse path/inode behavior; no panics; clean shutdown.
+
+### Phase 3: macOS parity (macFUSE, pending)
+- Port Linux FUSE adapter to macFUSE requirements
+- Driver detection and install guidance
+**Acceptance:** Mount/unmount works on macOS with core read/write flows.
+
+### Phase 4: Windows support (WinFsp, optional Dokan, pending)
+- WinFsp adapter with required mapping for Windows semantics
+- Optional Dokan path as alternative provider
+**Acceptance:** Mount/unmount works on Windows; driver detection errors are clear and actionable.
+
+---
+
+## Non-goals for v1
+
+- Kernel drivers or kernel-space code
+- WASM or browser environments
+- Network filesystem protocols (NFS/SMB)
 
 ---
 
@@ -116,6 +165,8 @@ anyfs-mount/                    # Unified mounting crate
   Cargo.toml
   src/
     lib.rs                      # MountHandle, MountError
+    error.rs                    # MountError definitions
+    handle.rs                   # MountHandle, MountOptions, builder
 
     unix/
       mod.rs                    # cfg(unix)
@@ -381,6 +432,9 @@ pub enum MountError {
 
     /// Platform-specific error
     Platform(String),
+
+    /// Missing mount point in options
+    MissingMountPoint,
 }
 ```
 

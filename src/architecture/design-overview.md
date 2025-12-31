@@ -58,15 +58,15 @@ Anyone can:
 
 **Each layer has exactly one responsibility:**
 
-| Layer | Responsibility |
-|-------|----------------|
-| Backend (`Fs`+) | Storage + filesystem semantics |
-| `Quota<B>` | Resource limits (size, count, depth) |
-| `Restrictions<B>` | Opt-in operation restrictions |
-| `PathFilter<B>` | Path-based access control |
-| `ReadOnly<B>` | Prevent all write operations |
-| `RateLimit<B>` | Limit operations per second |
-| `Tracing<B>` | Instrumentation / audit trail |
+| Layer             | Responsibility                       |
+| ----------------- | ------------------------------------ |
+| Backend (`Fs`+)   | Storage + filesystem semantics       |
+| `Quota<B>`        | Resource limits (size, count, depth) |
+| `Restrictions<B>` | Opt-in operation restrictions        |
+| `PathFilter<B>`   | Path-based access control            |
+| `ReadOnly<B>`     | Prevent all write operations         |
+| `RateLimit<B>`    | Limit operations per second          |
+| `Tracing<B>`      | Instrumentation / audit trail        |
 
 ---
 
@@ -90,16 +90,16 @@ The traits are low-level interfaces that any backend can implement - memory, SQL
 
 **Security is the responsibility of higher-level APIs:**
 
-| Layer | Security Responsibility |
-|-------|------------------------|
-| Backend (`Fs`+) | None - pure filesystem semantics |
-| Middleware (`Restrictions`, `PathFilter`, etc.) | Opt-in restrictions |
-| `FileStorage` or application code | Configure appropriate middleware |
+| Layer                                           | Security Responsibility          |
+| ----------------------------------------------- | -------------------------------- |
+| Backend (`Fs`+)                                 | None - pure filesystem semantics |
+| Middleware (`Restrictions`, `PathFilter`, etc.) | Opt-in restrictions              |
+| `FileStorage` or application code               | Configure appropriate middleware |
 
 **Example: Secure AI Agent Sandbox**
 
 ```rust
-use anyfs::{MemoryBackend, QuotaLayer, RestrictionsLayer, PathFilterLayer, FileStorage};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, FileStorage};
 
 struct AiSandbox;  // Marker type
 
@@ -108,10 +108,6 @@ let sandbox: FileStorage<_, AiSandbox> = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::builder()
             .max_total_size(50 * 1024 * 1024)
-            .build())
-        .layer(RestrictionsLayer::builder()
-            .deny_hard_links()
-            .deny_permissions()
             .build())
         .layer(PathFilterLayer::builder()
             .allow("/workspace/**")
@@ -126,10 +122,10 @@ The backend is permissive. The application adds restrictions appropriate for its
 
 ## Crates
 
-| Crate | Purpose | Contains |
-|-------|---------|----------|
-| `anyfs-backend` | Minimal contract | Layered traits (`Fs`, `FsFull`, `FsFuse`, `FsPosix`), `Layer` trait, types, `FsExt` |
-| `anyfs` | Backends + middleware + ergonomics | Built-in backends, all middleware layers, `FileStorage<B, M>`, `BackendStack` builder |
+| Crate           | Purpose                            | Contains                                                                              |
+| --------------- | ---------------------------------- | ------------------------------------------------------------------------------------- |
+| `anyfs-backend` | Minimal contract                   | Layered traits (`Fs`, `FsFull`, `FsFuse`, `FsPosix`), `Layer` trait, types, `FsExt`   |
+| `anyfs`         | Backends + middleware + ergonomics | Built-in backends, all middleware layers, `FileStorage<B, M>`, `BackendStack` builder |
 
 ### Dependency Graph
 
@@ -174,12 +170,12 @@ The AnyFS design is **FFI-friendly** and can be exposed to other languages with 
 
 **Why the design works well for FFI:**
 
-| Design Choice | FFI Benefit |
-|---------------|-------------|
-| `&self` methods (ADR-023) | Interior mutability allows holding a single `Arc<FileStorage<...>>` across FFI |
-| `Box<dyn Fs>` type erasure | `FileStorage::boxed()` provides a concrete type suitable for FFI |
-| Owned return types | `Vec<u8>`, `String`, `bool` - no lifetime issues across FFI boundary |
-| Simple structs | `Metadata`, `DirEntry`, `Permissions` map directly to Python/C structs |
+| Design Choice              | FFI Benefit                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `&self` methods (ADR-023)  | Interior mutability allows holding a single `Arc<FileStorage<...>>` across FFI |
+| `Box<dyn Fs>` type erasure | `FileStorage::boxed()` provides a concrete type suitable for FFI               |
+| Owned return types         | `Vec<u8>`, `String`, `bool` - no lifetime issues across FFI boundary           |
+| Simple structs             | `Metadata`, `DirEntry`, `Permissions` map directly to Python/C structs         |
 
 **Recommended approach for Python (PyO3):**
 
@@ -238,12 +234,12 @@ print(data)  # b"Hello from Python!"
 
 **Key considerations for FFI:**
 
-| Concern | Solution |
-|---------|----------|
+| Concern                        | Solution                                                  |
+| ------------------------------ | --------------------------------------------------------- |
 | Generics (`FileStorage<B, M>`) | Use `FileStorage<Box<dyn Fs>>` (boxed form) for FFI layer |
-| Streaming (`Box<dyn Read>`) | Wrap in language-native class with `read(n)` method |
-| Middleware composition | Pre-build common stacks, expose as factory functions |
-| Error handling | Convert `FsError` to language-native exceptions |
+| Streaming (`Box<dyn Read>`)    | Wrap in language-native class with `read(n)` method       |
+| Middleware composition         | Pre-build common stacks, expose as factory functions      |
+| Error handling                 | Convert `FsError` to language-native exceptions           |
 
 **Future crate:** `anyfs-python` (post-v1)
 
@@ -332,11 +328,11 @@ let backend = av_plugin.wrap(backend);
 
 **When to use each approach:**
 
-| Scenario | Approach | Overhead |
-|----------|----------|----------|
-| Fixed middleware stack | Generics (compile-time) | Zero-cost |
-| Config-driven middleware | `Box<dyn Fs>` chaining | ~50ns per layer |
-| Runtime-loaded plugins | `MiddlewarePlugin` trait | ~50ns + plugin load |
+| Scenario                 | Approach                 | Overhead            |
+| ------------------------ | ------------------------ | ------------------- |
+| Fixed middleware stack   | Generics (compile-time)  | Zero-cost           |
+| Config-driven middleware | `Box<dyn Fs>` chaining   | ~50ns per layer     |
+| Runtime-loaded plugins   | `MiddlewarePlugin` trait | ~50ns + plugin load |
 
 **Verdict:** The current design supports dynamic middleware via `Box<dyn Fs>`. A formal `MiddlewarePlugin` trait for hot-loading is a post-v1 enhancement.
 
@@ -472,12 +468,12 @@ pub struct Tracing<B, S: TraceSink> {
 
 AnyFS follows Tower/Axum's approach to dynamic dispatch: **zero-cost on the hot path, box at boundaries where flexibility is needed**. We avoid heap allocations and dynamic dispatch unless they add flexibility without meaningful performance impact.
 
-| Path | Operations | Cost |
-|------|------------|------|
-| **Hot path** (zero-cost) | `read()`, `write()`, `metadata()`, `exists()` | Concrete types, no boxing |
-| **Hot path** (zero-cost) | Middleware composition: `Quota<Tracing<B>>` | Generics, monomorphized |
-| **Cold path** (boxed) | `open_read()`, `open_write()`, `read_dir()` | One `Box` allocation per call |
-| **Opt-in** | `FileStorage::boxed()` | Explicit type erasure |
+| Path                     | Operations                                    | Cost                          |
+| ------------------------ | --------------------------------------------- | ----------------------------- |
+| **Hot path** (zero-cost) | `read()`, `write()`, `metadata()`, `exists()` | Concrete types, no boxing     |
+| **Hot path** (zero-cost) | Middleware composition: `Quota<Tracing<B>>`   | Generics, monomorphized       |
+| **Cold path** (boxed)    | `open_read()`, `open_write()`, `read_dir()`   | One `Box` allocation per call |
+| **Opt-in**               | `FileStorage::boxed()`                        | Explicit type erasure         |
 
 **Hot-loop guidance:** If you open many small files and care about micro-overhead (especially on virtual backends), prefer `read()`/`write()` or the typed streaming extension (`FsReadTyped`/`FsWriteTyped`) when the backend type is known. These are the zero-allocation fast paths.
 
@@ -704,14 +700,16 @@ fn with_symlinks<B: Fs + FsLink>(fs: &FileStorage<B>) {
 }
 ```
 
-### FUSE Mount
+### FUSE Mount (Companion Crate in Progress)
+
+Mounting is delivered by `anyfs-mount` with a staged roadmap; see `src/guides/mounting.md`.
 
 ```rust
 use anyfs::FsFuse;
-use anyfs_fuse::FuseMount;
+use anyfs_mount::MountHandle;
 
 fn mount_filesystem(fs: impl FsFuse) {
-    FuseMount::mount(fs, "/mnt/myfs")?;
+    MountHandle::mount(fs, "/mnt/myfs")?;
 }
 ```
 
@@ -751,23 +749,23 @@ pub struct Metadata {
     /// Size in bytes (0 for directories).
     pub size: u64,
 
-    /// Permission mode bits (e.g., 0o644). None if not supported.
-    pub permissions: Option<u32>,
+    /// Permission mode bits. Default to 0o755/0o644 if unsupported.
+    pub permissions: Permissions,
 
-    /// Creation time (if supported by backend).
-    pub created: Option<SystemTime>,
+    /// Creation time (UNIX_EPOCH if unsupported).
+    pub created: SystemTime,
 
     /// Last modification time.
-    pub modified: Option<SystemTime>,
+    pub modified: SystemTime,
 
-    /// Last access time (if supported by backend).
-    pub accessed: Option<SystemTime>,
+    /// Last access time.
+    pub accessed: SystemTime,
 
-    /// Inode number (optional - for FsInode backends).
-    pub inode: Option<u64>,
+    /// Inode number (0 if unsupported).
+    pub inode: u64,
 
-    /// Number of hard links (optional - for FsLink backends).
-    pub nlink: Option<u64>,
+    /// Number of hard links (1 if unsupported).
+    pub nlink: u64,
 }
 
 impl Metadata {
@@ -808,11 +806,11 @@ pub struct DirEntry {
     /// Type: File, Directory, or Symlink.
     pub file_type: FileType,
 
-    /// Size in bytes (optional - avoids extra stat calls).
-    pub size: Option<u64>,
+    /// Size in bytes (0 for directories, can be lazy).
+    pub size: u64,
 
-    /// Inode number (optional - for FsInode backends).
-    pub inode: Option<u64>,
+    /// Inode number (0 if unsupported).
+    pub inode: u64,
 }
 ```
 
@@ -902,15 +900,14 @@ let remaining = backend.remaining();
 
 ### Restrictions<B>
 
-Blocks specific operations when needed.
+Blocks permission-related operations when needed.
 
 ```rust
 use anyfs::{MemoryBackend, Restrictions};
 
-// By default, all operations work. Use deny_*() to block specific ones.
+// Symlink/hard-link capability is determined by trait bounds (FsLink).
+// Restrictions only controls permission changes.
 let backend = RestrictionsLayer::builder()
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
     .deny_permissions()    // Block set_permissions() calls
     .build()
     .layer(MemoryBackend::new());
@@ -1233,7 +1230,6 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
         .max_total_size(100 * 1024 * 1024)
         .max_file_size(10 * 1024 * 1024))
     .restricted(|g| g
-        .deny_hard_links()      // Block hard_link() calls
         .deny_permissions())    // Block set_permissions() calls
     .traced()
     .into_container();
@@ -1243,13 +1239,13 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 
 ## Built-in Backends
 
-| Backend | Feature | Description |
-|---------|---------|-------------|
-| `MemoryBackend` | `memory` (default) | In-memory storage |
-| `SqliteBackend` | `sqlite` | Single-file portable database |
-| `SqliteCipherBackend` | `sqlite-cipher` | Encrypted SQLite via SQLCipher (AES-256) |
-| `StdFsBackend` | `stdfs` | Direct `std::fs` delegation (no containment) |
-| `VRootFsBackend` | `vrootfs` | Host filesystem with path containment (via strict-path) |
+| Backend               | Feature            | Description                                             |
+| --------------------- | ------------------ | ------------------------------------------------------- |
+| `MemoryBackend`       | `memory` (default) | In-memory storage                                       |
+| `SqliteBackend`       | `sqlite`           | Single-file portable database                           |
+| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite via SQLCipher (AES-256)                |
+| `StdFsBackend`        | `stdfs`            | Direct `std::fs` delegation (no containment)            |
+| `VRootFsBackend`      | `vrootfs`          | Host filesystem with path containment (via strict-path) |
 
 **Note:** `sqlite` and `sqlite-cipher` features are mutually exclusive (both use rusqlite with different SQLite builds).
 
@@ -1287,16 +1283,15 @@ We simulate inodes - that's the whole point of virtualizing a filesystem. Path r
 `FileStorage` uses an internal resolution function to walk paths before passing them to backends:
 
 ```rust
-/// Internal: Resolve a path, optionally following symlinks.
+/// Internal: Resolve a path (symlink-aware for virtual backends).
 /// Used by FileStorage before delegating to backend.
 fn resolve_path_internal(
     backend: &(impl Fs + FsLink),
     path: impl AsRef<Path>,
-    follow_symlinks: bool,
 ) -> Result<PathBuf, FsError> {
     // Walk path component by component
     // Use backend.metadata() to check node types
-    // Use backend.read_link() to follow symlinks (if enabled)
+    // Use backend.read_link() to follow symlinks
     // Detect circular symlinks
     // Return fully resolved canonical path
 }
@@ -1304,13 +1299,15 @@ fn resolve_path_internal(
 
 **This is NOT a public API.** The public API for path resolution is the `canonicalize` family of methods on `FileStorage` (see "Path Canonicalization Utilities" below).
 
+**Note:** The internal resolution function requires `Fs + FsLink`. For backends that don't implement `FsLink`, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement `FsLink`.
+
 ### When Resolution Is Needed
 
-| Backend | Needs Our Resolution? | Why |
-|---------|----------------------|-----|
-| `MemoryBackend` | Yes | Storage (HashMap) has no FS semantics |
-| `SqliteBackend` | Yes | Storage (SQL tables) has no FS semantics |
-| `VRootFsBackend` | No | OS handles resolution; `strict-path` prevents escapes |
+| Backend          | Needs Our Resolution? | Why                                                   |
+| ---------------- | --------------------- | ----------------------------------------------------- |
+| `MemoryBackend`  | Yes                   | Storage (HashMap) has no FS semantics                 |
+| `SqliteBackend`  | Yes                   | Storage (SQL tables) has no FS semantics              |
+| `VRootFsBackend` | No                    | OS handles resolution; `strict-path` prevents escapes |
 
 ### Opt-out Mechanism
 
@@ -1324,13 +1321,16 @@ pub trait SelfResolving {}
 impl SelfResolving for VRootFsBackend {}
 ```
 
-`FileStorage` (or a dedicated wrapper) applies resolution automatically for backends that don't implement `SelfResolving`:
+`FileStorage` (or a dedicated wrapper) applies resolution automatically for backends that don't implement `SelfResolving`. Symlink following is part of backend semantics: virtual backends that implement `FsLink` are resolved with symlink awareness, and there is no runtime toggle.
 
 ```rust
-impl<M> FileStorage<M> {
-    pub fn new(backend: impl Fs + 'static) -> FileStorage {
-        // Resolution applied automatically if backend doesn't implement SelfResolving
-    }
+impl<B: Fs, M> FileStorage<B, M> {
+    pub fn new(backend: B) -> Self { /* ... */ }
+}
+
+// Canonicalization requires FsLink (FsPath: FsRead + FsLink)
+impl<B: Fs + FsLink, M> FileStorage<B, M> {
+    pub fn canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError> { /* ... */ }
 }
 ```
 
@@ -1412,11 +1412,11 @@ Input: /a/b/c/d/e
 
 ### Comparison with std::fs
 
-| Function | `std::fs` | `FileStorage` |
-|----------|-----------|---------------|
-| `canonicalize` | Requires all components exist | Same - returns error if path doesn't exist |
-| N/A | N/A | `soft_canonicalize` - handles non-existent paths |
-| N/A | N/A | `anchored_canonicalize` - sandboxed resolution |
+| Function       | `std::fs`                     | `FileStorage`                                    |
+| -------------- | ----------------------------- | ------------------------------------------------ |
+| `canonicalize` | Requires all components exist | Same - returns error if path doesn't exist       |
+| N/A            | N/A                           | `soft_canonicalize` - handles non-existent paths |
+| N/A            | N/A                           | `anchored_canonicalize` - sandboxed resolution   |
 
 ### Security Considerations
 
@@ -1468,13 +1468,13 @@ See ADR-028 for the decision rationale.
 
 ### Default Behavior (Built-in Backends)
 
-| Aspect | Behavior | Rationale |
-|--------|----------|-----------|
+| Aspect           | Behavior           | Rationale                           |
+| ---------------- | ------------------ | ----------------------------------- |
 | Case sensitivity | **Case-sensitive** | Simpler, more secure, Unix standard |
-| Path separator | **`/` internally** | Cross-platform consistency |
-| Reserved names | **None** | No artificial restrictions |
-| Max path length | **No limit** | Virtual, no OS constraints |
-| ADS (`:stream`) | **Not supported** | Security risk, complexity |
+| Path separator   | **`/` internally** | Cross-platform consistency          |
+| Reserved names   | **None**           | No artificial restrictions          |
+| Max path length  | **No limit**       | Virtual, no OS constraints          |
+| ADS (`:stream`)  | **Not supported**  | Security risk, complexity           |
 
 ### Trait is Agnostic
 
@@ -1543,23 +1543,23 @@ pub struct CaseInsensitive<B> { /* user-implemented */ }
 
 Security is achieved through composition:
 
-| Concern | Solution |
-|---------|----------|
-| Path containment | `PathFilter` + VRootFsBackend |
-| Resource exhaustion | `Quota` enforces quotas |
-| Rate limiting | `RateLimit` prevents abuse |
+| Concern             | Solution                                   |
+| ------------------- | ------------------------------------------ |
+| Path containment    | `PathFilter` + VRootFsBackend              |
+| Resource exhaustion | `Quota` enforces quotas                    |
+| Rate limiting       | `RateLimit` prevents abuse                 |
 | Feature restriction | `Restrictions` disables dangerous features |
-| Read-only access | `ReadOnly` prevents writes |
-| Audit trail | `Tracing` instruments operations |
-| Tenant isolation | Separate backend instances |
-| Testing | `DryRun` logs without executing |
+| Read-only access    | `ReadOnly` prevents writes                 |
+| Audit trail         | `Tracing` instruments operations           |
+| Tenant isolation    | Separate backend instances                 |
+| Testing             | `DryRun` logs without executing            |
 
 **Defense in depth:** Compose multiple middleware layers for comprehensive security.
 
 ### AI Agent Sandbox Example
 
 ```rust
-use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Restrictions, Tracing};
+use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Tracing};
 
 // Build a secure sandbox for an AI agent
 let sandbox = MemoryBackend::new()
@@ -1571,10 +1571,6 @@ let sandbox = MemoryBackend::new()
         .allow("/workspace/**")
         .deny("**/.env")
         .deny("**/secrets/**")
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(RateLimitLayer::builder()
         .max_ops(1000)
@@ -1646,7 +1642,7 @@ Users can define their own extension traits for domain-specific operations.
 
 ### Bytes Support (feature: `bytes`)
 
-For zero-copy efficiency, enable the `bytes` feature to use `Bytes` instead of `Vec<u8>`:
+For zero-copy efficiency, enable the `bytes` feature to get `Bytes`-returning convenience methods on `FileStorage`:
 
 ```toml
 anyfs = { version = "0.1", features = ["bytes"] }
@@ -1656,11 +1652,17 @@ anyfs = { version = "0.1", features = ["bytes"] }
 use anyfs::{FileStorage, MemoryBackend};
 use bytes::Bytes;
 
-// With bytes feature, read returns Bytes (O(1) slicing)
 let fs = FileStorage::new(MemoryBackend::new());
-let data: Bytes = fs.read("/large-file.bin")?;
+
+// With bytes feature, FileStorage provides read_bytes() convenience method
+let data: Bytes = fs.read_bytes("/large-file.bin")?;
 let slice = data.slice(1000..2000);  // Zero-copy!
+
+// Core trait still uses Vec<u8> for object safety
+// read_bytes() wraps the Vec<u8> in Bytes::from()
 ```
+
+**Note:** Core traits (`FsRead`, etc.) always use `Vec<u8>` for object safety (`dyn Fs`). The `bytes` feature adds convenience methods to `FileStorage` that wrap results in `Bytes`.
 
 **When to use:**
 - Large file handling with frequent slicing
@@ -1691,6 +1693,13 @@ pub enum FsError {
     #[error("not found: {path}")]
     NotFound {
         path: PathBuf,
+    },
+
+    /// Security threat detected (e.g., virus).
+    #[error("threat detected: {reason} in {path}")]
+    ThreatDetected {
+        path: PathBuf,
+        reason: String,
     },
 
     /// Path already exists.
@@ -1841,25 +1850,25 @@ AnyFS is designed for cross-platform use. Virtual backends work everywhere; real
 
 ### Backend Compatibility
 
-| Backend | Windows | Linux | macOS | WASM |
-|---------|:-------:|:-----:|:-----:|:----:|
-| `MemoryBackend` | ✅ | ✅ | ✅ | ✅ |
-| `SqliteBackend` | ✅ | ✅ | ✅ | ✅* |
-| `VRootFsBackend` | ✅ | ✅ | ✅ | ❌ |
-| `StdFsBackend` | ✅ | ✅ | ✅ | ❌ |
+| Backend          | Windows | Linux | macOS | WASM  |
+| ---------------- | :-----: | :---: | :---: | :---: |
+| `MemoryBackend`  |    ✅    |   ✅   |   ✅   |   ✅   |
+| `SqliteBackend`  |    ✅    |   ✅   |   ✅   |  ✅*   |
+| `VRootFsBackend` |    ✅    |   ✅   |   ✅   |   ❌   |
+| `StdFsBackend`   |    ✅    |   ✅   |   ✅   |   ❌   |
 
 *SQLite on WASM requires `wasm32` build of rusqlite with bundled SQLite.
 
 ### Feature Compatibility
 
-| Feature | Virtual Backends | VRootFsBackend |
-|---------|:----------------:|:--------------:|
-| Basic I/O (`Fs`) | ✅ All platforms | ✅ All platforms |
-| Symlinks | ✅ All platforms | Platform-dependent (see below) |
-| Hard links | ✅ All platforms | Platform-dependent |
-| Permissions | ✅ Stored as metadata | Platform-dependent |
-| Extended attributes | ✅ Stored as metadata | Platform-dependent |
-| FUSE mounting | N/A | Platform-dependent |
+| Feature             |   Virtual Backends   |         VRootFsBackend         |
+| ------------------- | :------------------: | :----------------------------: |
+| Basic I/O (`Fs`)    |   ✅ All platforms    |        ✅ All platforms         |
+| Symlinks            |   ✅ All platforms    | Platform-dependent (see below) |
+| Hard links          |   ✅ All platforms    |       Platform-dependent       |
+| Permissions         | ✅ Stored as metadata |       Platform-dependent       |
+| Extended attributes | ✅ Stored as metadata |       Platform-dependent       |
+| FUSE mounting       |         N/A          |       Platform-dependent       |
 
 ### Platform-Specific Notes
 
@@ -1882,24 +1891,24 @@ fs.set_permissions("/file", 0o755.into())?; // Just stores metadata
 
 Wraps the host filesystem. Platform differences apply:
 
-| Feature | Linux | macOS | Windows |
-|---------|-------|-------|---------|
-| Symlinks | ✅ | ✅ | ⚠️ Requires privileges* |
-| Hard links | ✅ | ✅ | ✅ (NTFS only) |
-| Permissions (mode bits) | ✅ | ✅ | ⚠️ Limited mapping |
-| Extended attributes | ✅ xattr | ✅ xattr | ⚠️ ADS (different API) |
-| Case sensitivity | ✅ | ⚠️ Default insensitive | ⚠️ Insensitive |
+| Feature                 | Linux   | macOS                 | Windows                |
+| ----------------------- | ------- | --------------------- | ---------------------- |
+| Symlinks                | ✅       | ✅                     | ⚠️ Requires privileges* |
+| Hard links              | ✅       | ✅                     | ✅ (NTFS only)          |
+| Permissions (mode bits) | ✅       | ✅                     | ⚠️ Limited mapping      |
+| Extended attributes     | ✅ xattr | ✅ xattr               | ⚠️ ADS (different API)  |
+| Case sensitivity        | ✅       | ⚠️ Default insensitive | ⚠️ Insensitive          |
 
 *Windows requires `SeCreateSymbolicLinkPrivilege` or Developer Mode for symlinks.
 
 #### FUSE Mounting
 
-| Platform | Support | Library |
-|----------|---------|---------|
-| Linux | ✅ Native | libfuse |
-| macOS | ⚠️ Third-party | macFUSE |
-| Windows | ⚠️ Third-party | WinFsp or Dokan |
-| WASM | ❌ | N/A |
+| Platform | Support       | Library         |
+| -------- | ------------- | --------------- |
+| Linux    | ✅ Native      | libfuse         |
+| macOS    | ⚠️ Third-party | macFUSE         |
+| Windows  | ⚠️ Third-party | WinFsp or Dokan |
+| WASM     | ❌             | N/A             |
 
 ### Path Handling
 
@@ -1916,13 +1925,13 @@ fs.write("/project/src/main.rs", code)?;  // Works everywhere
 
 ### Recommendations
 
-| Use Case | Recommended Backend | Why |
-|----------|---------------------|-----|
-| Cross-platform app | `MemoryBackend` or `SqliteBackend` | No platform differences |
-| Portable storage | `SqliteBackend` | Single file, works everywhere |
-| WASM/browser | `MemoryBackend` or `SqliteBackend` | No filesystem access needed |
-| Host filesystem access | `VRootFsBackend` | With awareness of platform limits |
-| Testing | `MemoryBackend` | Fast, no cleanup, deterministic |
+| Use Case               | Recommended Backend                | Why                               |
+| ---------------------- | ---------------------------------- | --------------------------------- |
+| Cross-platform app     | `MemoryBackend` or `SqliteBackend` | No platform differences           |
+| Portable storage       | `SqliteBackend`                    | Single file, works everywhere     |
+| WASM/browser           | `MemoryBackend` or `SqliteBackend` | No filesystem access needed       |
+| Host filesystem access | `VRootFsBackend`                   | With awareness of platform limits |
+| Testing                | `MemoryBackend`                    | Fast, no cleanup, deterministic   |
 
 ### Feature Detection
 
@@ -1942,12 +1951,4 @@ pub fn symlinks_available() -> bool {
 }
 ```
 
-Or use `Restrictions` middleware to disable unsupported features uniformly:
-
-```rust
-#[cfg(windows)]
-let backend = RestrictionsLayer::builder()
-    .deny_symlinks()
-    .build()
-    .layer(backend);
-```
+On platforms without symlink support, use a backend that doesn't implement `FsLink`, or check `symlinks_available()` before calling symlink operations.

@@ -53,7 +53,7 @@ use anyfs::BackendStack;
 
 let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .limited(|l| l.max_total_size(100 * 1024 * 1024))
-    .restricted(|g| g.deny_hard_links().deny_permissions())
+    .restricted(|g| g.deny_permissions())
     .traced()
     .into_container();
 ```
@@ -84,11 +84,10 @@ backend.remaining()    // -> Remaining { bytes, can_write, ... }
 ## Restrictions Methods
 
 ```rust
-// Builder pattern (required - at least one restriction must be set)
-// By default, all operations work. Use deny_*() to block specific ones.
+// Builder pattern
+// Restrictions only controls permission-related operations.
+// Symlink/hard-link capability is via trait bounds (FsLink), not middleware.
 RestrictionsLayer::builder()
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
     .deny_permissions()    // Block set_permissions() calls
     .build()
     .layer(backend)
@@ -163,9 +162,11 @@ let fs = FileStorage::new(dry_run);
 // Write operations are logged but not executed
 fs.write("/file.txt", b"data")?;  // Logged, returns Ok
 
-// Inspect logged operations
-let ops = dry_run.operations();        // -> &[Operation]
-dry_run.clear();                       // Clear the log
+// Inspect logged operations (returns Vec<String>)
+let ops: Vec<String> = dry_run.operations();
+// e.g., ["write /file.txt (4 bytes)", "remove_file /old.txt"]
+
+dry_run.clear();  // Clear the log
 ```
 
 ---
@@ -247,10 +248,10 @@ meta.inode                               // unique identifier
 meta.nlink                               // hard link count
 meta.file_type                           // File | Directory | Symlink
 meta.size                                // file size in bytes
-meta.permissions                         // Permissions { mode: u32 }
-meta.created                             // Option<SystemTime>
-meta.modified                            // Option<SystemTime>
-meta.accessed                            // Option<SystemTime>
+meta.permissions                         // Permissions (default if unsupported)
+meta.created                             // SystemTime (UNIX_EPOCH if unsupported)
+meta.modified                            // SystemTime (UNIX_EPOCH if unsupported)
+meta.accessed                            // SystemTime (UNIX_EPOCH if unsupported)
 
 // Read
 let bytes = fs.read("/path")?;           // -> Vec<u8>
@@ -258,11 +259,13 @@ let text = fs.read_to_string("/path")?;  // -> String
 let chunk = fs.read_range("/path", 0, 1024)?;
 
 // List directory
-let entries = fs.read_dir("/path")?;     // -> Vec<DirEntry>
-for entry in &entries {
-    entry.name                           // OsString
-    entry.inode                          // u64 (avoids extra stat)
+for entry in fs.read_dir("/path")? {
+    let entry = entry?;
+    entry.name                           // String (file/dir name only)
+    entry.path                           // PathBuf (full path)
     entry.file_type                      // File | Directory | Symlink
+    entry.size                           // u64 (0 for directories)
+    entry.inode                          // u64 (0 if unsupported)
 }
 
 // Write
@@ -287,12 +290,10 @@ fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -> PathBuf
 fs.symlink_metadata("/link")?;           // Metadata of link itself, not target
+// Symlink following is backend-defined (no toggle).
+// Use Restrictions to block symlink creation if needed.
 
-// Symlink following (virtual backends only)
-backend.set_follow_symlinks(false);      // Don't follow symlinks during resolution
-backend.set_follow_symlinks(true);       // Follow symlinks (default)
-
-// Permissions (requires Restrictions)
+// Permissions (requires FsPermissions)
 fs.set_permissions("/path", perms)?;
 
 // File size
@@ -307,7 +308,9 @@ fs.fsync("/path")?;                      // Flush writes for one file
 
 ## Path Canonicalization
 
-`FileStorage` provides path canonicalization that works on the virtual filesystem:
+`FileStorage` provides path canonicalization that works on the virtual filesystem.
+
+**Note:** Canonicalization requires `FsLink` because symlink resolution needs `read_link()` and `symlink_metadata()`. Backends that only implement `Fs` (without `FsLink`) cannot use these methods.
 
 ```rust
 // Strict canonicalization - path must exist
@@ -336,12 +339,12 @@ let clean = normalize("//foo///bar//");  // -> "/foo/bar"
 
 **Comparison:**
 
-| Function | Path Must Exist? | Follows Symlinks? | Resolves `..`? |
-|----------|------------------|-------------------|----------------|
-| `canonicalize` | Yes (all components) | Yes | Yes (symlink-aware) |
-| `soft_canonicalize` | No (appends non-existent) | Yes (for existing) | Yes (symlink-aware) |
-| `anchored_canonicalize` | No | Yes (for existing) | Yes (clamped to anchor) |
-| `normalize` | N/A (lexical only) | No | No |
+| Function                | Path Must Exist?          | Follows Symlinks?  | Resolves `..`?          |
+| ----------------------- | ------------------------- | ------------------ | ----------------------- |
+| `canonicalize`          | Yes (all components)      | Yes                | Yes (symlink-aware)     |
+| `soft_canonicalize`     | No (appends non-existent) | Yes (for existing) | Yes (symlink-aware)     |
+| `anchored_canonicalize` | No                        | Yes (for existing) | Yes (clamped to anchor) |
+| `normalize`             | N/A (lexical only)        | No                 | No                      |
 
 ---
 
@@ -373,11 +376,11 @@ assert_eq!(ino1, ino2);  // Same inode!
 
 **Inode sources by backend:**
 
-| Backend | Inode Source |
-|---------|--------------|
-| `MemoryBackend` | Internal node IDs (incrementing counter) |
-| `SqliteBackend` | SQLite row IDs (`INTEGER PRIMARY KEY`) |
-| `VRootFsBackend` | OS inode numbers (`Metadata::ino()`) |
+| Backend          | Inode Source                             |
+| ---------------- | ---------------------------------------- |
+| `MemoryBackend`  | Internal node IDs (incrementing counter) |
+| `SqliteBackend`  | SQLite row IDs (`INTEGER PRIMARY KEY`)   |
+| `VRootFsBackend` | OS inode numbers (`Metadata::ino()`)     |
 
 ---
 
@@ -388,8 +391,8 @@ use anyfs_backend::FsError;
 
 match result {
     // Path errors
-    Err(FsError::NotFound { path, operation }) => {
-        // e.g., path="/file.txt", operation="read"
+    Err(FsError::NotFound { path }) => {
+        // e.g., path="/file.txt"
     }
     Err(FsError::AlreadyExists { path, operation }) => ...
     Err(FsError::NotADirectory { path }) => ...
@@ -427,13 +430,13 @@ match result {
 
 ## Built-in Backends
 
-| Type | Feature | Description |
-|------|---------|-------------|
-| `MemoryBackend` | `memory` (default) | In-memory |
-| `SqliteBackend` | `sqlite` | Persistent single-file database |
-| `SqliteCipherBackend` | `sqlite-cipher` | Encrypted SQLite (AES-256 via SQLCipher) |
-| `StdFsBackend` | `stdfs` | Direct `std::fs` (no containment) |
-| `VRootFsBackend` | `vrootfs` | Host filesystem (with containment) |
+| Type                  | Feature            | Description                              |
+| --------------------- | ------------------ | ---------------------------------------- |
+| `MemoryBackend`       | `memory` (default) | In-memory                                |
+| `SqliteBackend`       | `sqlite`           | Persistent single-file database          |
+| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite (AES-256 via SQLCipher) |
+| `StdFsBackend`        | `stdfs`            | Direct `std::fs` (no containment)        |
+| `VRootFsBackend`      | `vrootfs`          | Host filesystem (with containment)       |
 
 **Note:** `sqlite` and `sqlite-cipher` are mutually exclusive features.
 
@@ -463,33 +466,33 @@ Without the correct password, the `.db` file appears as random bytes.
 
 ## Middleware
 
-| Type | Purpose |
-|------|---------|
-| `Quota<B>` | Quota enforcement |
-| `Restrictions<B>` | Least privilege |
-| `PathFilter<B>` | Path-based access control |
-| `ReadOnly<B>` | Prevent write operations |
-| `RateLimit<B>` | Operation throttling |
-| `Tracing<B>` | Instrumentation (tracing ecosystem) |
-| `DryRun<B>` | Log without executing |
-| `Cache<B>` | LRU read caching |
-| `Overlay<B1,B2>` | Union filesystem |
+| Type              | Purpose                             |
+| ----------------- | ----------------------------------- |
+| `Quota<B>`        | Quota enforcement                   |
+| `Restrictions<B>` | Least privilege                     |
+| `PathFilter<B>`   | Path-based access control           |
+| `ReadOnly<B>`     | Prevent write operations            |
+| `RateLimit<B>`    | Operation throttling                |
+| `Tracing<B>`      | Instrumentation (tracing ecosystem) |
+| `DryRun<B>`       | Log without executing               |
+| `Cache<B>`        | LRU read caching                    |
+| `Overlay<B1,B2>`  | Union filesystem                    |
 
 ---
 
 ## Layers
 
-| Layer | Creates |
-|-------|---------|
-| `QuotaLayer` | `Quota<B>` |
+| Layer               | Creates           |
+| ------------------- | ----------------- |
+| `QuotaLayer`        | `Quota<B>`        |
 | `RestrictionsLayer` | `Restrictions<B>` |
-| `PathFilterLayer` | `PathFilter<B>` |
-| `ReadOnlyLayer` | `ReadOnly<B>` |
-| `RateLimitLayer` | `RateLimit<B>` |
-| `TracingLayer` | `Tracing<B>` |
-| `DryRunLayer` | `DryRun<B>` |
-| `CacheLayer` | `Cache<B>` |
-| `OverlayLayer` | `Overlay<B1,B2>` |
+| `PathFilterLayer`   | `PathFilter<B>`   |
+| `ReadOnlyLayer`     | `ReadOnly<B>`     |
+| `RateLimitLayer`    | `RateLimit<B>`    |
+| `TracingLayer`      | `Tracing<B>`      |
+| `DryRunLayer`       | `DryRun<B>`       |
+| `CacheLayer`        | `Cache<B>`        |
+| `OverlayLayer`      | `Overlay<B1,B2>`  |
 
 ---
 
@@ -499,89 +502,89 @@ Without the correct password, the `.db` file appears as random bytes.
 
 **Core Traits (Layer 1):**
 
-| Trait | Description |
-|-------|-------------|
-| `FsRead` | Read operations: `read`, `exists`, `metadata`, `open_read` |
+| Trait     | Description                                                                      |
+| --------- | -------------------------------------------------------------------------------- |
+| `FsRead`  | Read operations: `read`, `exists`, `metadata`, `open_read`                       |
 | `FsWrite` | Write operations: `write`, `append`, `remove_file`, `rename`, `copy`, `truncate` |
-| `FsDir` | Directory operations: `read_dir`, `create_dir*`, `remove_dir*` |
+| `FsDir`   | Directory operations: `read_dir`, `create_dir*`, `remove_dir*`                   |
 
 **Extended Traits (Layer 2):**
 
-| Trait | Description |
-|-------|-------------|
-| `FsLink` | Link operations: `symlink`, `hard_link`, `read_link` |
-| `FsPermissions` | Permission operations: `set_permissions` |
-| `FsSync` | Sync operations: `sync`, `fsync` |
-| `FsStats` | Stats operations: `statfs` |
+| Trait           | Description                                          |
+| --------------- | ---------------------------------------------------- |
+| `FsLink`        | Link operations: `symlink`, `hard_link`, `read_link` |
+| `FsPermissions` | Permission operations: `set_permissions`             |
+| `FsSync`        | Sync operations: `sync`, `fsync`                     |
+| `FsStats`       | Stats operations: `statfs`                           |
 
 **Inode Trait (Layer 3):**
 
-| Trait | Description |
-|-------|-------------|
+| Trait     | Description                                                                       |
+| --------- | --------------------------------------------------------------------------------- |
 | `FsInode` | Inode operations: `path_to_inode`, `inode_to_path`, `lookup`, `metadata_by_inode` |
 
 **POSIX Traits (Layer 4):**
 
-| Trait | Description |
-|-------|-------------|
-| `FsHandles` | Handle operations: `open`, `read_at`, `write_at`, `close` |
-| `FsLock` | Lock operations: `lock`, `try_lock`, `unlock` |
-| `FsXattr` | Extended attribute operations: `get_xattr`, `set_xattr`, `list_xattr` |
+| Trait       | Description                                                           |
+| ----------- | --------------------------------------------------------------------- |
+| `FsHandles` | Handle operations: `open`, `read_at`, `write_at`, `close`             |
+| `FsLock`    | Lock operations: `lock`, `try_lock`, `unlock`                         |
+| `FsXattr`   | Extended attribute operations: `get_xattr`, `set_xattr`, `list_xattr` |
 
 **Convenience Supertraits:**
 
-| Trait | Combines |
-|-------|----------|
-| `Fs` | `FsRead` + `FsWrite` + `FsDir` (90% of use cases) |
-| `FsFull` | `Fs` + `FsLink` + `FsPermissions` + `FsSync` + `FsStats` |
-| `FsFuse` | `FsFull` + `FsInode` (FUSE-mountable) |
+| Trait     | Combines                                                   |
+| --------- | ---------------------------------------------------------- |
+| `Fs`      | `FsRead` + `FsWrite` + `FsDir` (90% of use cases)          |
+| `FsFull`  | `Fs` + `FsLink` + `FsPermissions` + `FsSync` + `FsStats`   |
+| `FsFuse`  | `FsFull` + `FsInode` (FUSE-mountable)                      |
 | `FsPosix` | `FsFuse` + `FsHandles` + `FsLock` + `FsXattr` (full POSIX) |
 
 **Other Types:**
 
-| Type | Description |
-|------|-------------|
-| `Layer` | Middleware composition trait |
-| `FsExt` | Extension methods trait (JSON, type checks) |
-| `FsError` | Error type (with context) |
-| `ROOT_INODE` | Constant: root directory inode (= 1) |
-| `FileType` | `File`, `Directory`, `Symlink` |
-| `Metadata` | File/dir metadata (inode, nlink, size, times, permissions) |
-| `DirEntry` | Directory entry (name, inode, file_type) |
-| `Permissions` | File permissions (mode: u32) |
-| `StatFs` | Filesystem stats (bytes, inodes, block_size) |
+| Type          | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| `Layer`       | Middleware composition trait                               |
+| `FsExt`       | Extension methods trait (JSON, type checks)                |
+| `FsError`     | Error type (with context)                                  |
+| `ROOT_INODE`  | Constant: root directory inode (= 1)                       |
+| `FileType`    | `File`, `Directory`, `Symlink`                             |
+| `Metadata`    | File/dir metadata (inode, nlink, size, times, permissions) |
+| `DirEntry`    | Directory entry (name, inode, file_type)                   |
+| `Permissions` | File permissions (mode: u32)                               |
+| `StatFs`      | Filesystem stats (bytes, inodes, block_size)               |
 
 ### From `anyfs`
 
-| Type | Description |
-|------|-------------|
-| `MemoryBackend` | In-memory backend |
-| `SqliteBackend` | SQLite backend |
-| `StdFsBackend` | Direct `std::fs` backend (no containment) |
-| `VRootFsBackend` | Host FS backend (with containment) |
-| `Quota<B>` | Quota middleware |
-| `Restrictions<B>` | Feature gate middleware |
-| `PathFilter<B>` | Path access control middleware |
-| `ReadOnly<B>` | Read-only middleware |
-| `RateLimit<B>` | Rate limiting middleware |
-| `Tracing<B>` | Tracing middleware |
-| `DryRun<B>` | Dry-run middleware |
-| `Cache<B>` | Caching middleware |
-| `Overlay<B1,B2>` | Union filesystem middleware |
-| `QuotaLayer` | Layer for Quota |
-| `RestrictionsLayer` | Layer for Restrictions |
-| `PathFilterLayer` | Layer for PathFilter |
-| `ReadOnlyLayer` | Layer for ReadOnly |
-| `RateLimitLayer` | Layer for RateLimit |
-| `TracingLayer` | Layer for Tracing |
-| `DryRunLayer` | Layer for DryRun |
-| `CacheLayer` | Layer for Cache |
-| `OverlayLayer` | Layer for Overlay |
+| Type                | Description                               |
+| ------------------- | ----------------------------------------- |
+| `MemoryBackend`     | In-memory backend                         |
+| `SqliteBackend`     | SQLite backend                            |
+| `StdFsBackend`      | Direct `std::fs` backend (no containment) |
+| `VRootFsBackend`    | Host FS backend (with containment)        |
+| `Quota<B>`          | Quota middleware                          |
+| `Restrictions<B>`   | Feature gate middleware                   |
+| `PathFilter<B>`     | Path access control middleware            |
+| `ReadOnly<B>`       | Read-only middleware                      |
+| `RateLimit<B>`      | Rate limiting middleware                  |
+| `Tracing<B>`        | Tracing middleware                        |
+| `DryRun<B>`         | Dry-run middleware                        |
+| `Cache<B>`          | Caching middleware                        |
+| `Overlay<B1,B2>`    | Union filesystem middleware               |
+| `QuotaLayer`        | Layer for Quota                           |
+| `RestrictionsLayer` | Layer for Restrictions                    |
+| `PathFilterLayer`   | Layer for PathFilter                      |
+| `ReadOnlyLayer`     | Layer for ReadOnly                        |
+| `RateLimitLayer`    | Layer for RateLimit                       |
+| `TracingLayer`      | Layer for Tracing                         |
+| `DryRunLayer`       | Layer for DryRun                          |
+| `CacheLayer`        | Layer for Cache                           |
+| `OverlayLayer`      | Layer for Overlay                         |
 
 **Ergonomic Wrappers (in `anyfs`):**
 
-| Type | Description |
-|------|-------------|
+| Type                | Description                                                    |
+| ------------------- | -------------------------------------------------------------- |
 | `FileStorage<B, M>` | Zero-cost ergonomic wrapper (generic backend, optional marker) |
-| `BackendStack` | Fluent builder for middleware stacks |
-| `.boxed()` | Opt-in type erasure for `FileStorage` |
+| `BackendStack`      | Fluent builder for middleware stacks                           |
+| `.boxed()`          | Opt-in type erasure for `FileStorage`                          |

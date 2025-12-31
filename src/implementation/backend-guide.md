@@ -43,11 +43,11 @@ anyfs-backend = "0.1"
 
 ## Choosing Which Traits to Implement
 
-| Your Backend Supports | Implement |
-|----------------------|-----------|
-| Basic file operations | `Fs` (= `FsRead` + `FsWrite` + `FsDir`) |
-| Links, permissions, sync | Add `FsLink`, `FsPermissions`, `FsSync`, `FsStats` |
-| Hardlinks, FUSE mounting | Add `FsInode` → becomes `FsFuse` |
+| Your Backend Supports              | Implement                                                |
+| ---------------------------------- | -------------------------------------------------------- |
+| Basic file operations              | `Fs` (= `FsRead` + `FsWrite` + `FsDir`)                  |
+| Links, permissions, sync           | Add `FsLink`, `FsPermissions`, `FsSync`, `FsStats`       |
+| Hardlinks, FUSE mounting           | Add `FsInode` → becomes `FsFuse`                         |
 | Full POSIX (handles, locks, xattr) | Add `FsHandles`, `FsLock`, `FsXattr` → becomes `FsPosix` |
 
 ---
@@ -408,11 +408,11 @@ impl FsInode for SqliteBackend {
 
 **Summary:**
 
-| Your Backend | Implement | Result |
-|--------------|-----------|--------|
-| Simple (no hardlinks) | Nothing | Works with defaults |
-| With hardlinks | `FsInode::path_to_inode` | Hardlinks work correctly |
-| FUSE-optimized | Full `FsInode` | Maximum performance |
+| Your Backend          | Implement                | Result                   |
+| --------------------- | ------------------------ | ------------------------ |
+| Simple (no hardlinks) | Nothing                  | Works with defaults      |
+| With hardlinks        | `FsInode::path_to_inode` | Hardlinks work correctly |
+| FUSE-optimized        | Full `FsInode`           | Maximum performance      |
 
 ---
 
@@ -460,25 +460,25 @@ impl FsXattr for MyBackend {
 
 Return appropriate `FsError` variants:
 
-| Situation | Error |
-|-----------|-------|
-| Path doesn't exist | `FsError::NotFound { path, operation }` |
-| Path already exists | `FsError::AlreadyExists { path, operation }` |
-| Expected file, got dir | `FsError::NotAFile { path }` |
-| Expected dir, got file | `FsError::NotADirectory { path }` |
-| Remove non-empty dir | `FsError::DirectoryNotEmpty { path }` |
-| Internal error | `FsError::Backend { message }` |
+| Situation              | Error                                        |
+| ---------------------- | -------------------------------------------- |
+| Path doesn't exist     | `FsError::NotFound { path, operation }`      |
+| Path already exists    | `FsError::AlreadyExists { path, operation }` |
+| Expected file, got dir | `FsError::NotAFile { path }`                 |
+| Expected dir, got file | `FsError::NotADirectory { path }`            |
+| Remove non-empty dir   | `FsError::DirectoryNotEmpty { path }`        |
+| Internal error         | `FsError::Backend { message }`               |
 
 ---
 
 ## What Backends Do NOT Do
 
-| Concern | Where It Lives |
-|---------|----------------|
-| Quota enforcement | `Quota<B>` middleware |
-| Feature gating | `Restrictions<B>` middleware |
-| Logging | `Tracing<B>` middleware |
-| Ergonomic API | `FileStorage<M>` wrapper |
+| Concern           | Where It Lives               |
+| ----------------- | ---------------------------- |
+| Quota enforcement | `Quota<B>` middleware        |
+| Feature gating    | `Restrictions<B>` middleware |
+| Logging           | `Tracing<B>` middleware      |
+| Ergonomic API     | `FileStorage<B, M>` wrapper  |
 
 **Backends focus on storage.** Keep them simple.
 
@@ -560,12 +560,12 @@ impl FsPath for VRootFsBackend {
 
 ### Other Optimization Opportunities
 
-| Method | Default | Optimization Opportunity |
-|--------|---------|-------------------------|
-| `canonicalize()` | O(n) per component | SQL CTE, OS delegation |
+| Method             | Default                  | Optimization Opportunity              |
+| ------------------ | ------------------------ | ------------------------------------- |
+| `canonicalize()`   | O(n) per component       | SQL CTE, OS delegation                |
 | `create_dir_all()` | Recursive `create_dir()` | Single SQL INSERT with path hierarchy |
-| `remove_dir_all()` | Recursive traversal | SQL DELETE with LIKE pattern |
-| `copy()` | read + write | Database-level copy, reflink |
+| `remove_dir_all()` | Recursive traversal      | SQL DELETE with LIKE pattern          |
+| `copy()`           | read + write             | Database-level copy, reflink          |
 
 **General Pattern:**
 
@@ -687,13 +687,13 @@ impl<B: Fs> Fs for Quota<B> {
 
 ### Alternatives to Wrapping
 
-| Middleware | Alternative to wrapping |
-|------------|------------------------|
-| PathFilter | Check path at open time, pass stream through |
-| ReadOnly | Block `open_write` entirely |
-| RateLimit | Count the open call, not stream bytes |
-| Tracing | Log the open call, pass stream through |
-| DryRun | Return `std::io::sink()` instead of real writer |
+| Middleware | Alternative to wrapping                         |
+| ---------- | ----------------------------------------------- |
+| PathFilter | Check path at open time, pass stream through    |
+| ReadOnly   | Block `open_write` entirely                     |
+| RateLimit  | Count the open call, not stream bytes           |
+| Tracing    | Log the open call, pass stream through          |
+| DryRun     | Return `std::io::sink()` instead of real writer |
 
 ---
 
@@ -901,14 +901,14 @@ backend.write(std::path::Path::new("/file.txt"), b""); // Error: ReadOnly
 
 ### Middleware Decision Table
 
-| What You Want | Intercept | Delegate | Example |
-|---------------|-----------|----------|---------|
-| Count operations | All methods (before) | All methods | `Counter` |
-| Block writes | Write methods | Read methods | `ReadOnly` |
-| Transform data | `read`/`write` | Everything else | `Encryption` |
-| Check permissions | All methods (before) | All methods | `PathFilter` |
-| Log operations | All methods (before) | All methods | `Tracing` |
-| Enforce limits | Write methods (check size) | Read methods | `Quota` |
+| What You Want     | Intercept                  | Delegate        | Example      |
+| ----------------- | -------------------------- | --------------- | ------------ |
+| Count operations  | All methods (before)       | All methods     | `Counter`    |
+| Block writes      | Write methods              | Read methods    | `ReadOnly`   |
+| Transform data    | `read`/`write`             | Everything else | `Encryption` |
+| Check permissions | All methods (before)       | All methods     | `PathFilter` |
+| Log operations    | All methods (before)       | All methods     | `Tracing`    |
+| Enforce limits    | Write methods (check size) | Read methods    | `Quota`      |
 
 ### Macro for Boilerplate (Optional)
 
@@ -1161,7 +1161,7 @@ impl FsWrite for MemoryBackend {
 
 **Backends do NOT handle path resolution.** FileStorage handles:
 - Resolving `..` and `.` components
-- Following symlinks (when `set_follow_symlinks(true)`)
+- Following symlinks for non-`SelfResolving` backends that implement `FsLink`
 - Normalizing paths (`//` → `/`, trailing slashes, etc.)
 - Walking the virtual directory structure
 
@@ -1326,17 +1326,34 @@ fn test_concurrent_create_dir_all() {
 ```
 
 ### Path Normalization
+
+> **Note:** These tests apply to `FileStorage` integration tests, NOT direct backend tests.
+> Backends receive already-resolved paths from `FileStorage`. The tests below verify
+> that `FileStorage` correctly normalizes paths before passing them to backends.
+
 ```rust
 #[test]
-fn test_path_with_dotdot() {
+fn test_filestorage_path_normalization() {
+    // Use FileStorage, not raw backend
+    let fs = FileStorage::new(create_backend());
+    fs.create_dir_all("/foo/bar").unwrap();
+    fs.write("/foo/bar/test.txt", b"data").unwrap();
+
+    // FileStorage resolves these before calling backend
+    assert_eq!(fs.read("/foo/bar/test.txt").unwrap(), b"data");
+    assert_eq!(fs.read("/foo/bar/../bar/test.txt").unwrap(), b"data");
+    assert_eq!(fs.read("/foo/./bar/test.txt").unwrap(), b"data");
+}
+
+// Direct backend calls should use clean paths only
+#[test]
+fn test_backend_with_clean_paths() {
     let backend = create_backend();
     backend.create_dir_all(std::path::Path::new("/foo/bar")).unwrap();
     backend.write(std::path::Path::new("/foo/bar/test.txt"), b"data").unwrap();
 
-    // These should all access the same file
+    // Backends receive clean, resolved paths
     assert_eq!(backend.read(std::path::Path::new("/foo/bar/test.txt")).unwrap(), b"data");
-    assert_eq!(backend.read(std::path::Path::new("/foo/bar/../bar/test.txt")).unwrap(), b"data");
-    assert_eq!(backend.read(std::path::Path::new("/foo/./bar/test.txt")).unwrap(), b"data");
 }
 ```
 

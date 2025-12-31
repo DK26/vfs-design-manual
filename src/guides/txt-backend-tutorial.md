@@ -839,9 +839,9 @@ If you're feeling brave:
 
 ---
 
-## Bonus: Mount It as a Drive
+## Bonus: Mount It as a Drive (Planned)
 
-With `anyfs-mount`, you can mount your text file as a real filesystem:
+With the planned `anyfs-mount` companion crate, you can mount your text file as a real filesystem:
 
 ```rust
 use anyfs_mount::MountHandle;

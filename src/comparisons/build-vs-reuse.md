@@ -58,15 +58,15 @@
 
 ## Gap Analysis
 
-| Requirement | `vfs` | AgentFS | `rusqlite` | `strict-path` |
-|-------------|:-----:|:-------:|:----------:|:-------------:|
-| Filesystem API | Yes | Yes | No | No |
-| Multiple backends | Yes | No | N/A | No |
-| SQLite backend | No | Yes | Yes (raw) | No |
-| Composable middleware | No | No | No | No |
-| Quota enforcement | No | No | Manual | No |
-| Path sandboxing | Partial | No | Manual | Yes |
-| Symlink/hard link control | Backend-dep | Yes | Manual | N/A |
+| Requirement               |    `vfs`    | AgentFS | `rusqlite` | `strict-path` |
+| ------------------------- | :---------: | :-----: | :--------: | :-----------: |
+| Filesystem API            |     Yes     |   Yes   |     No     |      No       |
+| Multiple backends         |     Yes     |   No    |    N/A     |      No       |
+| SQLite backend            |     No      |   Yes   | Yes (raw)  |      No       |
+| Composable middleware     |     No      |   No    |     No     |      No       |
+| Quota enforcement         |     No      |   No    |   Manual   |      No       |
+| Path sandboxing           |   Partial   |   No    |   Manual   |      Yes      |
+| Symlink/hard link control | Backend-dep |   Yes   |   Manual   |      N/A      |
 
 **Conclusion:** No existing crate provides:
 > "Backend-agnostic filesystem abstraction with composable middleware for quotas, sandboxing, and policy enforcement."
@@ -77,22 +77,19 @@
 
 AnyFS fills the gap by separating concerns:
 
-| Crate | Responsibility |
-|-------|----------------|
-| `anyfs-backend` | Trait (`Fs`, `Layer`) + types |
-| `anyfs` | Backends + middleware + ergonomic wrapper (`FileStorage<B, M>`) |
+| Crate           | Responsibility                                                  |
+| --------------- | --------------------------------------------------------------- |
+| `anyfs-backend` | Trait (`Fs`, `Layer`) + types                                   |
+| `anyfs`         | Backends + middleware + ergonomic wrapper (`FileStorage<B, M>`) |
 
 The middleware pattern (like Tower/Axum) enables composition:
 
 ```rust
-use anyfs::{SqliteBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, TracingLayer, FileStorage};
+use anyfs::{SqliteBackend, QuotaLayer, PathFilterLayer, TracingLayer, FileStorage};
 
 let backend = SqliteBackend::open("tenant.db")?
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
         .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")

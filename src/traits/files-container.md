@@ -44,7 +44,6 @@ let fs = FileStorage::new(
             .max_total_size(100 * 1024 * 1024)
             .build())
         .layer(RestrictionsLayer::builder()
-            .deny_hard_links()
             .deny_permissions()
             .build())
 );
@@ -109,13 +108,13 @@ fn save_document(fs: &UserDataFs, doc: &Document) { ... }
 
 ### When to Use Markers
 
-| Scenario | Use Markers? | Why |
-|----------|--------------|-----|
-| Single container | No | `FileStorage<B>` is sufficient |
-| Multiple containers, same type | **Yes** | Prevent accidental mixing |
-| Multi-tenant systems | **Yes** | Compile-time tenant isolation |
-| Sandbox + user data | **Yes** | Never write user data to sandbox |
-| Testing | Maybe | Tag test vs production containers |
+| Scenario                       | Use Markers? | Why                               |
+| ------------------------------ | ------------ | --------------------------------- |
+| Single container               | No           | `FileStorage<B>` is sufficient    |
+| Multiple containers, same type | **Yes**      | Prevent accidental mixing         |
+| Multi-tenant systems           | **Yes**      | Compile-time tenant isolation     |
+| Sandbox + user data            | **Yes**      | Never write user data to sandbox  |
+| Testing                        | Maybe        | Tag test vs production containers |
 
 ---
 
@@ -123,23 +122,23 @@ fn save_document(fs: &UserDataFs, doc: &Document) { ... }
 
 FileStorage mirrors std::fs naming:
 
-| FileStorage | std::fs |
-|-------------|---------|
-| `read()` | `std::fs::read` |
-| `read_to_string()` | `std::fs::read_to_string` |
-| `write()` | `std::fs::write` |
-| `read_dir()` | `std::fs::read_dir` |
-| `create_dir()` | `std::fs::create_dir` |
-| `create_dir_all()` | `std::fs::create_dir_all` |
-| `remove_file()` | `std::fs::remove_file` |
-| `remove_dir()` | `std::fs::remove_dir` |
-| `remove_dir_all()` | `std::fs::remove_dir_all` |
-| `rename()` | `std::fs::rename` |
-| `copy()` | `std::fs::copy` |
-| `metadata()` | `std::fs::metadata` |
+| FileStorage          | std::fs                     |
+| -------------------- | --------------------------- |
+| `read()`             | `std::fs::read`             |
+| `read_to_string()`   | `std::fs::read_to_string`   |
+| `write()`            | `std::fs::write`            |
+| `read_dir()`         | `std::fs::read_dir`         |
+| `create_dir()`       | `std::fs::create_dir`       |
+| `create_dir_all()`   | `std::fs::create_dir_all`   |
+| `remove_file()`      | `std::fs::remove_file`      |
+| `remove_dir()`       | `std::fs::remove_dir`       |
+| `remove_dir_all()`   | `std::fs::remove_dir_all`   |
+| `rename()`           | `std::fs::rename`           |
+| `copy()`             | `std::fs::copy`             |
+| `metadata()`         | `std::fs::metadata`         |
 | `symlink_metadata()` | `std::fs::symlink_metadata` |
-| `read_link()` | `std::fs::read_link` |
-| `set_permissions()` | `std::fs::set_permissions` |
+| `read_link()`        | `std::fs::read_link`        |
+| `set_permissions()`  | `std::fs::set_permissions`  |
 
 When the backend implements extended traits (e.g., `FsLink`, `FsInode`, `FsHandles`), FileStorage forwards those methods too and keeps the same `impl AsRef<Path>` ergonomics for path parameters.
 
@@ -147,12 +146,12 @@ When the backend implements extended traits (e.g., `FsLink`, `FsInode`, `FsHandl
 
 ## What FileStorage Does NOT Do
 
-| Concern | Use Instead |
-|---------|-------------|
-| Quota enforcement | `Quota<B>` |
-| Feature gating | `Restrictions<B>` |
-| Audit logging | `Tracing<B>` |
-| Path containment | PathFilter middleware or VRootFsBackend containment |
+| Concern           | Use Instead                                         |
+| ----------------- | --------------------------------------------------- |
+| Quota enforcement | `Quota<B>`                                          |
+| Feature gating    | `Restrictions<B>`                                   |
+| Audit logging     | `Tracing<B>`                                        |
+| Path containment  | PathFilter middleware or VRootFsBackend containment |
 
 FileStorage is **not a policy layer**. If you need policy, compose middleware.
 
@@ -212,13 +211,13 @@ type DynFileStorage<M = ()> = FileStorage<Box<dyn Fs>, M>;
 
 **When to use `.boxed()`:**
 
-| Situation | Use Generic | Use `.boxed()` |
-|-----------|-------------|----------------|
-| Local variables | Yes | No |
-| Function params | Yes (`impl Fs`) | No |
-| Return types | Yes (`impl Fs`) | No |
-| Collections of mixed backends | No | **Yes** |
-| Struct fields (want simple type) | Maybe | **Yes** |
+| Situation                        | Use Generic     | Use `.boxed()` |
+| -------------------------------- | --------------- | -------------- |
+| Local variables                  | Yes             | No             |
+| Function params                  | Yes (`impl Fs`) | No             |
+| Return types                     | Yes (`impl Fs`) | No             |
+| Collections of mixed backends    | No              | **Yes**        |
+| Struct fields (want simple type) | Maybe           | **Yes**        |
 
 ---
 

@@ -34,14 +34,14 @@ You get:
 
 ## Why does it matter?
 
-| Problem | How AnyFS helps |
-|---------|-----------------|
-| Multi-tenant isolation | Separate backend instances per tenant |
-| Portability | SQLite backend: tenant data = single `.db` file |
-| Security | Restrictions blocks risky operations when composed |
-| Resource control | Quota enforces quotas |
-| Audit compliance | Tracing records all operations |
-| Custom storage | Implement Fs for any medium |
+| Problem                | How AnyFS helps                                    |
+| ---------------------- | -------------------------------------------------- |
+| Multi-tenant isolation | Separate backend instances per tenant              |
+| Portability            | SQLite backend: tenant data = single `.db` file    |
+| Security               | Restrictions blocks risky operations when composed |
+| Resource control       | Quota enforces quotas                              |
+| Audit compliance       | Tracing records all operations                     |
+| Custom storage         | Implement Fs for any medium                        |
 
 ---
 
@@ -59,6 +59,8 @@ You get:
 - **std::fs alignment**
   - Familiar method names
   - Core traits use `&Path`; `FileStorage`/`FsExt` accept `impl AsRef<Path>` for ergonomics
+- **Developer experience first**
+  - Make storage composition easy, safe, and enjoyable to use
 
 ---
 
@@ -73,7 +75,6 @@ let backend = SqliteBackend::open("tenant.db")?
         .max_total_size(100 * 1024 * 1024)
         .build())
     .layer(RestrictionsLayer::builder()
-        .deny_hard_links()
         .deny_permissions()
         .build());
 
@@ -87,10 +88,10 @@ fs.write("/documents/hello.txt", b"Hello!")?;
 
 ## Status
 
-| Phase | Status |
-|-------|--------|
-| Design | Complete |
-| Implementation | Not started |
+| Phase          | Status                                 |
+| -------------- | -------------------------------------- |
+| Design         | Complete                               |
+| Implementation | Not started (mounting roadmap defined) |
 
 ---
 

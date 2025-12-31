@@ -38,18 +38,18 @@ AnyFS is an open standard for pluggable virtual filesystem backends in Rust. It 
 
 Each layer has **exactly one responsibility**:
 
-| Layer | Responsibility |
-|-------|----------------|
-| Backend (`Fs`+) | Storage + filesystem semantics |
-| `Quota<B>` | Resource limits (size, count, depth) |
-| `Restrictions<B>` | Opt-in operation restrictions |
-| `PathFilter<B>` | Path-based access control (sandbox) |
-| `ReadOnly<B>` | Prevent all write operations |
-| `RateLimit<B>` | Limit operations per second |
-| `Tracing<B>` | Instrumentation / audit trail |
-| `DryRun<B>` | Log operations without executing |
-| `Cache<B>` | LRU cache for reads |
-| `Overlay<B1,B2>` | Union filesystem (base + upper) |
+| Layer              | Responsibility                                   |
+| ------------------ | ------------------------------------------------ |
+| Backend (`Fs`+)    | Storage + filesystem semantics                   |
+| `Quota<B>`         | Resource limits (size, count, depth)             |
+| `Restrictions<B>`  | Opt-in operation restrictions                    |
+| `PathFilter<B>`    | Path-based access control (sandbox)              |
+| `ReadOnly<B>`      | Prevent all write operations                     |
+| `RateLimit<B>`     | Limit operations per second                      |
+| `Tracing<B>`       | Instrumentation / audit trail                    |
+| `DryRun<B>`        | Log operations without executing                 |
+| `Cache<B>`         | LRU cache for reads                              |
+| `Overlay<B1,B2>`   | Union filesystem (base + upper)                  |
 | `FileStorage<B,M>` | Ergonomic std::fs-aligned API + type-safe marker |
 
 ---
@@ -68,12 +68,14 @@ anyfs-backend/              # Crate 1: traits + types (no dependencies)
       fs_permissions.rs     # FsPermissions trait
       fs_sync.rs            # FsSync trait
       fs_stats.rs           # FsStats trait
+      fs_path.rs            # FsPath trait (canonicalization, blanket impl)
       fs_inode.rs           # FsInode trait
       fs_handles.rs         # FsHandles trait
       fs_lock.rs            # FsLock trait
       fs_xattr.rs           # FsXattr trait
     layer.rs                # Layer trait (Tower-style)
     ext.rs                  # FsExt (extension methods)
+    markers.rs              # SelfResolving marker trait
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -83,6 +85,7 @@ anyfs/                      # Crate 2: backends + middleware + FileStorage
     backends/
       memory.rs             # MemoryBackend
       sqlite.rs             # SqliteBackend
+      sqlite_cipher.rs      # SqliteCipherBackend (feature: sqlite-cipher)
       stdfs.rs              # StdFsBackend (no containment)
       vrootfs.rs            # VRootFsBackend (with containment)
     middleware/
@@ -112,6 +115,12 @@ FsFull   ← std::fs features (+ links, permissions, sync, stats)
    Fs    ← Basic filesystem (90% of use cases)
     ↑
 FsRead + FsWrite + FsDir  ← Core traits
+
+Derived traits (auto-implemented):
+  FsPath: FsRead + FsLink  ← Path canonicalization
+
+Marker traits:
+  SelfResolving  ← Opt-out of FileStorage path resolution
 ```
 
 **Rule:** Implement the lowest level you need. Higher levels include all below.
@@ -217,13 +226,13 @@ fn process_sandbox(fs: &FileStorage<impl Fs, Sandbox>) { /* only accepts Sandbox
 
 ## Built-in Backends
 
-| Backend | Description |
-|---------|-------------|
-| `MemoryBackend` | In-memory storage, implements `Clone` for snapshots |
-| `SqliteBackend` | Single-file portable database |
-| `SqliteCipherBackend` | Encrypted SQLite via SQLCipher (AES-256) |
-| `StdFsBackend` | Direct `std::fs` delegation (no containment) |
-| `VRootFsBackend` | Host filesystem with path containment (via strict-path) |
+| Backend               | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `MemoryBackend`       | In-memory storage, implements `Clone` for snapshots     |
+| `SqliteBackend`       | Single-file portable database                           |
+| `SqliteCipherBackend` | Encrypted SQLite via SQLCipher (AES-256)                |
+| `StdFsBackend`        | Direct `std::fs` delegation (no containment)            |
+| `VRootFsBackend`      | Host filesystem with path containment (via strict-path) |
 
 ### MemoryBackend Snapshots
 
@@ -243,39 +252,45 @@ let fs = MemoryBackend::load_from("state.bin")?;
 
 ## Middleware
 
-### Restrictions<B> (replaces FeatureGuard)
+### Restrictions<B> (Runtime Policy)
 
-Blocks specific operations when needed. **Default: all operations work.**
+Blocks specific operations at runtime. **Default: all operations work if backend supports them.**
+
+> **Note:** Symlink/hard-link capability is determined by whether the backend implements `FsLink`.
+> If `B: FsLink`, symlinks work. If not, they don't. No middleware needed.
 
 ```rust
 let backend = Restrictions::new(backend)
-    .deny_symlinks()       // Block symlink() calls
-    .deny_hard_links()     // Block hard_link() calls
     .deny_permissions();   // Block set_permissions() calls
 ```
 
+**Symlink support:** Determined by trait bounds, not middleware.
+- `MemoryBackend: FsLink` → supports symlinks
+- `SqliteBackend: FsLink` → supports symlinks  
+- Custom backend without `FsLink` → no symlinks (compile-time enforced)
+
 ### Other Middleware
 
-| Middleware | Purpose |
-|------------|---------|
-| `Quota<B>` | Resource limits (size, count, depth) |
-| `PathFilter<B>` | Path-based access control |
-| `ReadOnly<B>` | Prevent all writes |
-| `RateLimit<B>` | Ops/sec limit |
-| `Tracing<B>` | Instrumentation |
-| `DryRun<B>` | Test mode |
-| `Cache<B>` | LRU caching |
-| `Overlay<B1,B2>` | Layered FS |
+| Middleware       | Purpose                              |
+| ---------------- | ------------------------------------ |
+| `Quota<B>`       | Resource limits (size, count, depth) |
+| `PathFilter<B>`  | Path-based access control            |
+| `ReadOnly<B>`    | Prevent all writes                   |
+| `RateLimit<B>`   | Ops/sec limit                        |
+| `Tracing<B>`     | Instrumentation                      |
+| `DryRun<B>`      | Test mode                            |
+| `Cache<B>`       | LRU caching                          |
+| `Overlay<B1,B2>` | Layered FS                           |
 
 ---
 
 ## Cross-Platform Compatibility
 
-| Backend | Windows | Linux | macOS | WASM |
-|---------|:-------:|:-----:|:-----:|:----:|
-| `MemoryBackend` | ✅ | ✅ | ✅ | ✅ |
-| `SqliteBackend` | ✅ | ✅ | ✅ | ✅* |
-| `VRootFsBackend` | ✅ | ✅ | ✅ | ❌ |
+| Backend          | Windows | Linux | macOS | WASM  |
+| ---------------- | :-----: | :---: | :---: | :---: |
+| `MemoryBackend`  |    ✅    |   ✅   |   ✅   |   ✅   |
+| `SqliteBackend`  |    ✅    |   ✅   |   ✅   |  ✅*   |
+| `VRootFsBackend` |    ✅    |   ✅   |   ✅   |   ❌   |
 
 **Virtual backends (Memory, SQLite) are fully cross-platform** - all features work identically because paths are just keys, symlinks are stored data, permissions are metadata.
 
@@ -288,11 +303,11 @@ let backend = Restrictions::new(backend)
 
 Backends implementing `FsFuse` can be mounted as real filesystem drives via `anyfs-mount`:
 
-| Platform | Technology | Required |
-|----------|------------|----------|
-| Linux | FUSE | Usually pre-installed |
-| macOS | macFUSE | User must install |
-| Windows | WinFsp | User must install |
+| Platform | Technology | Required              |
+| -------- | ---------- | --------------------- |
+| Linux    | FUSE       | Usually pre-installed |
+| macOS    | macFUSE    | User must install     |
+| Windows  | WinFsp     | User must install     |
 
 ```rust
 use anyfs_mount::MountHandle;
@@ -321,9 +336,6 @@ let backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .build())
     .layer(TracingLayer::new());
 
 let fs = FileStorage::new(backend);
@@ -340,10 +352,6 @@ let sandbox = MemoryBackend::new()
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
         .deny("**/.env")
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(RateLimitLayer::builder()
         .max_ops(1000)
@@ -366,15 +374,15 @@ let sandbox = MemoryBackend::new()
 
 ## When in Doubt
 
-| Question | Answer |
-|----------|--------|
-| Where do limits go? | `Quota<B>` middleware |
-| Where do feature restrictions go? | `Restrictions<B>` middleware |
-| Where does logging go? | `Tracing<B>` middleware |
-| Where does path filtering go? | `PathFilter<B>` middleware |
-| What does FileStorage do? | Thin std::fs-aligned wrapper + type-safe marker |
-| How to snapshot MemoryBackend? | `.clone()` or `.save_to()` |
-| Sync or async? | Sync for v1, async-ready for future |
+| Question                          | Answer                                          |
+| --------------------------------- | ----------------------------------------------- |
+| Where do limits go?               | `Quota<B>` middleware                           |
+| Where do feature restrictions go? | `Restrictions<B>` middleware                    |
+| Where does logging go?            | `Tracing<B>` middleware                         |
+| Where does path filtering go?     | `PathFilter<B>` middleware                      |
+| What does FileStorage do?         | Thin std::fs-aligned wrapper + type-safe marker |
+| How to snapshot MemoryBackend?    | `.clone()` or `.save_to()`                      |
+| Sync or async?                    | Sync for v1, async-ready for future             |
 
 ---
 
@@ -382,12 +390,12 @@ let sandbox = MemoryBackend::new()
 
 All detailed documentation is in `src/` (mdbook):
 
-| Section | Key Files |
-|---------|-----------|
-| Architecture | `architecture/design-overview.md` |
-| Traits | `traits/layered-traits.md`, `traits/files-container.md` |
+| Section        | Key Files                                                            |
+| -------------- | -------------------------------------------------------------------- |
+| Architecture   | `architecture/design-overview.md`                                    |
+| Traits         | `traits/layered-traits.md`, `traits/files-container.md`              |
 | Implementation | `implementation/backend-guide.md`, `implementation/testing-guide.md` |
-| Security | `comparisons/security.md` |
+| Security       | `comparisons/security.md`                                            |
 
 ---
 

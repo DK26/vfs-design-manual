@@ -8,13 +8,13 @@
 
 AnyFS uses a layered testing approach:
 
-| Layer | What it tests | Run with |
-|-------|---------------|----------|
-| Unit tests | Individual components | `cargo test` |
+| Layer             | What it tests            | Run with                            |
+| ----------------- | ------------------------ | ----------------------------------- |
+| Unit tests        | Individual components    | `cargo test`                        |
 | Conformance tests | Backend trait compliance | `cargo test --features conformance` |
-| Integration tests | Full stack behavior | `cargo test --test integration` |
-| Stress tests | Concurrency & limits | `cargo test --release -- --ignored` |
-| Platform tests | Cross-platform behavior | CI matrix |
+| Integration tests | Full stack behavior      | `cargo test --test integration`     |
+| Stress tests      | Concurrency & limits     | `cargo test --release -- --ignored` |
+| Platform tests    | Cross-platform behavior  | CI matrix                           |
 
 ---
 
@@ -275,7 +275,7 @@ fn test_quota_blocks_when_exceeded() {
         .layer(QuotaLayer::builder().max_total_size(100).build());
     let fs = FileStorage::new(backend);
 
-    let result = fs.write(std::path::Path::new("/big.txt"), &[0u8; 200]);
+    let result = fs.write("/big.txt", &[0u8; 200]);
 
     assert!(matches!(result, Err(FsError::QuotaExceeded { .. })));
 }
@@ -286,9 +286,9 @@ fn test_quota_allows_within_limit() {
         .layer(QuotaLayer::builder().max_total_size(1000).build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/small.txt"), &[0u8; 100]).unwrap();
+    fs.write("/small.txt", &[0u8; 100]).unwrap();
 
-    assert!(fs.exists(std::path::Path::new("/small.txt")).unwrap());
+    assert!(fs.exists("/small.txt").unwrap());
 }
 
 #[test]
@@ -297,11 +297,11 @@ fn test_quota_tracks_deletes() {
         .layer(QuotaLayer::builder().max_total_size(100).build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file.txt"), &[0u8; 50]).unwrap();
-    fs.remove_file(std::path::Path::new("/file.txt")).unwrap();
+    fs.write("/file.txt", &[0u8; 50]).unwrap();
+    fs.remove_file("/file.txt").unwrap();
 
     // Should be able to write again after delete
-    fs.write(std::path::Path::new("/file2.txt"), &[0u8; 50]).unwrap();
+    fs.write("/file2.txt", &[0u8; 50]).unwrap();
 }
 
 #[test]
@@ -310,7 +310,7 @@ fn test_quota_max_file_size() {
         .layer(QuotaLayer::builder().max_file_size(50).build());
     let fs = FileStorage::new(backend);
 
-    let result = fs.write(std::path::Path::new("/big.txt"), &[0u8; 100]);
+    let result = fs.write("/big.txt", &[0u8; 100]);
 
     assert!(matches!(result, Err(FsError::QuotaExceeded { .. })));
 }
@@ -321,13 +321,13 @@ fn test_quota_streaming_write() {
         .layer(QuotaLayer::builder().max_total_size(100).build());
     let fs = FileStorage::new(backend);
 
-    let mut writer = fs.open_write(std::path::Path::new("/file.txt")).unwrap();
+    let mut writer = fs.open_write("/file.txt").unwrap();
     writer.write_all(&[0u8; 50]).unwrap();
     writer.write_all(&[0u8; 50]).unwrap();
     drop(writer);
 
     // Next write should fail
-    let result = fs.write(std::path::Path::new("/file2.txt"), &[0u8; 10]);
+    let result = fs.write("/file2.txt", &[0u8; 10]);
     assert!(matches!(result, Err(FsError::QuotaExceeded { .. })));
 }
 ```
@@ -336,26 +336,27 @@ fn test_quota_streaming_write() {
 
 ```rust
 #[test]
-fn test_restrictions_blocks_symlinks() {
+fn test_restrictions_blocks_permissions() {
     let backend = MemoryBackend::new()
-        .layer(RestrictionsLayer::builder().deny_symlinks().build());
+        .layer(RestrictionsLayer::builder().deny_permissions().build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/target.txt"), b"data").unwrap();
-    let result = fs.symlink(std::path::Path::new("/target.txt"), std::path::Path::new("/link.txt"));
+    fs.write("/file.txt", b"data").unwrap();
+    let result = fs.set_permissions("/file.txt", Permissions::new(0o644));
 
-    assert!(matches!(result, Err(FsError::OperationDenied { .. })));
+    assert!(matches!(result, Err(FsError::FeatureNotEnabled { .. })));
 }
 
 #[test]
-fn test_restrictions_allows_non_blocked() {
+fn test_restrictions_allows_links() {
+    // Restrictions doesn't block FsLink - capability is via trait bounds
     let backend = MemoryBackend::new()
-        .layer(RestrictionsLayer::builder().deny_symlinks().build());  // Only block symlinks
+        .layer(RestrictionsLayer::builder().deny_permissions().build());
     let fs = FileStorage::new(backend);
 
-    // Hard links should still work
-    fs.write(std::path::Path::new("/target.txt"), b"data").unwrap();
-    fs.hard_link(std::path::Path::new("/target.txt"), std::path::Path::new("/link.txt")).unwrap();
+    fs.write("/target.txt", b"data").unwrap();
+    fs.symlink("/target.txt", "/link.txt").unwrap();  // Works - MemoryBackend: FsLink
+    fs.hard_link("/target.txt", "/hardlink.txt").unwrap();  // Works too
 }
 
 #[test]
@@ -364,8 +365,8 @@ fn test_restrictions_blocks_permissions() {
         .layer(RestrictionsLayer::builder().deny_permissions().build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file.txt"), b"data").unwrap();
-    let result = fs.set_permissions(std::path::Path::new("/file.txt"), Permissions::from_mode(0o777));
+    fs.write("/file.txt", b"data").unwrap();
+    let result = fs.set_permissions("/file.txt", Permissions::from_mode(0o777));
 
     assert!(matches!(result, Err(FsError::OperationDenied { .. })));
 }
@@ -380,8 +381,8 @@ fn test_pathfilter_allows_matching() {
         .layer(PathFilterLayer::builder().allow("/workspace/**").build());
     let fs = FileStorage::new(backend);
 
-    fs.create_dir_all(std::path::Path::new("/workspace/project")).unwrap();
-    fs.write(std::path::Path::new("/workspace/project/file.txt"), b"data").unwrap();
+    fs.create_dir_all("/workspace/project").unwrap();
+    fs.write("/workspace/project/file.txt", b"data").unwrap();
 }
 
 #[test]
@@ -390,7 +391,7 @@ fn test_pathfilter_blocks_non_matching() {
         .layer(PathFilterLayer::builder().allow("/workspace/**").build());
     let fs = FileStorage::new(backend);
 
-    let result = fs.write(std::path::Path::new("/etc/passwd"), b"data");
+    let result = fs.write("/etc/passwd", b"data");
 
     assert!(matches!(result, Err(FsError::AccessDenied { .. })));
 }
@@ -404,7 +405,7 @@ fn test_pathfilter_deny_overrides_allow() {
             .build());
     let fs = FileStorage::new(backend);
 
-    let result = fs.write(std::path::Path::new("/workspace/.env"), b"SECRET=xxx");
+    let result = fs.write("/workspace/.env", b"SECRET=xxx");
 
     assert!(matches!(result, Err(FsError::AccessDenied { .. })));
 }
@@ -422,7 +423,7 @@ fn test_pathfilter_read_dir_filters() {
             .build());
     let fs = FileStorage::new(backend);
 
-    let entries = fs.read_dir(std::path::Path::new("/workspace")).unwrap();
+    let entries = fs.read_dir("/workspace").unwrap();
 
     // .env should be filtered out
     assert_eq!(entries.len(), 1);
@@ -441,10 +442,10 @@ fn test_readonly_blocks_writes() {
     let backend = ReadOnly::new(inner);
     let fs = FileStorage::new(backend);
 
-    let result = fs.write(std::path::Path::new("/file.txt"), b"modified");
+    let result = fs.write("/file.txt", b"modified");
     assert!(matches!(result, Err(FsError::ReadOnly { .. })));
 
-    let result = fs.remove_file(std::path::Path::new("/file.txt"));
+    let result = fs.remove_file("/file.txt");
     assert!(matches!(result, Err(FsError::ReadOnly { .. })));
 }
 
@@ -456,7 +457,7 @@ fn test_readonly_allows_reads() {
     let backend = ReadOnly::new(inner);
     let fs = FileStorage::new(backend);
 
-    assert_eq!(fs.read(std::path::Path::new("/file.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/file.txt").unwrap(), b"data");
 }
 ```
 
@@ -466,27 +467,27 @@ fn test_readonly_allows_reads() {
 #[test]
 fn test_middleware_composition_order() {
     // Quota inside, Restrictions outside
-    // Quota should be checked before restrictions
     let backend = MemoryBackend::new()
         .layer(QuotaLayer::builder().max_total_size(100).build())
-        .layer(RestrictionsLayer::builder().deny_symlinks().build());
+        .layer(RestrictionsLayer::builder().deny_permissions().build());
 
     let fs = FileStorage::new(backend);
 
-    // Write should hit quota first
-    let result = fs.write(std::path::Path::new("/big.txt"), &[0u8; 200]);
+    // Write should hit quota
+    let result = fs.write("/big.txt", &[0u8; 200]);
     assert!(matches!(result, Err(FsError::QuotaExceeded { .. })));
 }
 
 #[test]
 fn test_layer_syntax() {
+    // All configurable middleware use builder pattern (per ADR-022)
     let backend = MemoryBackend::new()
-        .layer(QuotaLayer::new().max_total_size(1000))
-        .layer(RestrictionsLayer::new().deny_symlinks())
-        .layer(TracingLayer::new());
+        .layer(QuotaLayer::builder().max_total_size(1000).build())
+        .layer(RestrictionsLayer::builder().deny_permissions().build())
+        .layer(TracingLayer::new());  // TracingLayer has sensible defaults
 
     let fs = FileStorage::new(backend);
-    fs.write(std::path::Path::new("/test.txt"), b"data").unwrap();
+    fs.write("/test.txt", b"data").unwrap();
 }
 ```
 
@@ -535,7 +536,7 @@ fn test_filestorage_boxed() {
 fn test_error_not_found() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    match fs.read(std::path::Path::new("/nonexistent")) {
+    match fs.read("/nonexistent") {
         Err(FsError::NotFound { path, operation }) => {
             assert_eq!(path, Path::new("/nonexistent"));
             assert_eq!(operation, "read");
@@ -547,9 +548,9 @@ fn test_error_not_found() {
 #[test]
 fn test_error_already_exists() {
     let fs = FileStorage::new(MemoryBackend::new());
-    fs.create_dir(std::path::Path::new("/mydir")).unwrap();
+    fs.create_dir("/mydir").unwrap();
 
-    match fs.create_dir(std::path::Path::new("/mydir")) {
+    match fs.create_dir("/mydir") {
         Err(FsError::AlreadyExists { path, .. }) => {
             assert_eq!(path, Path::new("/mydir"));
         }
@@ -560,9 +561,9 @@ fn test_error_already_exists() {
 #[test]
 fn test_error_not_a_directory() {
     let fs = FileStorage::new(MemoryBackend::new());
-    fs.write(std::path::Path::new("/file.txt"), b"data").unwrap();
+    fs.write("/file.txt", b"data").unwrap();
 
-    match fs.read_dir(std::path::Path::new("/file.txt")) {
+    match fs.read_dir("/file.txt") {
         Err(FsError::NotADirectory { path }) => {
             assert_eq!(path, Path::new("/file.txt"));
         }
@@ -573,10 +574,10 @@ fn test_error_not_a_directory() {
 #[test]
 fn test_error_directory_not_empty() {
     let fs = FileStorage::new(MemoryBackend::new());
-    fs.create_dir(std::path::Path::new("/mydir")).unwrap();
-    fs.write(std::path::Path::new("/mydir/file.txt"), b"data").unwrap();
+    fs.create_dir("/mydir").unwrap();
+    fs.write("/mydir/file.txt", b"data").unwrap();
 
-    match fs.remove_dir(std::path::Path::new("/mydir")) {
+    match fs.remove_dir("/mydir") {
         Err(FsError::DirectoryNotEmpty { path }) => {
             assert_eq!(path, Path::new("/mydir"));
         }
@@ -665,26 +666,27 @@ fn stress_test_concurrent_operations() {
 fn test_path_normalization() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    fs.write(std::path::Path::new("/a/b/../c/file.txt"), b"data").unwrap();
+    fs.write("/a/b/../c/file.txt", b"data").unwrap();
 
     // Should be accessible via normalized path
-    assert_eq!(fs.read(std::path::Path::new("/a/c/file.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/a/c/file.txt").unwrap(), b"data");
 }
 
 #[test]
 fn test_double_slashes() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    fs.write(std::path::Path::new("//a//b//file.txt"), b"data").unwrap();
+    fs.write("//a//b//file.txt", b"data").unwrap();
 
-    assert_eq!(fs.read(std::path::Path::new("/a/b/file.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/a/b/file.txt").unwrap(), b"data");
 }
 
 #[test]
 fn test_root_path() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    let entries = fs.read_dir(std::path::Path::new("/")).unwrap();
+    // ReadDirIter is an iterator, use collect_all() to check contents
+    let entries = fs.read_dir("/").unwrap().collect_all().unwrap();
     assert!(entries.is_empty());
 }
 
@@ -692,7 +694,7 @@ fn test_root_path() {
 fn test_empty_path_returns_error() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    let result = fs.read(std::path::Path::new(""));
+    let result = fs.read("");
     assert!(result.is_err());
 }
 
@@ -700,18 +702,18 @@ fn test_empty_path_returns_error() {
 fn test_unicode_paths() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    fs.write(std::path::Path::new("/文件/データ.txt"), b"data").unwrap();
+    fs.write("/文件/データ.txt", b"data").unwrap();
 
-    assert_eq!(fs.read(std::path::Path::new("/文件/データ.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/文件/データ.txt").unwrap(), b"data");
 }
 
 #[test]
 fn test_paths_with_spaces() {
     let fs = FileStorage::new(MemoryBackend::new());
 
-    fs.write(std::path::Path::new("/my folder/my file.txt"), b"data").unwrap();
+    fs.write("/my folder/my file.txt", b"data").unwrap();
 
-    assert_eq!(fs.read(std::path::Path::new("/my folder/my file.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/my folder/my file.txt").unwrap(), b"data");
 }
 ```
 
@@ -723,28 +725,28 @@ fn test_paths_with_spaces() {
 #[test]
 fn no_panic_missing_file() {
     let fs = FileStorage::new(MemoryBackend::new());
-    let _ = fs.read(std::path::Path::new("/missing"));  // Should return Err, not panic
+    let _ = fs.read("/missing");  // Should return Err, not panic
 }
 
 #[test]
 fn no_panic_missing_parent() {
     let fs = FileStorage::new(MemoryBackend::new());
-    let _ = fs.write(std::path::Path::new("/missing/parent/file.txt"), b"data");  // Should return Err
+    let _ = fs.write("/missing/parent/file.txt", b"data");  // Should return Err
 }
 
 #[test]
 fn no_panic_read_dir_on_file() {
     let fs = FileStorage::new(MemoryBackend::new());
-    fs.write(std::path::Path::new("/file.txt"), b"data").unwrap();
-    let _ = fs.read_dir(std::path::Path::new("/file.txt"));  // Should return Err, not panic
+    fs.write("/file.txt", b"data").unwrap();
+    let _ = fs.read_dir("/file.txt");  // Should return Err, not panic
 }
 
 #[test]
 fn no_panic_remove_nonempty_dir() {
     let fs = FileStorage::new(MemoryBackend::new());
-    fs.create_dir(std::path::Path::new("/dir")).unwrap();
-    fs.write(std::path::Path::new("/dir/file.txt"), b"data").unwrap();
-    let _ = fs.remove_dir(std::path::Path::new("/dir"));  // Should return Err, not panic
+    fs.create_dir("/dir").unwrap();
+    fs.write("/dir/file.txt", b"data").unwrap();
+    let _ = fs.remove_dir("/dir");  // Should return Err, not panic
 }
 ```
 
@@ -753,27 +755,14 @@ fn no_panic_remove_nonempty_dir() {
 ## 8. Symlink Security Tests
 
 ```rust
-// Virtual backend symlink following control
+// Virtual backend symlink resolution (always follows for FsLink backends)
 #[test]
-fn test_virtual_backend_follow_symlinks_enabled() {
+fn test_virtual_backend_symlink_following() {
     let backend = MemoryBackend::new();
     backend.write(std::path::Path::new("/target.txt"), b"secret").unwrap();
     backend.symlink(std::path::Path::new("/target.txt"), std::path::Path::new("/link.txt")).unwrap();
 
-    // Default: following enabled
     assert_eq!(backend.read(std::path::Path::new("/link.txt")).unwrap(), b"secret");
-}
-
-#[test]
-fn test_virtual_backend_follow_symlinks_disabled() {
-    let backend = MemoryBackend::new();
-    backend.set_follow_symlinks(false);
-    backend.write(std::path::Path::new("/target.txt"), b"secret").unwrap();
-    backend.symlink(std::path::Path::new("/target.txt"), std::path::Path::new("/link.txt")).unwrap();
-
-    // Reading symlink should fail or return symlink data
-    let result = backend.read(std::path::Path::new("/link.txt"));
-    assert!(matches!(result, Err(FsError::IsSymlink { .. })));
 }
 
 #[test]
@@ -819,7 +808,7 @@ fn test_vroot_prevents_path_traversal() {
     let fs = FileStorage::new(backend);
 
     // Attempt to escape via ..
-    let result = fs.read(std::path::Path::new("/../../../etc/passwd"));
+    let result = fs.read("/../../../etc/passwd");
     assert!(matches!(result, Err(FsError::AccessDenied { .. })));
 }
 
@@ -836,7 +825,7 @@ fn test_vroot_prevents_symlink_escape() {
     let fs = FileStorage::new(backend);
 
     // Reading should be blocked by strict-path
-    let result = fs.read(std::path::Path::new("/escape"));
+    let result = fs.read("/escape");
     assert!(matches!(result, Err(FsError::AccessDenied { .. })));
 }
 
@@ -852,7 +841,7 @@ fn test_vroot_allows_internal_symlinks() {
     let fs = FileStorage::new(backend);
 
     // Internal symlinks should work
-    assert_eq!(fs.read(std::path::Path::new("/link.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/link.txt").unwrap(), b"data");
 }
 
 #[test]
@@ -861,11 +850,11 @@ fn test_vroot_canonicalizes_paths() {
     let backend = VRootFsBackend::new(temp.path()).unwrap();
     let fs = FileStorage::new(backend);
 
-    fs.create_dir(std::path::Path::new("/a")).unwrap();
-    fs.write(std::path::Path::new("/a/file.txt"), b"data").unwrap();
+    fs.create_dir("/a").unwrap();
+    fs.write("/a/file.txt", b"data").unwrap();
 
     // Access via normalized path
-    assert_eq!(fs.read(std::path::Path::new("/a/../a/./file.txt")).unwrap(), b"data");
+    assert_eq!(fs.read("/a/../a/./file.txt").unwrap(), b"data");
 }
 ```
 
@@ -882,7 +871,7 @@ fn test_ratelimit_allows_within_limit() {
 
     // Should succeed within limit
     for i in 0..5 {
-        fs.write(std::path::Path::new(&format!("/file{}.txt", i)), b"data").unwrap();
+        fs.write(format!("/file{}.txt", i), b"data").unwrap();
     }
 }
 
@@ -892,11 +881,11 @@ fn test_ratelimit_blocks_when_exceeded() {
         .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file1.txt"), b"data").unwrap();
-    fs.write(std::path::Path::new("/file2.txt"), b"data").unwrap();
-    fs.write(std::path::Path::new("/file3.txt"), b"data").unwrap();
+    fs.write("/file1.txt", b"data").unwrap();
+    fs.write("/file2.txt", b"data").unwrap();
+    fs.write("/file3.txt", b"data").unwrap();
 
-    let result = fs.write(std::path::Path::new("/file4.txt"), b"data");
+    let result = fs.write("/file4.txt", b"data");
     assert!(matches!(result, Err(FsError::RateLimitExceeded { .. })));
 }
 
@@ -906,14 +895,14 @@ fn test_ratelimit_resets_after_window() {
         .layer(RateLimitLayer::builder().max_ops(2).per(Duration::from_millis(100)).build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file1.txt"), b"data").unwrap();
-    fs.write(std::path::Path::new("/file2.txt"), b"data").unwrap();
+    fs.write("/file1.txt", b"data").unwrap();
+    fs.write("/file2.txt", b"data").unwrap();
 
     // Wait for window to reset
     std::thread::sleep(Duration::from_millis(150));
 
     // Should succeed again
-    fs.write(std::path::Path::new("/file3.txt"), b"data").unwrap();
+    fs.write("/file3.txt", b"data").unwrap();
 }
 
 #[test]
@@ -922,11 +911,11 @@ fn test_ratelimit_counts_all_operations() {
         .layer(RateLimitLayer::builder().max_ops(3).per_second().build());
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file.txt"), b"data").unwrap();  // 1
-    let _ = fs.read(std::path::Path::new("/file.txt"));              // 2
-    let _ = fs.exists(std::path::Path::new("/file.txt"));            // 3
+    fs.write("/file.txt", b"data").unwrap();  // 1
+    let _ = fs.read("/file.txt");              // 2
+    let _ = fs.exists("/file.txt");            // 3
 
-    let result = fs.metadata(std::path::Path::new("/file.txt"));
+    let result = fs.metadata("/file.txt");
     assert!(matches!(result, Err(FsError::RateLimitExceeded { .. })));
 }
 ```
@@ -961,8 +950,8 @@ fn test_tracing_logs_operations() {
             }));
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/file.txt"), b"data").unwrap();
-    fs.read(std::path::Path::new("/file.txt")).unwrap();
+    fs.write("/file.txt", b"data").unwrap();
+    fs.read("/file.txt").unwrap();
 
     let entries = logger.entries();
     assert!(entries.iter().any(|e| e.contains("write")));
@@ -981,7 +970,7 @@ fn test_tracing_includes_path() {
             }));
     let fs = FileStorage::new(backend);
 
-    fs.write(std::path::Path::new("/important/secret.txt"), b"data").unwrap();
+    fs.write("/important/secret.txt", b"data").unwrap();
 
     let entries = logger.entries();
     assert!(entries.iter().any(|e| e.contains("/important/secret.txt")));
@@ -999,7 +988,7 @@ fn test_tracing_logs_errors() {
             }));
     let fs = FileStorage::new(backend);
 
-    let _ = fs.read(std::path::Path::new("/nonexistent.txt"));
+    let _ = fs.read("/nonexistent.txt");
 
     let entries = logger.entries();
     assert!(entries.iter().any(|e| e.contains("NotFound") || e.contains("error")));
@@ -1013,7 +1002,7 @@ fn test_tracing_with_span_context() {
     let fs = FileStorage::new(backend);
 
     async {
-        fs.write(std::path::Path::new("/async.txt"), b"data").unwrap();
+        fs.write("/async.txt", b"data").unwrap();
     }
     .instrument(info_span!("test_operation"))
     .now_or_never();
@@ -1102,7 +1091,7 @@ proptest! {
         let mut total_written = 0usize;
         for (i, size) in file_sizes.into_iter().take(file_count).enumerate() {
             let data = vec![0u8; size];
-            match fs.write(std::path::Path::new(&format!("/file{}.txt", i)), &data) {
+            match fs.write(format!("/file{}.txt", i), &data) {
                 Ok(()) => total_written += size,
                 Err(FsError::QuotaExceeded { .. }) => break,
                 Err(e) => panic!("Unexpected error: {:?}", e),

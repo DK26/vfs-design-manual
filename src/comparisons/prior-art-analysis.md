@@ -6,16 +6,16 @@ This document analyzes filesystem abstraction libraries in other languages to le
 
 ## Executive Summary
 
-| Library | Language | Key Strength | Key Weakness | What We Can Learn |
-|---------|----------|--------------|--------------|-------------------|
-| [fsspec](https://filesystem-spec.readthedocs.io/) | Python | Async + caching + data science integration | No middleware composition | Caching strategies, async design |
-| [PyFilesystem2](https://github.com/PyFilesystem/pyfilesystem2) | Python | Clean URL-based API | Symlink handling issues | Path normalization |
-| [Afero](https://github.com/spf13/afero) | Go | Composition (CopyOnWrite, Cache, BasePathFs) | Symlink escape in BasePathFs | Composition patterns |
-| [Apache Commons VFS](https://commons.apache.org/vfs/) | Java | Enterprise-grade, many backends | **CVE: Path traversal with encoded `..`** | URL encoding attacks |
-| [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) | .NET | Perfect for testing, mirrors System.IO | No middleware/composition | MockFileSystem patterns |
-| [memfs](https://github.com/streamich/memfs) | Node.js | Browser + Node unified API | Fork exists due to "longstanding bugs" | In-memory implementation |
-| [soft-canonicalize](https://github.com/DK26/soft-canonicalize-rs) | Rust | Non-existing path resolution, TOCTOU-safe | Real FS only (not virtual) | Attack patterns to defend |
-| [strict-path](https://github.com/DK26/strict-path-rs) | Rust | 19+ attack types blocked, type-safe markers | Real FS only (not virtual) | Attack catalog for testing |
+| Library                                                                        | Language | Key Strength                                 | Key Weakness                              | What We Can Learn                |
+| ------------------------------------------------------------------------------ | -------- | -------------------------------------------- | ----------------------------------------- | -------------------------------- |
+| [fsspec](https://filesystem-spec.readthedocs.io/)                              | Python   | Async + caching + data science integration   | No middleware composition                 | Caching strategies, async design |
+| [PyFilesystem2](https://github.com/PyFilesystem/pyfilesystem2)                 | Python   | Clean URL-based API                          | Symlink handling issues                   | Path normalization               |
+| [Afero](https://github.com/spf13/afero)                                        | Go       | Composition (CopyOnWrite, Cache, BasePathFs) | Symlink escape in BasePathFs              | Composition patterns             |
+| [Apache Commons VFS](https://commons.apache.org/vfs/)                          | Java     | Enterprise-grade, many backends              | **CVE: Path traversal with encoded `..`** | URL encoding attacks             |
+| [System.IO.Abstractions](https://github.com/TestableIO/System.IO.Abstractions) | .NET     | Perfect for testing, mirrors System.IO       | No middleware/composition                 | MockFileSystem patterns          |
+| [memfs](https://github.com/streamich/memfs)                                    | Node.js  | Browser + Node unified API                   | Fork exists due to "longstanding bugs"    | In-memory implementation         |
+| [soft-canonicalize](https://github.com/DK26/soft-canonicalize-rs)              | Rust     | Non-existing path resolution, TOCTOU-safe    | Real FS only (not virtual)                | Attack patterns to defend        |
+| [strict-path](https://github.com/DK26/strict-path-rs)                          | Rust     | 19+ attack types blocked, type-safe markers  | Real FS only (not virtual)                | Attack catalog for testing       |
 
 ---
 
@@ -91,12 +91,12 @@ This document analyzes filesystem abstraction libraries in other languages to le
 
 **Known Issues (from GitHub):**
 
-| Issue | Description | Impact |
-|-------|-------------|--------|
-| [#171](https://github.com/PyFilesystem/pyfilesystem2/issues/171) | Symlink loops cause infinite recursion | DoS potential |
-| [#417](https://github.com/PyFilesystem/pyfilesystem2/issues/417) | No symlink creation support | Missing feature |
+| Issue                                                            | Description                                              | Impact               |
+| ---------------------------------------------------------------- | -------------------------------------------------------- | -------------------- |
+| [#171](https://github.com/PyFilesystem/pyfilesystem2/issues/171) | Symlink loops cause infinite recursion                   | DoS potential        |
+| [#417](https://github.com/PyFilesystem/pyfilesystem2/issues/417) | No symlink creation support                              | Missing feature      |
 | [#411](https://github.com/PyFilesystem/pyfilesystem2/issues/411) | Incorrect handling of symlinks with non-existing targets | Broken functionality |
-| [#61](https://github.com/PyFilesystem/pyfilesystem2/issues/61) | Symlinks not detected properly | Security concern |
+| [#61](https://github.com/PyFilesystem/pyfilesystem2/issues/61)   | Symlinks not detected properly                           | Security concern     |
 
 **Lessons for AnyFS:**
 - ⚠️ **Symlink handling is complex** - we must handle loops, non-existent targets, and escaping
@@ -134,11 +134,11 @@ This document analyzes filesystem abstraction libraries in other languages to le
 
 **Known Issues:**
 
-| Issue | Description | Our Mitigation |
-|-------|-------------|----------------|
+| Issue                                             | Description                            | Our Mitigation                             |
+| ------------------------------------------------- | -------------------------------------- | ------------------------------------------ |
 | [#282](https://github.com/spf13/afero/issues/282) | Symlinks in BasePathFs can escape jail | Use `strict-path` crate for VRootFsBackend |
-| [#88](https://github.com/spf13/afero/issues/88) | Symlink handling inconsistent | Document behavior clearly |
-| [#344](https://github.com/spf13/afero/issues/344) | BasePathFs fails when basepath is `.` | Test edge cases |
+| [#88](https://github.com/spf13/afero/issues/88)   | Symlink handling inconsistent          | Document behavior clearly                  |
+| [#344](https://github.com/spf13/afero/issues/344) | BasePathFs fails when basepath is `.`  | Test edge cases                            |
 
 **BasePathFs Symlink Escape Issue:**
 
@@ -274,32 +274,32 @@ fn resolve(path: &str) -> Result<PathBuf, FsError> {
 
 ## Vulnerabilities Summary
 
-| Library | Vulnerability | Type | Our Mitigation |
-|---------|---------------|------|----------------|
-| **Apache Commons VFS** | CVE (pre-2.10.0) | URL-encoded path traversal | Decode before validate |
-| **Afero (Go)** | Issue #282, #88 | Symlink escape from BasePathFs | Use `strict-path`, test thoroughly |
-| **PyFilesystem2** | Issue #171 | Symlink loop causes infinite recursion | Loop detection with max depth |
-| **memfs (Node)** | 13 vulns in npm audit | Various (unspecified) | Comprehensive test suite |
+| Library                | Vulnerability         | Type                                   | Our Mitigation                     |
+| ---------------------- | --------------------- | -------------------------------------- | ---------------------------------- |
+| **Apache Commons VFS** | CVE (pre-2.10.0)      | URL-encoded path traversal             | Decode before validate             |
+| **Afero (Go)**         | Issue #282, #88       | Symlink escape from BasePathFs         | Use `strict-path`, test thoroughly |
+| **PyFilesystem2**      | Issue #171            | Symlink loop causes infinite recursion | Loop detection with max depth      |
+| **memfs (Node)**       | 13 vulns in npm audit | Various (unspecified)                  | Comprehensive test suite           |
 
 ---
 
 ## Features Comparison Matrix
 
-| Feature | fsspec | PyFS2 | Afero | Commons VFS | System.IO.Abs | AnyFS |
-|---------|:------:|:-----:|:-----:|:-----------:|:-------------:|:-----:|
-| Middleware composition | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Quota enforcement | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Path sandboxing | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Rate limiting | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Caching layer | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Async support | ✅ | ❌ | ❌ | ❌ | ❌ | 🔜 |
-| Block-wise caching | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| URL-based opening | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Union/overlay FS | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Memory backend | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| SQLite backend | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| FUSE mounting | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ |
-| Type-safe markers | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Feature                | fsspec | PyFS2 | Afero | Commons VFS | System.IO.Abs | AnyFS |
+| ---------------------- | :----: | :---: | :---: | :---------: | :-----------: | :---: |
+| Middleware composition |   ❌    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
+| Quota enforcement      |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
+| Path sandboxing        |   ❌    |   ❌   |   ✅   |      ✅      |       ❌       |   ✅   |
+| Rate limiting          |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
+| Caching layer          |   ✅    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
+| Async support          |   ✅    |   ❌   |   ❌   |      ❌      |       ❌       |   🔜   |
+| Block-wise caching     |   ✅    |   ❌   |   ❌   |      ❌      |       ❌       |   ❌   |
+| URL-based opening      |   ✅    |   ✅   |   ❌   |      ✅      |       ❌       |   ❌   |
+| Union/overlay FS       |   ❌    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
+| Memory backend         |   ✅    |   ✅   |   ✅   |      ✅      |       ✅       |   ✅   |
+| SQLite backend         |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
+| FUSE mounting          |   ✅    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
+| Type-safe markers      |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
 
 ---
 
@@ -405,28 +405,28 @@ fn test_many_open_handles() {
 
 ### High Priority (Before v1.0)
 
-| Task | Source | Priority |
-|------|--------|----------|
-| Add URL-encoded path traversal tests | Apache Commons VFS CVE | 🔴 Critical |
-| Add symlink escape tests for VRootFsBackend | Afero issues | 🔴 Critical |
-| Add symlink loop detection | PyFilesystem2 #171 | 🔴 Critical |
+| Task                                        | Source                  | Priority   |
+| ------------------------------------------- | ----------------------- | ---------- |
+| Add URL-encoded path traversal tests        | Apache Commons VFS CVE  | 🔴 Critical |
+| Add symlink escape tests for VRootFsBackend | Afero issues            | 🔴 Critical |
+| Add symlink loop detection                  | PyFilesystem2 #171      | 🔴 Critical |
 | Verify `strict-path` handles all edge cases | Afero BasePathFs issues | 🔴 Critical |
 
 ### Medium Priority (v1.1+)
 
-| Task | Source | Priority |
-|------|--------|----------|
-| Consider block-wise caching for large files | fsspec | 🟡 Enhancement |
-| Add async support | fsspec async design | 🟡 Enhancement |
-| URL-based filesystem specification | PyFilesystem2, Commons VFS | 🟢 Nice-to-have |
+| Task                                        | Source                     | Priority       |
+| ------------------------------------------- | -------------------------- | -------------- |
+| Consider block-wise caching for large files | fsspec                     | 🟡 Enhancement  |
+| Add async support                           | fsspec async design        | 🟡 Enhancement  |
+| URL-based filesystem specification          | PyFilesystem2, Commons VFS | 🟢 Nice-to-have |
 
 ### Documentation
 
-| Task | Source |
-|------|--------|
-| Document symlink behavior for each backend | All libraries have issues |
-| Add security considerations for path handling | Apache Commons VFS CVE |
-| Compare AnyFS to alternatives | This analysis |
+| Task                                          | Source                    |
+| --------------------------------------------- | ------------------------- |
+| Document symlink behavior for each backend    | All libraries have issues |
+| Add security considerations for path handling | Apache Commons VFS CVE    |
+| Compare AnyFS to alternatives                 | This analysis             |
 
 ---
 
@@ -442,15 +442,15 @@ AnyFS builds on foundational security work from two related Rust crates that spe
 
 **Security Features:**
 
-| Feature | Description | Attack Prevented |
-|---------|-------------|------------------|
-| NTFS ADS validation | Blocks alternate data stream syntax | Hidden data, path escape |
-| Symlink cycle detection | Bounded depth tracking | DoS via infinite loops |
-| Path traversal clamping | Can't ascend past root | Directory escape |
-| Null byte rejection | Early validation | Null injection |
-| TOCTOU resistance | Atomic-like resolution | Race conditions |
-| Windows UNC handling | Normalizes extended paths | Path confusion |
-| Linux namespace preservation | Uses `proc-canonicalize` | Container escape via `/proc/PID/root` |
+| Feature                      | Description                         | Attack Prevented                      |
+| ---------------------------- | ----------------------------------- | ------------------------------------- |
+| NTFS ADS validation          | Blocks alternate data stream syntax | Hidden data, path escape              |
+| Symlink cycle detection      | Bounded depth tracking              | DoS via infinite loops                |
+| Path traversal clamping      | Can't ascend past root              | Directory escape                      |
+| Null byte rejection          | Early validation                    | Null injection                        |
+| TOCTOU resistance            | Atomic-like resolution              | Race conditions                       |
+| Windows UNC handling         | Normalizes extended paths           | Path confusion                        |
+| Linux namespace preservation | Uses `proc-canonicalize`            | Container escape via `/proc/PID/root` |
 
 **Key Innovation: Anchored Canonicalization**
 
@@ -470,23 +470,23 @@ This is exactly what `VRootFsBackend` needs for safe path containment.
 
 **Two Modes:**
 
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| `StrictPath` | Returns `Err(PathEscapesBoundary)` on escape | Archive extraction, file uploads |
-| `VirtualPath` | Clamps escape attempts within sandbox | Multi-tenant, per-user storage |
+| Mode          | Behavior                                     | Use Case                         |
+| ------------- | -------------------------------------------- | -------------------------------- |
+| `StrictPath`  | Returns `Err(PathEscapesBoundary)` on escape | Archive extraction, file uploads |
+| `VirtualPath` | Clamps escape attempts within sandbox        | Multi-tenant, per-user storage   |
 
 **Documented Attack Coverage (19+ vulnerabilities):**
 
-| Attack Type | Description |
-|-------------|-------------|
-| Symlink/junction escapes | Follows and validates canonical paths |
-| Windows 8.3 short names | Detects `PROGRA~1` obfuscation |
-| NTFS Alternate Data Streams | Blocks `file.txt:hidden:$DATA` |
+| Attack Type                 | Description                                 |
+| --------------------------- | ------------------------------------------- |
+| Symlink/junction escapes    | Follows and validates canonical paths       |
+| Windows 8.3 short names     | Detects `PROGRA~1` obfuscation              |
+| NTFS Alternate Data Streams | Blocks `file.txt:hidden:$DATA`              |
 | Zip Slip (CVE-2018-1000178) | Validates archive entries before extraction |
-| TOCTOU (CVE-2022-21658) | Handles time-of-check-time-of-use races |
-| Unicode/encoding bypasses | Normalizes path representations |
-| Mixed separators | Handles `/` and `\` on Windows |
-| UNC path tricks | Prevents `\\?\C:\..\..\` attacks |
+| TOCTOU (CVE-2022-21658)     | Handles time-of-check-time-of-use races     |
+| Unicode/encoding bypasses   | Normalizes path representations             |
+| Mixed separators            | Handles `/` and `\` on Windows              |
+| UNC path tricks             | Prevents `\\?\C:\..\..\` attacks            |
 
 **Type-Safe Marker Pattern (mirrors AnyFS's design!):**
 
@@ -502,24 +502,24 @@ fn process_user(f: &StrictPath<UserFiles>) { /* ... */ }
 
 **Important distinction:**
 
-| Backend Type | Path Resolution Strategy | Can Use These Crates? |
-|--------------|--------------------------|----------------------|
-| `VRootFsBackend` | Real filesystem | ✅ Yes - wraps actual FS |
-| `MemoryBackend` | **Lexical only** | ❌ No - paths are HashMap keys |
-| `SqliteBackend` | **Lexical only** | ❌ No - paths are DB strings |
+| Backend Type     | Storage Mechanism | Path Resolution Provider        |
+| ---------------- | ----------------- | ------------------------------- |
+| `VRootFsBackend` | Real filesystem   | OS (backend is `SelfResolving`) |
+| `MemoryBackend`  | HashMap keys      | FileStorage (symlink-aware)     |
+| `SqliteBackend`  | DB strings        | FileStorage (symlink-aware)     |
 
 **For virtual backends (Memory, SQLite, etc.):**
-- These crates perform **real filesystem resolution** (follow actual symlinks on disk)
-- Virtual backends need **lexical-only** path algorithms (pure string manipulation)
-- AnyFS must implement its own path resolution that:
-  1. Normalizes `.` and `..` via string manipulation
+- These third-party crates perform **real filesystem resolution** (follow actual symlinks on disk)
+- Virtual backends treat paths as keys, so these crates can't help
+- AnyFS implements its own path resolution in `FileStorage` that:
+  1. Walks path components via `metadata()` and `read_link()`
   2. Resolves symlinks by reading targets from virtual storage
-  3. Detects loops by tracking visited virtual paths
-  4. Validates dangerous patterns (ADS, null bytes) via string checks
+  3. Handles `..` correctly after symlink resolution
+  4. Detects loops by tracking visited virtual paths
 
 **For `VRootFsBackend` only:**
-- Since it wraps the real filesystem, `strict-path` could provide safe containment
-- But this is the ONLY backend where real FS resolution makes sense
+- Since it wraps the real filesystem, `strict-path` provides safe containment
+- The backend implements `SelfResolving`, so FileStorage skips its own resolution
 
 ### Security Tests Added to Conformance Suite
 

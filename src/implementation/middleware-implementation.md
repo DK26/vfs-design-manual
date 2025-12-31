@@ -140,33 +140,22 @@ No challenges. Pure delegation for reads, error return for writes.
 **State:** Configuration flags only
 **Dependencies:** None
 
+> **Note:** Symlink/hard-link capability is determined by trait bounds (`B: FsLink`), not middleware.
+> Restrictions only controls permission-related operations.
+
 ### Implementation
 
 ```rust
 pub struct Restrictions<B> {
     inner: B,
-    deny_symlinks: bool,
-    deny_hard_links: bool,
     deny_permissions: bool,
 }
 
 pub struct RestrictionsBuilder {
-    deny_symlinks: bool,
-    deny_hard_links: bool,
     deny_permissions: bool,
 }
 
 impl RestrictionsBuilder {
-    pub fn deny_symlinks(mut self) -> Self {
-        self.deny_symlinks = true;
-        self
-    }
-
-    pub fn deny_hard_links(mut self) -> Self {
-        self.deny_hard_links = true;
-        self
-    }
-
     pub fn deny_permissions(mut self) -> Self {
         self.deny_permissions = true;
         self
@@ -175,42 +164,28 @@ impl RestrictionsBuilder {
     pub fn build<B>(self, inner: B) -> Restrictions<B> {
         Restrictions {
             inner,
-            deny_symlinks: self.deny_symlinks,
-            deny_hard_links: self.deny_hard_links,
             deny_permissions: self.deny_permissions,
         }
     }
 }
 
-// FsRead and FsDir: pure delegation (no restrictions on reads)
+// FsRead, FsDir, FsLink: pure delegation (Restrictions doesn't block these)
 
 impl<B: FsLink> FsLink for Restrictions<B> {
     fn symlink(&self, target: &Path, link: &Path) -> Result<(), FsError> {
-        if self.deny_symlinks {
-            return Err(FsError::FeatureNotEnabled {
-                feature: "symlinks",
-                operation: "symlink",
-            });
-        }
-        self.inner.symlink(target, link)
+        self.inner.symlink(target, link)  // Pure delegation
     }
 
     fn hard_link(&self, original: &Path, link: &Path) -> Result<(), FsError> {
-        if self.deny_hard_links {
-            return Err(FsError::FeatureNotEnabled {
-                feature: "hard_links",
-                operation: "hard_link",
-            });
-        }
-        self.inner.hard_link(original, link)
+        self.inner.hard_link(original, link)  // Pure delegation
     }
 
     fn read_link(&self, path: &Path) -> Result<PathBuf, FsError> {
-        self.inner.read_link(path)  // Reading is always allowed
+        self.inner.read_link(path)
     }
 
     fn symlink_metadata(&self, path: &Path) -> Result<Metadata, FsError> {
-        self.inner.symlink_metadata(path)  // Reading is always allowed
+        self.inner.symlink_metadata(path)
     }
 }
 
@@ -229,7 +204,7 @@ impl<B: FsPermissions> FsPermissions for Restrictions<B> {
 
 ### Verdict: ✅ Trivially Implementable
 
-Simple flag checks before delegation.
+Simple flag check on `set_permissions()`. Link operations delegate to inner backend.
 
 ---
 
@@ -710,15 +685,15 @@ impl<B: FsWrite> FsWrite for Cache<B> {
 
 ### What Gets Cached
 
-| Method | Cached? | Reason |
-|--------|---------|--------|
-| `read()` | Yes | Small files benefit from caching |
-| `read_to_string()` | Yes | Same as read |
-| `read_range()` | Maybe | Could cache full file, serve ranges from cache |
-| `metadata()` | Yes | Frequently accessed |
-| `exists()` | Derived | Can derive from metadata cache |
-| `open_read()` | **No** | Streams are for large files that shouldn't be cached |
-| `read_dir()` | Maybe | Directory listings change frequently |
+| Method             | Cached? | Reason                                               |
+| ------------------ | ------- | ---------------------------------------------------- |
+| `read()`           | Yes     | Small files benefit from caching                     |
+| `read_to_string()` | Yes     | Same as read                                         |
+| `read_range()`     | Maybe   | Could cache full file, serve ranges from cache       |
+| `metadata()`       | Yes     | Frequently accessed                                  |
+| `exists()`         | Derived | Can derive from metadata cache                       |
+| `open_read()`      | **No**  | Streams are for large files that shouldn't be cached |
+| `read_dir()`       | Maybe   | Directory listings change frequently                 |
 
 ### Verdict: ✅ Implementable
 
@@ -759,7 +734,34 @@ struct QuotaConfig {
     max_total_size: Option<u64>,
     max_file_size: Option<u64>,
     max_node_count: Option<u64>,
+    max_dir_entries: Option<u64>,  // Max entries per directory
     max_path_depth: Option<usize>,
+}
+
+/// Current usage statistics.
+#[derive(Debug, Clone, Default)]
+pub struct Usage {
+    pub total_size: u64,
+    pub file_count: u64,
+    pub dir_count: u64,
+}
+
+/// Configured limits.
+#[derive(Debug, Clone)]
+pub struct Limits {
+    pub max_total_size: Option<u64>,
+    pub max_file_size: Option<u64>,
+    pub max_node_count: Option<u64>,
+    pub max_dir_entries: Option<u64>,
+    pub max_path_depth: Option<usize>,
+}
+
+/// Remaining capacity.
+#[derive(Debug, Clone)]
+pub struct Remaining {
+    pub bytes: Option<u64>,
+    pub nodes: Option<u64>,
+    pub can_write: bool,
 }
 
 struct QuotaUsage {
@@ -768,7 +770,41 @@ struct QuotaUsage {
     dir_count: u64,
 }
 
-impl<B: Fs> Quota<B> {
+impl<B> Quota<B> {
+    /// Get current usage statistics.
+    pub fn usage(&self) -> Usage {
+        let u = self.usage.read().unwrap();
+        Usage {
+            total_size: u.total_size,
+            file_count: u.file_count,
+            dir_count: u.dir_count,
+        }
+    }
+
+    /// Get configured limits.
+    pub fn limits(&self) -> Limits {
+        Limits {
+            max_total_size: self.config.max_total_size,
+            max_file_size: self.config.max_file_size,
+            max_node_count: self.config.max_node_count,
+            max_dir_entries: self.config.max_dir_entries,
+            max_path_depth: self.config.max_path_depth,
+        }
+    }
+
+    /// Get remaining capacity.
+    pub fn remaining(&self) -> Remaining {
+        let u = self.usage.read().unwrap();
+        let bytes = self.config.max_total_size.map(|max| max.saturating_sub(u.total_size));
+        let nodes = self.config.max_node_count.map(|max| max.saturating_sub(u.file_count + u.dir_count));
+        Remaining {
+            bytes,
+            nodes,
+            can_write: bytes.map(|b| b > 0).unwrap_or(true),
+        }
+    }
+}
+```impl<B: Fs> Quota<B> {
     pub fn new(inner: B, config: QuotaConfig) -> Result<Self, FsError> {
         // IMPORTANT: Scan backend to initialize usage counters
         let usage = Self::scan_usage(&inner)?;
@@ -817,12 +853,61 @@ impl<B: Fs> Quota<B> {
 
         Ok(())
     }
+
+    fn check_node_limit(&self) -> Result<(), FsError> {
+        if let Some(max) = self.config.max_node_count {
+            let usage = self.usage.read().unwrap();
+            if usage.file_count + usage.dir_count >= max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max,
+                    requested: 1,
+                    usage: usage.file_count + usage.dir_count,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_dir_entries(&self, parent: &Path) -> Result<(), FsError>
+    where B: FsDir {
+        if let Some(max) = self.config.max_dir_entries {
+            // Count entries in parent directory
+            let count = self.inner.read_dir(parent)?
+                .filter(|e| e.is_ok())
+                .count() as u64;
+            if count >= max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max,
+                    requested: 1,
+                    usage: count,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn check_path_depth(&self, path: &Path) -> Result<(), FsError> {
+        if let Some(max) = self.config.max_path_depth {
+            let depth = path.components().count();
+            if depth > max {
+                return Err(FsError::QuotaExceeded {
+                    limit: max as u64,
+                    requested: depth as u64,
+                    usage: depth as u64,
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
-impl<B: FsWrite> FsWrite for Quota<B> {
+impl<B: FsWrite + FsRead + FsDir> FsWrite for Quota<B> {
     fn write(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
         let path = path.as_ref();
         let new_size = data.len() as u64;
+
+        // Check path depth limit
+        self.check_path_depth(path)?;
 
         // Check per-file limit
         if let Some(max) = self.config.max_file_size {
@@ -840,6 +925,15 @@ impl<B: FsWrite> FsWrite for Quota<B> {
             .map(|m| m.size)
             .unwrap_or(0);
 
+        // If creating a new file, check node count and dir entries
+        let is_new_file = old_size == 0;
+        if is_new_file {
+            self.check_node_limit()?;
+            if let Some(parent) = path.parent() {
+                self.check_dir_entries(parent)?;
+            }
+        }
+
         let size_delta = new_size as i64 - old_size as i64;
 
         if size_delta > 0 {
@@ -852,10 +946,8 @@ impl<B: FsWrite> FsWrite for Quota<B> {
         // Update usage
         let mut usage = self.usage.write().unwrap();
         usage.total_size = (usage.total_size as i64 + size_delta) as u64;
-
-        // If this was a new file, increment count
-        if old_size == 0 && !self.inner.exists(path).unwrap_or(false) {
-            // Actually need to check if it existed before... this is tricky
+        if is_new_file {
+            usage.file_count += 1;
         }
 
         Ok(())
@@ -936,18 +1028,48 @@ impl Drop for QuotaWriter {
         // this is where we'd finalize the accounting
     }
 }
+
+impl<B: FsDir + FsRead> FsDir for Quota<B> {
+    fn create_dir(&self, path: &Path) -> Result<(), FsError> {
+        // Check path depth
+        self.check_path_depth(path)?;
+
+        // Check node count
+        self.check_node_limit()?;
+
+        // Check parent directory entries
+        if let Some(parent) = path.parent() {
+            self.check_dir_entries(parent)?;
+        }
+
+        // Create directory
+        self.inner.create_dir(path)?;
+
+        // Update usage
+        let mut usage = self.usage.write().unwrap();
+        usage.dir_count += 1;
+
+        Ok(())
+    }
+
+    // create_dir_all, remove_dir, etc. delegate similarly
+    // ...
+}
 ```
 
 ### Challenges and Solutions
 
-| Challenge | Solution |
-|-----------|----------|
-| Initial usage unknown | Scan backend on construction |
-| Streaming writes | `QuotaWriter` wrapper counts bytes |
-| Concurrent writes | `RwLock` on usage counters |
-| File replacement | Calculate delta (new_size - old_size) |
-| New file detection | Check `exists()` before write |
-| Accurate accounting | Update counters after successful operations |
+| Challenge             | Solution                                    |
+| --------------------- | ------------------------------------------- |
+| Initial usage unknown | Scan backend on construction                |
+| Streaming writes      | `QuotaWriter` wrapper counts bytes          |
+| Concurrent writes     | `RwLock` on usage counters                  |
+| File replacement      | Calculate delta (new_size - old_size)       |
+| New file detection    | Check `exists()` before write               |
+| Accurate accounting   | Update counters after successful operations |
+| Node count limit      | Check before creating files/directories     |
+| Dir entries limit     | Count parent entries before creating child  |
+| Path depth limit      | Count path components on create             |
 
 ### Edge Cases
 
@@ -1175,12 +1297,12 @@ impl<Lower: FsRead + FsDir, Upper: Fs> FsDir for Overlay<Lower, Upper> {
 
 ### Key Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Whiteout** | `.wh.<name>` file in upper marks deletion of `<name>` from lower |
-| **Opaque** | `.wh..wh..opq` file in a directory hides all lower entries |
-| **Copy-on-write** | First write copies from lower to upper, then modifies |
-| **Merge** | `read_dir()` combines both layers, respecting whiteouts |
+| Concept           | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| **Whiteout**      | `.wh.<name>` file in upper marks deletion of `<name>` from lower |
+| **Opaque**        | `.wh..wh..opq` file in a directory hides all lower entries       |
+| **Copy-on-write** | First write copies from lower to upper, then modifies            |
+| **Merge**         | `read_dir()` combines both layers, respecting whiteouts          |
 
 ### Challenges
 
@@ -1209,17 +1331,17 @@ The most complex middleware, but uses well-established patterns from OverlayFS. 
 
 ## Summary
 
-| Middleware | Complexity | Key Implementation Insight |
-|------------|------------|---------------------------|
-| ReadOnly | Trivial | Block all writes |
-| Restrictions | Simple | Flag checks |
-| Tracing | Simple | Wrap operations in spans |
-| RateLimit | Moderate | Atomic counter + time window |
-| DryRun | Moderate | Log writes, return Ok without executing |
-| PathFilter | Moderate | Glob matching + filtered ReadDirIter |
-| Cache | Moderate | LRU with TTL, invalidate on writes |
-| Quota | High | Usage counters + QuotaWriter wrapper |
-| Overlay | High | Whiteout markers + merged directory listing |
+| Middleware   | Complexity | Key Implementation Insight                  |
+| ------------ | ---------- | ------------------------------------------- |
+| ReadOnly     | Trivial    | Block all writes                            |
+| Restrictions | Simple     | Flag checks                                 |
+| Tracing      | Simple     | Wrap operations in spans                    |
+| RateLimit    | Moderate   | Atomic counter + time window                |
+| DryRun       | Moderate   | Log writes, return Ok without executing     |
+| PathFilter   | Moderate   | Glob matching + filtered ReadDirIter        |
+| Cache        | Moderate   | LRU with TTL, invalidate on writes          |
+| Quota        | High       | Usage counters + QuotaWriter wrapper        |
+| Overlay      | High       | Whiteout markers + merged directory listing |
 
 ### Required Framework Features
 

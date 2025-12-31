@@ -12,6 +12,7 @@ You get:
 - A familiar `std::fs`-aligned API
 - Composable middleware (limits, logging, security)
 - Choice of storage: memory, SQLite, host filesystem, or custom
+- A developer-first goal: make storage composition easy, safe, and enjoyable
 
 ---
 
@@ -19,7 +20,7 @@ You get:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FileStorage<M>                         │  ← Ergonomics + type-safe marker
+│  FileStorage<B, M>                      │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota<B>                             │  ← Quotas
@@ -37,10 +38,13 @@ You get:
 
 ## Two-Crate Structure
 
-| Crate             | Purpose                                      |
-| ----------------- | -------------------------------------------- |
-| `anyfs-backend`   | Minimal contract: `Fs` trait + types         |
-| `anyfs`           | Backends + middleware + ergonomic `FileStorage<M>` wrapper |
+| Crate           | Purpose                                                             |
+| --------------- | ------------------------------------------------------------------- |
+| `anyfs-backend` | Minimal contract: `Fs` trait + types                                |
+| `anyfs`         | Backends + middleware + ergonomic `FileStorage<B, M>` wrapper       |
+| `anyfs-mount`   | Companion crate for FUSE/WinFsp mounting (planned; roadmap defined) |
+
+**Note:** The core design is two crates (`anyfs-backend`, `anyfs`). `anyfs-mount` is a planned companion crate (design complete; implementation pending), not part of the core crates.
 
 ---
 
@@ -55,7 +59,6 @@ let backend = SqliteBackend::open("data.db")?
         .max_total_size(100 * 1024 * 1024)
         .build())
     .layer(RestrictionsLayer::builder()
-        .deny_hard_links()
         .deny_permissions()
         .build());
 
@@ -94,10 +97,10 @@ See [Design Overview](./architecture/design-overview.md#future-ideas-post-v1) fo
 
 ## Status
 
-| Component      | Status      |
-| -------------- | ----------- |
-| Design         | Complete    |
-| Implementation | Not started |
+| Component      | Status                                 |
+| -------------- | -------------------------------------- |
+| Design         | Complete                               |
+| Implementation | Not started (mounting roadmap defined) |
 
 ---
 

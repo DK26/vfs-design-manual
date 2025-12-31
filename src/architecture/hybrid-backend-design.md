@@ -40,15 +40,15 @@ A **hybrid backend** separates:
 
 **Yes.** The `Fs` traits define *operations*, not *storage implementation*.
 
-| Trait Method | Hybrid Implementation |
-|--------------|----------------------|
-| `read(path)` | SQLite lookup → blob fetch |
+| Trait Method        | Hybrid Implementation       |
+| ------------------- | --------------------------- |
+| `read(path)`        | SQLite lookup → blob fetch  |
 | `write(path, data)` | Blob upload → SQLite update |
-| `metadata(path)` | SQLite query only |
-| `read_dir(path)` | SQLite query only |
-| `remove_file(path)` | SQLite update (refcount--) |
-| `rename(from, to)` | SQLite update only |
-| `copy(from, to)` | SQLite update (refcount++) |
+| `metadata(path)`    | SQLite query only           |
+| `read_dir(path)`    | SQLite query only           |
+| `remove_file(path)` | SQLite update (refcount--)  |
+| `rename(from, to)`  | SQLite update only          |
+| `copy(from, to)`    | SQLite update (refcount++)  |
 
 The traits don't care where bytes come from - that's the backend's business.
 
@@ -561,7 +561,7 @@ impl HybridBackend {
 Middleware works unchanged - it wraps the hybrid backend like any other:
 
 ```rust
-use anyfs::{FileStorage, QuotaLayer, TracingLayer, RestrictionsLayer};
+use anyfs::{FileStorage, QuotaLayer, TracingLayer, PathFilterLayer};
 
 let backend = HybridBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
 
@@ -570,8 +570,8 @@ let backend = backend
     .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024 * 1024)  // 50 GB
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
+    .layer(PathFilterLayer::builder()
+        .deny("**/.env")
         .build())
     .layer(TracingLayer::new());
 
@@ -589,12 +589,12 @@ fs.write("/documents/report.pdf", &pdf_bytes)?;
 
 The hybrid pattern benefits significantly from async (ADR-024):
 
-| Operation | Sync Pain | Async Benefit |
-|-----------|-----------|---------------|
-| Blob upload to S3 | Blocks thread | Concurrent uploads |
-| Multiple reads | Sequential | Parallel fetches |
-| Write queue | `blocking_recv()` | Native async channel |
-| GC | Blocks all ops | Background task |
+| Operation         | Sync Pain         | Async Benefit        |
+| ----------------- | ----------------- | -------------------- |
+| Blob upload to S3 | Blocks thread     | Concurrent uploads   |
+| Multiple reads    | Sequential        | Parallel fetches     |
+| Write queue       | `blocking_recv()` | Native async channel |
+| GC                | Blocks all ops    | Background task      |
 
 When `AsyncFs` traits exist (ADR-024), the hybrid backend can use them naturally:
 
@@ -614,13 +614,13 @@ impl AsyncFsRead for HybridBackend {
 
 Areas where the current framework could be enhanced:
 
-| Gap | Current State | Recommendation |
-|-----|---------------|----------------|
-| Two-phase commit pattern | Not documented | Add to backend guide |
-| Refcount/GC patterns | Not documented | Add section |
-| Streaming large files | `open_read`/`open_write` exist | Document chunked patterns |
-| Physical vs logical size | Quota tracks logical only | Consider `PhysicalStats` trait |
-| Background tasks (GC) | No pattern | Document spawn pattern |
+| Gap                      | Current State                  | Recommendation                 |
+| ------------------------ | ------------------------------ | ------------------------------ |
+| Two-phase commit pattern | Not documented                 | Add to backend guide           |
+| Refcount/GC patterns     | Not documented                 | Add section                    |
+| Streaming large files    | `open_read`/`open_write` exist | Document chunked patterns      |
+| Physical vs logical size | Quota tracks logical only      | Consider `PhysicalStats` trait |
+| Background tasks (GC)    | No pattern                     | Document spawn pattern         |
 
 ---
 

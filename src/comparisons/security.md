@@ -14,23 +14,23 @@ AnyFS is designed with security as a primary concern. Security policies are enfo
 
 ### In Scope (Mitigated by Middleware)
 
-| Threat | Description | Middleware |
-|--------|-------------|------------|
-| **Path traversal** | Access files outside allowed paths | `PathFilter` |
-| **Symlink attacks** | Use symlinks to bypass controls | Backend-dependent (see below) |
-| **Resource exhaustion** | Fill storage or create excessive files | `Quota` |
-| **Runaway processes** | Excessive operations consuming resources | `RateLimit` |
-| **Unauthorized writes** | Modifications to read-only data | `ReadOnly` |
-| **Sensitive file access** | Access to `.env`, secrets, etc. | `PathFilter` |
+| Threat                    | Description                              | Middleware                    |
+| ------------------------- | ---------------------------------------- | ----------------------------- |
+| **Path traversal**        | Access files outside allowed paths       | `PathFilter`                  |
+| **Symlink attacks**       | Use symlinks to bypass controls          | Backend-dependent (see below) |
+| **Resource exhaustion**   | Fill storage or create excessive files   | `Quota`                       |
+| **Runaway processes**     | Excessive operations consuming resources | `RateLimit`                   |
+| **Unauthorized writes**   | Modifications to read-only data          | `ReadOnly`                    |
+| **Sensitive file access** | Access to `.env`, secrets, etc.          | `PathFilter`                  |
 
 ### Out of Scope
 
-| Threat | Reason |
-|--------|--------|
-| **Side-channel attacks** | Requires OS-level mitigations |
-| **Physical access** | Disk encryption is application's responsibility |
-| **SQLite vulnerabilities** | Upstream dependency; update regularly |
-| **Network attacks** | AnyFS is local storage, not network-facing |
+| Threat                     | Reason                                          |
+| -------------------------- | ----------------------------------------------- |
+| **Side-channel attacks**   | Requires OS-level mitigations                   |
+| **Physical access**        | Disk encryption is application's responsibility |
+| **SQLite vulnerabilities** | Upstream dependency; update regularly           |
+| **Network attacks**        | AnyFS is local storage, not network-facing      |
 
 ---
 
@@ -41,15 +41,11 @@ AnyFS is designed with security as a primary concern. Security policies are enfo
 Security policies are composable middleware layers:
 
 ```rust
-use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RateLimitLayer, TracingLayer};
 
 let secure_backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()              // Limit resources
         .max_total_size(100 * 1024 * 1024)
-        .build())
-    .layer(RestrictionsLayer::builder()       // Block dangerous features
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(PathFilterLayer::builder()         // Sandbox paths
         .allow("/workspace/**")
@@ -82,25 +78,34 @@ PathFilterLayer::builder()
 - No rule = denied (deny by default)
 - `read_dir` filters denied entries from results
 
-### 3. Feature Gating (Restrictions)
+### 3. Symlink Capability via Trait Bounds
 
-By default, all operations work. Use `Restrictions` middleware to **opt-in to restrictions**:
+Symlink/hard-link capability is determined by **trait bounds**, not middleware:
+
+```rust
+// MemoryBackend implements FsLink → symlinks work
+let fs = FileStorage::new(MemoryBackend::new());
+fs.symlink("/target", "/link")?;  // ✅ Works
+
+// Custom backend without FsLink → symlinks won't compile
+let fs = FileStorage::new(MySimpleBackend::new());
+fs.symlink("/target", "/link")?;  // ❌ Compile error
+```
+
+**If you don't want symlinks:** Use a backend that doesn't implement `FsLink`.
+
+The `Restrictions` middleware only controls permission operations:
 
 ```rust
 RestrictionsLayer::builder()
-    .deny_hard_links()         // Block hard_link() calls
     .deny_permissions()        // Block set_permissions() calls
-    .deny_symlinks()           // Block symlink() calls
     .build()
     .layer(backend)
 ```
 
 **Use cases:**
 - Sandboxing untrusted code (block permission changes)
-- Archive extraction (block symlink/hardlink creation)
 - Read-only-ish environments (block permission mutations)
-
-**Note:** This controls operation **availability**. For symlink **following** behavior, see "Symlink Security" below.
 
 ### 4. Resource Limits (Quota)
 
@@ -141,12 +146,12 @@ RateLimitLayer::builder()
 
 Different backends achieve containment differently:
 
-| Backend | Containment Mechanism |
-|---------|----------------------|
-| `MemoryBackend` | Isolated in process memory |
-| `SqliteBackend` | Each container is a separate `.db` file |
-| `StdFsBackend` | **None** - full filesystem access (use `PathFilter` for sandboxing) |
-| `VRootFsBackend` | Uses `strict-path::VirtualRoot` to contain paths |
+| Backend          | Containment Mechanism                                               |
+| ---------------- | ------------------------------------------------------------------- |
+| `MemoryBackend`  | Isolated in process memory                                          |
+| `SqliteBackend`  | Each container is a separate `.db` file                             |
+| `StdFsBackend`   | **None** - full filesystem access (use `PathFilter` for sandboxing) |
+| `VRootFsBackend` | Uses `strict-path::VirtualRoot` to contain paths                    |
 
 ### 7. Why Virtual Backends Are Inherently Safe
 
@@ -166,7 +171,7 @@ the virtual structure. There is no host filesystem to escape to.
 This means:
 - **No host filesystem access** - symlinks point to paths within the virtual structure only
 - **No TOCTOU via OS state** - resolution uses the backend's own data
-- **Controllable via `set_follow_symlinks()`** - disable symlink following entirely if needed
+- **No runtime toggle** - symlink following is part of backend semantics (virtual backends that implement `FsLink` are resolved by `FileStorage`)
 
 For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equivalent guarantees by validating and containing all paths before they reach the OS.
 
@@ -176,26 +181,23 @@ For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equi
 
 Symlinks are just data. Creating `/sandbox/link -> /etc/passwd` is harmless. The danger is when reading `/sandbox/link` follows the symlink and accesses `/etc/passwd`.
 
-| Backend Type | Symlink Creation | Symlink Following |
-|--------------|------------------|-------------------|
-| `MemoryBackend` | Always supported | **We control** via `set_follow_symlinks()` |
-| `SqliteBackend` | Always supported | **We control** via `set_follow_symlinks()` |
-| `VRootFsBackend` | Always supported | **OS controls** - `strict-path` prevents escapes |
+| Backend Type     | Symlink Creation     | Symlink Following                                |
+| ---------------- | -------------------- | ------------------------------------------------ |
+| `MemoryBackend`  | Supported (`FsLink`) | `FileStorage` resolves (non-`SelfResolving`)     |
+| `SqliteBackend`  | Supported (`FsLink`) | `FileStorage` resolves (non-`SelfResolving`)     |
+| `VRootFsBackend` | Supported (`FsLink`) | **OS controls** - `strict-path` prevents escapes |
 
 #### Virtual Backends (Memory, SQLite)
 
-Virtual backends always support symlinks. They also provide control over symlink following:
+Virtual backends that implement `FsLink` follow symlinks during `FileStorage` resolution. Symlink capability is determined by trait bounds:
 
-```rust
-let backend = MemoryBackend::new();
-backend.set_follow_symlinks(false);  // Don't follow symlinks during path resolution
-```
+- `MemoryBackend: FsLink` → supports symlinks
+- `SqliteBackend: FsLink` → supports symlinks
+- Custom backend without `FsLink` → no symlinks (compile-time enforced)
 
-When following is disabled:
-- `read("/link")` on a symlink returns `FsError::IsSymlink` (or reads link as opaque data)
-- Path resolution treats symlinks as terminal nodes
+If you need symlink-free behavior, use a backend that does not implement `FsLink`.
 
-**This is the actual security feature** - controlling whether symlinks are resolved.
+**This is the actual security feature** - controlling whether symlinks are even possible via trait bounds.
 
 #### Real Filesystem Backend (VRootFsBackend)
 
@@ -216,11 +218,11 @@ This is "follow and verify containment" - symlinks are followed by the OS, but e
 
 #### Summary
 
-| Concern | Virtual Backend | VRootFsBackend |
-|---------|-----------------|----------------|
-| Symlink creation | Always allowed (just data) | Always allowed (just data) |
-| Symlink following | `set_follow_symlinks(bool)` | OS controls (strict-path prevents escapes) |
-| Jail escape via symlink | `set_follow_symlinks(false)` | Prevented by strict-path |
+| Concern                 | Virtual Backend                              | VRootFsBackend                             |
+| ----------------------- | -------------------------------------------- | ------------------------------------------ |
+| Symlink creation        | Supported (`FsLink`)                         | Supported (`FsLink`)                       |
+| Symlink following       | `FileStorage` resolves (non-`SelfResolving`) | OS controls (strict-path prevents escapes) |
+| Jail escape via symlink | No host FS to escape                         | Prevented by strict-path                   |
 
 ---
 
@@ -229,16 +231,12 @@ This is "follow and verify containment" - symlinks are followed by the OS, but e
 ### AI Agent Sandbox
 
 ```rust
-use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RestrictionsLayer, RateLimitLayer, TracingLayer, FileStorage};
+use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, RateLimitLayer, TracingLayer, FileStorage};
 
 let sandbox = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(50 * 1024 * 1024)
         .max_file_size(5 * 1024 * 1024)
-        .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
         .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
@@ -253,6 +251,7 @@ let sandbox = MemoryBackend::new()
 
 let fs = FileStorage::new(sandbox);
 // Agent code can only access /workspace, limited resources, audited
+// Note: MemoryBackend implements FsLink, so symlinks work if needed
 ```
 
 ### Multi-Tenant Isolation
@@ -320,24 +319,24 @@ AnyFS's design enables encryption at multiple levels. Understanding the differen
 
 ### Container-Level vs File-Level Protection
 
-| Level | What's Protected | Integrity | Implementation |
-|-------|------------------|-----------|----------------|
-| **Container-level** | Entire storage medium (`.db` file, serialized state) | Full structure protected | Encrypted backend |
-| **File-level** | Individual file contents | File contents only | Encryption middleware |
+| Level               | What's Protected                                     | Integrity                | Implementation        |
+| ------------------- | ---------------------------------------------------- | ------------------------ | --------------------- |
+| **Container-level** | Entire storage medium (`.db` file, serialized state) | Full structure protected | Encrypted backend     |
+| **File-level**      | Individual file contents                             | File contents only       | Encryption middleware |
 
 **Key insight:** File-level encryption alone is NOT sufficient. If an attacker can modify the container structure (directory tree, metadata, file names), they can sabotage integrity even without decrypting file contents.
 
 ### Threat Analysis
 
-| Threat | File-Level Encryption | Container-Level Encryption |
-|--------|----------------------|---------------------------|
-| Read file contents | Protected | Protected |
-| Modify file contents | Detected (with AEAD) | Detected |
-| Delete files | **NOT protected** | Protected |
-| Rename/move files | **NOT protected** | Protected |
-| Corrupt directory structure | **NOT protected** | Protected |
-| Replay old file versions | **NOT protected** | Protected (with versioning) |
-| Metadata exposure (filenames, sizes) | **NOT protected** | Protected |
+| Threat                               | File-Level Encryption | Container-Level Encryption  |
+| ------------------------------------ | --------------------- | --------------------------- |
+| Read file contents                   | Protected             | Protected                   |
+| Modify file contents                 | Detected (with AEAD)  | Detected                    |
+| Delete files                         | **NOT protected**     | Protected                   |
+| Rename/move files                    | **NOT protected**     | Protected                   |
+| Corrupt directory structure          | **NOT protected**     | Protected                   |
+| Replay old file versions             | **NOT protected**     | Protected (with versioning) |
+| Metadata exposure (filenames, sizes) | **NOT protected**     | Protected                   |
 
 **Recommendation:** For sensitive data, prefer container-level encryption. Use file-level encryption when you need selective access (some files encrypted, others not).
 
@@ -493,14 +492,14 @@ For high-security scenarios where memory dumps are a threat:
 
 #### Threat Levels
 
-| Threat | Mitigation | Library-Level? |
-|--------|------------|----------------|
-| Memory inspection after process exit | `zeroize` on drop | Yes |
-| Core dumps | Disable via `setrlimit` | Yes (process config) |
-| Swap file exposure | `mlock()` to pin pages | Yes (OS permitting) |
-| Live memory scanning (same user) | OS process isolation | No |
-| Cold boot attack | Hardware RAM encryption | No (Intel TME/AMD SME) |
-| Hypervisor/DMA attack | SGX/SEV enclaves | No (hardware) |
+| Threat                               | Mitigation              | Library-Level?         |
+| ------------------------------------ | ----------------------- | ---------------------- |
+| Memory inspection after process exit | `zeroize` on drop       | Yes                    |
+| Core dumps                           | Disable via `setrlimit` | Yes (process config)   |
+| Swap file exposure                   | `mlock()` to pin pages  | Yes (OS permitting)    |
+| Live memory scanning (same user)     | OS process isolation    | No                     |
+| Cold boot attack                     | Hardware RAM encryption | No (Intel TME/AMD SME) |
+| Hypervisor/DMA attack                | SGX/SEV enclaves        | No (hardware)          |
 
 #### Encrypted Memory Backend (Illustrative Pattern)
 
@@ -621,12 +620,12 @@ For true defense against memory scanning, combine:
 
 ### Encryption Summary
 
-| Approach | Protects Contents | Protects Structure | RAM Security | Persistence |
-|----------|-------------------|--------------------|--------------| ------------|
-| `SqliteCipherBackend` | Yes | Yes | No (SQLite uses plaintext RAM) | Encrypted `.db` file |
-| `FileEncryption<B>` middleware | Yes | No | Depends on B | Depends on B |
-| `EncryptedMemoryBackend` (illustrative) | Yes | Yes | Yes (encrypted in RAM) | Via `save_to_file()` |
-| `IntegrityVerified<B>` middleware | No | No (files only) | No | Depends on B |
+| Approach                                | Protects Contents | Protects Structure | RAM Security                   | Persistence          |
+| --------------------------------------- | ----------------- | ------------------ | ------------------------------ | -------------------- |
+| `SqliteCipherBackend`                   | Yes               | Yes                | No (SQLite uses plaintext RAM) | Encrypted `.db` file |
+| `FileEncryption<B>` middleware          | Yes               | No                 | Depends on B                   | Depends on B         |
+| `EncryptedMemoryBackend` (illustrative) | Yes               | Yes                | Yes (encrypted in RAM)         | Via `save_to_file()` |
+| `IntegrityVerified<B>` middleware       | No                | No (files only)    | No                             | Depends on B         |
 
 ### Recommended Configurations
 
@@ -705,25 +704,25 @@ Virtual backends eliminate this entirely:
 
 ### Security Comparison: strict-path vs Virtual Backend
 
-| Threat | strict-path (Real FS) | Virtual Backend |
-|--------|----------------------|-----------------|
-| Path traversal | Prevented (canonicalize + verify) | **Impossible** (no host FS to traverse to) |
-| Symlink race (TOCTOU) | Mitigated (canonicalize first) | **Impossible** (we control all symlinks) |
-| External symlink creation | Vulnerable window exists | **Impossible** (single-process ownership) |
-| Windows 8.3 short names | Partial (only existing files) | **N/A** (no Windows FS) |
-| Namespace escapes (/proc) | Fixed in soft-canonicalize | **Impossible** (no /proc exists) |
-| Concurrent modification | OS handles (may race) | **Atomic** (SQLite transactions) |
-| Tenant A accessing Tenant B | Requires careful path filtering | **Impossible** (separate .db files) |
+| Threat                      | strict-path (Real FS)             | Virtual Backend                            |
+| --------------------------- | --------------------------------- | ------------------------------------------ |
+| Path traversal              | Prevented (canonicalize + verify) | **Impossible** (no host FS to traverse to) |
+| Symlink race (TOCTOU)       | Mitigated (canonicalize first)    | **Impossible** (we control all symlinks)   |
+| External symlink creation   | Vulnerable window exists          | **Impossible** (single-process ownership)  |
+| Windows 8.3 short names     | Partial (only existing files)     | **N/A** (no Windows FS)                    |
+| Namespace escapes (/proc)   | Fixed in soft-canonicalize        | **Impossible** (no /proc exists)           |
+| Concurrent modification     | OS handles (may race)             | **Atomic** (SQLite transactions)           |
+| Tenant A accessing Tenant B | Requires careful path filtering   | **Impossible** (separate .db files)        |
 
 ### Encryption: Separation of Concerns
 
 **Design principle:** Backends handle storage, middleware handles policy. Container-level encryption is the exception.
 
-| Security Level | Implementation | Why |
-|----------------|----------------|-----|
-| **Locked (container)** | `SqliteCipherBackend` | Must encrypt entire `.db` file at storage level |
-| **Privacy (file contents)** | `FileEncryption<SqliteBackend>` middleware | Content encryption is policy |
-| **Normal** | `SqliteBackend` | User applies encryption as needed |
+| Security Level              | Implementation                             | Why                                             |
+| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| **Locked (container)**      | `SqliteCipherBackend`                      | Must encrypt entire `.db` file at storage level |
+| **Privacy (file contents)** | `FileEncryption<SqliteBackend>` middleware | Content encryption is policy                    |
+| **Normal**                  | `SqliteBackend`                            | User applies encryption as needed               |
 
 **Why Locked mode requires a separate backend:**
 - SQLCipher encrypts the entire database file transparently
@@ -836,17 +835,17 @@ impl FsFuse for SqliteCipherBackend { /* ... */ }
 
 #### What SQLCipher Encrypts
 
-| Data | Encrypted? |
-|------|------------|
-| File contents | Yes |
-| Filenames | Yes |
-| Directory structure | Yes |
-| File sizes | Yes |
-| Timestamps | Yes |
-| Permissions | Yes |
-| Inode mappings | Yes |
-| SQLite metadata | Yes |
-| **Everything in the .db file** | **Yes** |
+| Data                           | Encrypted? |
+| ------------------------------ | ---------- |
+| File contents                  | Yes        |
+| Filenames                      | Yes        |
+| Directory structure            | Yes        |
+| File sizes                     | Yes        |
+| Timestamps                     | Yes        |
+| Permissions                    | Yes        |
+| Inode mappings                 | Yes        |
+| SQLite metadata                | Yes        |
+| **Everything in the .db file** | **Yes**    |
 
 #### Cargo Configuration
 
@@ -911,17 +910,17 @@ let fs = FileStorage::new(backend);
 
 #### Mode Comparison
 
-| Aspect | Locked | Privacy | Normal |
-|--------|--------|---------|--------|
-| Implementation | `SqliteCipherBackend` | `FileEncryption<SqliteBackend>` | `SqliteBackend` |
-| File contents | Encrypted (SQLCipher) | Encrypted (AES-GCM) | Plaintext |
-| Filenames | Encrypted | Visible | Visible |
-| Directory structure | Encrypted | Visible | Visible |
-| File sizes | Encrypted | Visible | Visible |
-| Timestamps | Encrypted | Visible | Visible |
-| Host can analyze | Nothing | Metadata only | Everything |
-| Performance | Slowest (~10-15% overhead) | Medium | Fastest |
-| Feature flag | `sqlite-cipher` | `sqlite` + middleware | `sqlite` |
+| Aspect              | Locked                     | Privacy                         | Normal          |
+| ------------------- | -------------------------- | ------------------------------- | --------------- |
+| Implementation      | `SqliteCipherBackend`      | `FileEncryption<SqliteBackend>` | `SqliteBackend` |
+| File contents       | Encrypted (SQLCipher)      | Encrypted (AES-GCM)             | Plaintext       |
+| Filenames           | Encrypted                  | Visible                         | Visible         |
+| Directory structure | Encrypted                  | Visible                         | Visible         |
+| File sizes          | Encrypted                  | Visible                         | Visible         |
+| Timestamps          | Encrypted                  | Visible                         | Visible         |
+| Host can analyze    | Nothing                    | Metadata only                   | Everything      |
+| Performance         | Slowest (~10-15% overhead) | Medium                          | Fastest         |
+| Feature flag        | `sqlite-cipher`            | `sqlite` + middleware           | `sqlite`        |
 
 #### Why This Is TOCTOU-Proof
 
@@ -979,10 +978,10 @@ fn create_tenant_storage(tenant_id: &str, encrypted: bool) -> impl Fs {
 
 **Comparison with strict-path approach:**
 
-| Approach | Tenant Isolation |
-|----------|------------------|
-| Shared filesystem + strict-path | Logical isolation (paths filtered) |
-| Shared filesystem + PathFilter | Logical isolation (middleware enforced) |
+| Approach                         | Tenant Isolation                        |
+| -------------------------------- | --------------------------------------- |
+| Shared filesystem + strict-path  | Logical isolation (paths filtered)      |
+| Shared filesystem + PathFilter   | Logical isolation (middleware enforced) |
 | **Separate .db file per tenant** | **Physical isolation (separate files)** |
 
 Physical isolation is strictly stronger - there's no bug in path filtering that could leak data because **there's no shared data to leak**.
@@ -1046,15 +1045,15 @@ fn handle_tenant_request(tenant_id: &str, requested_path: &str) -> Result<Vec<u8
 }
 ```
 
-| Aspect | strict-path | Virtual Backend |
-|--------|-------------|-----------------|
-| Isolation model | Logical (path filtering) | Physical (separate files) |
-| TOCTOU | Mitigated | **Eliminated** |
-| External interference | Possible | **Impossible** |
-| Symlink attacks | Resolved at check time | **We control all symlinks** |
-| Cross-tenant leakage | Bug in filtering could leak | **No shared data exists** |
-| Performance | Real FS I/O + canonicalization | SQLite (often faster for small files) |
-| Encryption | Separate concern | Built-in (`SqliteCipherBackend`) or middleware |
+| Aspect                | strict-path                    | Virtual Backend                                |
+| --------------------- | ------------------------------ | ---------------------------------------------- |
+| Isolation model       | Logical (path filtering)       | Physical (separate files)                      |
+| TOCTOU                | Mitigated                      | **Eliminated**                                 |
+| External interference | Possible                       | **Impossible**                                 |
+| Symlink attacks       | Resolved at check time         | **We control all symlinks**                    |
+| Cross-tenant leakage  | Bug in filtering could leak    | **No shared data exists**                      |
+| Performance           | Real FS I/O + canonicalization | SQLite (often faster for small files)          |
+| Encryption            | Separate concern               | Built-in (`SqliteCipherBackend`) or middleware |
 
 ---
 

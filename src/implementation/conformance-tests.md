@@ -17,12 +17,12 @@ The conformance test suite verifies:
 
 ### Test Levels
 
-| Level | Traits Tested | When to Use |
-|-------|---------------|-------------|
-| **Core** | `FsRead`, `FsWrite`, `FsDir` (= `Fs`) | All backends |
-| **Full** | + `FsLink`, `FsPermissions`, `FsSync`, `FsStats` | Extended backends |
-| **Fuse** | + `FsInode` | FUSE-mountable backends |
-| **Posix** | + `FsHandles`, `FsLock`, `FsXattr` | Full POSIX backends |
+| Level     | Traits Tested                                    | When to Use             |
+| --------- | ------------------------------------------------ | ----------------------- |
+| **Core**  | `FsRead`, `FsWrite`, `FsDir` (= `Fs`)            | All backends            |
+| **Full**  | + `FsLink`, `FsPermissions`, `FsSync`, `FsStats` | Extended backends       |
+| **Fuse**  | + `FsInode`                                      | FUSE-mountable backends |
+| **Posix** | + `FsHandles`, `FsLock`, `FsXattr`               | Full POSIX backends     |
 
 ---
 
@@ -990,53 +990,51 @@ mod security {
     }
 
     // ------------------------------------------------------------------------
-    // Canonicalization Tests
+    // Path Normalization Tests (FileStorage Integration)
     // ------------------------------------------------------------------------
+    //
+    // NOTE: Path normalization (`.`, `..`, `//`) is handled by FileStorage,
+    // NOT by backends. Backends receive already-resolved, clean paths.
+    // These tests verify FileStorage + backend work together correctly.
+    //
+    // See testing-guide.md for the full FileStorage path normalization suite.
+    // Backend conformance tests should only use clean paths like "/parent/file.txt".
 
     #[test]
     fn path_normalization_removes_dots() {
-        let fs = create_backend();
-        fs.create_dir(std::path::Path::new("/parent")).unwrap();
-        fs.write(std::path::Path::new("/parent/file.txt"), b"content").unwrap();
+        // Test through FileStorage, not raw backend
+        let fs = anyfs::FileStorage::new(create_backend());
+        fs.create_dir("/parent").unwrap();
+        fs.write("/parent/file.txt", b"content").unwrap();
 
-        // Single dots should be normalized
-        let result = fs.read(std::path::Path::new("/parent/./file.txt"));
-        if let Ok(content) = result {
-            assert_eq!(content, b"content");
-        }
-
-        // Double dots in the middle
-        let result = fs.read(std::path::Path::new("/parent/subdir/../file.txt"));
-        // Either normalized to /parent/file.txt or rejected
+        // FileStorage normalizes paths before passing to backend
+        assert_eq!(fs.read("/parent/./file.txt").unwrap(), b"content");
+        assert_eq!(fs.read("/parent/subdir/../file.txt").unwrap(), b"content");
     }
 
     #[test]
     fn path_normalization_removes_double_slashes() {
-        let fs = create_backend();
-        fs.write(std::path::Path::new("/file.txt"), b"content").unwrap();
+        // Test through FileStorage, not raw backend
+        let fs = anyfs::FileStorage::new(create_backend());
+        fs.write("/file.txt", b"content").unwrap();
 
-        // Double slashes should be normalized
-        let result = fs.read(std::path::Path::new("//file.txt"));
-        if let Ok(content) = result {
-            assert_eq!(content, b"content");
-        }
-
-        let result = fs.read(std::path::Path::new("/parent//file.txt"));
-        // Either works (normalized) or returns NotFound (strict)
+        // FileStorage normalizes double slashes
+        assert_eq!(fs.read("//file.txt").unwrap(), b"content");
+        assert_eq!(fs.read("/parent//file.txt").is_err(), true); // Parent doesn't exist
     }
 
     #[test]
     fn trailing_slash_handling() {
-        let fs = create_backend();
-        fs.create_dir(std::path::Path::new("/mydir")).unwrap();
-        fs.write(std::path::Path::new("/mydir/file.txt"), b"content").unwrap();
+        // Test through FileStorage, not raw backend
+        let fs = anyfs::FileStorage::new(create_backend());
+        fs.create_dir("/mydir").unwrap();
+        fs.write("/mydir/file.txt", b"content").unwrap();
 
-        // Directory with trailing slash
-        assert!(fs.exists(std::path::Path::new("/mydir/")).unwrap() || fs.exists(std::path::Path::new("/mydir")).unwrap());
+        // Directory with trailing slash - FileStorage normalizes
+        assert!(fs.exists("/mydir/").unwrap());
 
-        // File with trailing slash should fail or be normalized
-        let result = fs.read(std::path::Path::new("/mydir/file.txt/"));
-        // Either fails (strict) or normalizes (lenient)
+        // File with trailing slash - implementation-defined behavior
+        // FileStorage may normalize or reject
     }
 
     // ------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 It lets you control **how a drive acts, looks, and protects itself.**
 
-Whether it's a real filesystem, a SQLite database, or pure RAM—it all looks like a standard drive to your OS, but with *your* rules: antivirus active defense, live Prometheus metrics, quotas, and audit logging.
+Whether it's a real filesystem, a SQLite database, or pure RAM, it can be mounted to look like a standard drive to your OS (planned companion crate; roadmap defined), but with *your* rules: antivirus active defense, live Prometheus metrics, quotas, and audit logging.
 
 A composable middleware stack for filesystem operations with pluggable backends.
 
@@ -43,7 +43,7 @@ AnyFS separates **what** you store from **how** you store it and **what rules** 
 └─────────────────────────────────────────┘
 ```
 
-**Switch backends without changing code.** Add middleware without touching storage logic.
+**Switch backends without changing code.** Add middleware without touching storage logic. The goal is to make storage composition easy, safe, and enjoyable for developers.
 
 #### Philosophy: Focused App, Smart Storage
 
@@ -101,10 +101,6 @@ let backend = MemoryBackend::new()
         .allow("/workspace/**")
         .deny("**/.env")
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .deny_hard_links()
-        .build())
     .layer(TracingLayer::new());
 
 let fs = FileStorage::new(backend);
@@ -119,7 +115,7 @@ FsPosix  ← Full POSIX (handles, locks, xattr)
     ↑
 FsFuse   ← FUSE-mountable (+ inodes)
     ↑
-FsFull   ← std::fs features (+ links, permissions, sync)
+FsFull   ← std::fs features (+ links, permissions, sync, stats)
     ↑
    Fs    ← Basic filesystem (90% of use cases)
     ↑
@@ -147,17 +143,17 @@ process_sandbox(&userdata);  // Compile error!
 
 Unlike logging-only solutions, AnyFS middleware can **transform and control**:
 
-| Middleware | What It Does |
-|------------|--------------|
-| `Quota` | Enforce storage limits, reject writes over quota |
-| `PathFilter` | Sandbox to allowed paths, block sensitive files |
+| Middleware     | What It Does                                                  |
+| -------------- | ------------------------------------------------------------- |
+| `Quota`        | Enforce storage limits, reject writes over quota              |
+| `PathFilter`   | Sandbox to allowed paths, block sensitive files               |
 | `Restrictions` | Block specific operations (symlinks, hard links, permissions) |
-| `RateLimit` | Throttle operations per second |
-| `ReadOnly` | Block all writes |
-| `Cache` | LRU cache for repeated reads |
-| `Overlay` | Union filesystem (Docker-like layers) |
-| `DryRun` | Log what would happen without executing |
-| Custom | Implement encryption, compression, deduplication... |
+| `RateLimit`    | Throttle operations per second                                |
+| `ReadOnly`     | Block all writes                                              |
+| `Cache`        | LRU cache for repeated reads                                  |
+| `Overlay`      | Union filesystem (Docker-like layers)                         |
+| `DryRun`       | Log what would happen without executing                       |
+| Custom         | Implement encryption, compression, deduplication...           |
 
 ### Snapshots & Persistence
 
@@ -173,9 +169,9 @@ fs.save_to("state.bin")?;
 let fs = MemoryBackend::load_from("state.bin")?;
 ```
 
-### Cross-Platform Virtual Drive Mounting
+### Cross-Platform Virtual Drive Mounting (Planned, Roadmap Defined)
 
-Mount any backend as a real filesystem drive:
+Mount any compatible backend (requires `FsFuse`) as a real filesystem drive via the planned companion crate (`anyfs-mount`). API sketch:
 
 ```rust
 use anyfs_mount::MountHandle;
@@ -184,11 +180,13 @@ let mount = MountHandle::mount(backend, "/mnt/virtual")?;
 // Now any application can access /mnt/virtual
 ```
 
-| Platform | Technology |
-|----------|------------|
-| Linux | FUSE (native) |
-| macOS | macFUSE |
-| Windows | WinFsp |
+| Platform | Technology    |
+| -------- | ------------- |
+| Linux    | FUSE (native) |
+| macOS    | macFUSE       |
+| Windows  | WinFsp        |
+
+**Roadmap:** Milestones and MVP scope are tracked in `src/guides/mounting.md`.
 
 ### Security by Design
 
@@ -202,7 +200,7 @@ let mount = MountHandle::mount(backend, "/mnt/virtual")?;
 
 ### Killer Feature: Live Mount Observability 🚀
 
-Mount your AnyFS stack as a real drive (FUSE/WinFsp) and get **real-time visibility** into OS operations.
+Future concept: mount your AnyFS stack as a real drive (FUSE/WinFsp) and get **real-time visibility** into OS operations.
 
 Because AnyFS sits *between* the OS and the storage:
 
@@ -211,18 +209,18 @@ Because AnyFS sits *between* the OS and the storage:
 - **Audit Logs**: See exactly which files legacy applications are touching.
 - **Access Control**: Revoke write permissions dynamically while the drive is mounted.
 
-Your rusty app becomes the filesystem controller for the OS!
+This is a future idea that depends on the mounting crate and is not implemented in v1.
 
 ---
 
 ### Fully Cross-Platform
 
-| Backend | Windows | Linux | macOS | WASM |
-|---------|:-------:|:-----:|:-----:|:----:|
-| `MemoryBackend` | ✅ | ✅ | ✅ | ✅ |
-| `SqliteBackend` | ✅ | ✅ | ✅ | ✅ |
-| `SqliteCipherBackend` | ✅ | ✅ | ✅ | ❌ |
-| `VRootFsBackend` | ✅ | ✅ | ✅ | ❌ |
+| Backend               | Windows | Linux | macOS | WASM  |
+| --------------------- | :-----: | :---: | :---: | :---: |
+| `MemoryBackend`       |    ✅    |   ✅   |   ✅   |   ✅   |
+| `SqliteBackend`       |    ✅    |   ✅   |   ✅   |   ✅   |
+| `SqliteCipherBackend` |    ✅    |   ✅   |   ✅   |   ❌   |
+| `VRootFsBackend`      |    ✅    |   ✅   |   ✅   |   ❌   |
 
 Virtual backends work identically everywhere - paths are just keys, symlinks are stored data.
 
@@ -232,24 +230,24 @@ Virtual backends work identically everywhere - paths are just keys, symlinks are
 
 ### What AnyFS Provides
 
-| Capability | Description |
-|------------|-------------|
-| **Backend Abstraction** | Single API for memory, SQLite, encrypted SQLite, host filesystem, or custom storage |
-| **Middleware Composition** | Stack policies like quotas, rate limits, access control without changing app code |
-| **Path Sandboxing** | Contain operations to allowed directories with symlink-aware traversal protection |
-| **Storage Quotas** | Enforce per-file and total size limits with streaming byte counting |
-| **Access Control** | Glob-based path filtering, operation restrictions, read-only modes |
-| **Tenant Isolation** | Type-safe markers prevent cross-tenant data access at compile time |
-| **Encryption at Rest** | SQLCipher backend for AES-256 encrypted storage |
-| **Audit & Tracing** | Log all operations with structured tracing integration |
-| **Rate Limiting** | Throttle operations to prevent abuse |
-| **Caching** | LRU cache middleware for repeated reads |
-| **Union Filesystems** | Overlay multiple backends (Docker-like layering) |
-| **Snapshots** | Clone in-memory backends for instant checkpoints |
-| **Virtual Drive Mounting** | Mount any backend as a real filesystem (FUSE/WinFsp) |
-| **Path Canonicalization** | Optimizable symlink and `..` resolution per backend |
-| **FFI-Ready** | Design supports Python (PyO3), C, and other language bindings |
-| **Dynamic Middleware** | Runtime-configured middleware stacks via `Box<dyn Fs>` |
+| Capability                 | Description                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Backend Abstraction**    | Single API for memory, SQLite, encrypted SQLite, host filesystem, or custom storage                             |
+| **Middleware Composition** | Stack policies like quotas, rate limits, access control without changing app code                               |
+| **Path Sandboxing**        | Contain operations to allowed directories (symlink-aware for virtual backends; OS-backed relies on strict-path) |
+| **Storage Quotas**         | Enforce per-file and total size limits with streaming byte counting                                             |
+| **Access Control**         | Glob-based path filtering, operation restrictions, read-only modes                                              |
+| **Tenant Isolation**       | Type-safe markers prevent cross-tenant data access at compile time                                              |
+| **Encryption at Rest**     | SQLCipher backend for AES-256 encrypted storage                                                                 |
+| **Audit & Tracing**        | Log all operations with structured tracing integration                                                          |
+| **Rate Limiting**          | Throttle operations to prevent abuse                                                                            |
+| **Caching**                | LRU cache middleware for repeated reads                                                                         |
+| **Union Filesystems**      | Overlay multiple backends (Docker-like layering)                                                                |
+| **Snapshots**              | Clone in-memory backends for instant checkpoints                                                                |
+| **Virtual Drive Mounting** | Planned companion crate for FUSE/WinFsp mounting (requires `FsFuse`)                                            |
+| **Path Canonicalization**  | Optimizable symlink and `..` resolution per backend                                                             |
+| **FFI-Ready**              | Design supports Python (PyO3), C, and other language bindings                                                   |
+| **Dynamic Middleware**     | Runtime-configured middleware stacks via `Box<dyn Fs>`                                                          |
 
 ---
 
@@ -386,15 +384,15 @@ impl SecureUSB {
 
 ## Use Cases Summary
 
-| Use Case | How AnyFS Helps |
-|----------|-----------------|
-| **AI Agent Sandboxing** | PathFilter + Quota + RateLimit = safe execution |
-| **Multi-tenant SaaS** | Per-tenant encrypted DBs, compile-time isolation |
-| **Document Management** | Indexing + search + any backend |
-| **USB Encryption** | SQLCipher + memory cache + migration |
-| **Game Save Systems** | SQLite backend = single portable save file |
-| **Testing** | MemoryBackend for fast, isolated tests |
-| **Plugin Systems** | Sandbox plugin filesystem access |
+| Use Case                | How AnyFS Helps                                  |
+| ----------------------- | ------------------------------------------------ |
+| **AI Agent Sandboxing** | PathFilter + Quota + RateLimit = safe execution  |
+| **Multi-tenant SaaS**   | Per-tenant encrypted DBs, compile-time isolation |
+| **Document Management** | Indexing + search + any backend                  |
+| **USB Encryption**      | SQLCipher + memory cache + migration             |
+| **Game Save Systems**   | SQLite backend = single portable save file       |
+| **Testing**             | MemoryBackend for fast, isolated tests           |
+| **Plugin Systems**      | Sandbox plugin filesystem access                 |
 
 ---
 
@@ -421,36 +419,39 @@ let content = fs.read_to_string("/docs/hello.txt")?;
 
 ## Crate Structure
 
-| Crate | Purpose |
-|-------|---------|
+| Crate           | Purpose                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
 | `anyfs-backend` | Core traits (`Fs`, `FsFull`, `FsFuse`, `FsPosix`), `Layer` trait, types, errors |
-| `anyfs` | Built-in backends, middleware, `FileStorage<B, M>` wrapper |
-| `anyfs-mount` | Cross-platform virtual drive mounting (optional) |
+| `anyfs`         | Built-in backends, middleware, `FileStorage<B, M>` wrapper                      |
+| `anyfs-mount`   | Companion crate for cross-platform mounting (planned)                           |
+
+Core AnyFS is the two-crate split (`anyfs-backend`, `anyfs`). `anyfs-mount` is a planned companion crate (design complete; implementation pending), not part of the core crates.
 
 ```toml
 [dependencies]
 anyfs = { version = "0.1", features = ["sqlite"] }
 
 # Optional: for mounting as virtual drive
-anyfs-mount = "0.1"
+# Planned companion crate (not yet published):
+# anyfs-mount = "0.1"
 ```
 
 ---
 
 ## Comparison with Alternatives
 
-| Feature | AnyFS | `vfs` crate | AgentFS | `std::fs` |
-|---------|:-----:|:-----------:|:-------:|:---------:|
-| Composable middleware | ✅ | ❌ | ❌ | ❌ |
-| Multiple backends | ✅ | ✅ | ❌ | ❌ |
-| SQLite backend | ✅ | ❌ | ✅ | ❌ |
-| Quota enforcement | ✅ | ❌ | ❌ | ❌ |
-| Path sandboxing | ✅ | Partial | ❌ | ❌ |
-| Symlink-safe containment | ✅ | ❌ | N/A | N/A |
-| Rate limiting | ✅ | ❌ | ❌ | ❌ |
-| FUSE mounting | ✅ | ❌ | ✅ | N/A |
-| Cross-platform | ✅ | ✅ | Linux | ✅ |
-| Type-safe markers | ✅ | ❌ | ❌ | ❌ |
+| Feature                  | AnyFS | `vfs` crate | AgentFS | `std::fs` |
+| ------------------------ | :---: | :---------: | :-----: | :-------: |
+| Composable middleware    |   ✅   |      ❌      |    ❌    |     ❌     |
+| Multiple backends        |   ✅   |      ✅      |    ❌    |     ❌     |
+| SQLite backend           |   ✅   |      ❌      |    ✅    |     ❌     |
+| Quota enforcement        |   ✅   |      ❌      |    ❌    |     ❌     |
+| Path sandboxing          |   ✅   |   Partial   |    ❌    |     ❌     |
+| Symlink-safe containment |   ✅   |      ❌      |   N/A   |    N/A    |
+| Rate limiting            |   ✅   |      ❌      |    ❌    |     ❌     |
+| FUSE mounting            |   ✅   |      ❌      |    ✅    |    N/A    |
+| Cross-platform           |   ✅   |      ✅      |  Linux  |     ✅     |
+| Type-safe markers        |   ✅   |      ❌      |    ❌    |     ❌     |
 
 ---
 
@@ -474,9 +475,9 @@ Key documents:
 
 ## Status
 
-🚧 **Work In Progress & Experimental** 🚧
+🚧 **Design Complete — Implementation Not Started** 🚧
 
-The features described here are being actively experimented with. The design is solidifying, but implementation is ongoing.
+This repository contains the **design manual** for AnyFS. The design is solidifying, and we're collecting feedback before implementation begins.
 
 **We value your feedback!**
 - Have a different use case?
@@ -485,10 +486,11 @@ The features described here are being actively experimented with. The design is 
 
 Please **open an issue** and push back on our ideas. We want to build something that solves *real* problems, not just theoretical ones.
 
-**Current Phase:** Implementation of core traits and memory backend.
+**Current Phase:** Design complete; implementation will live in separate `anyfs-backend` and `anyfs` crates.
 
 ---
 
 ## License
 
-[TBD]
+This project is licensed under the MIT License or Apache 2.0 License.
+

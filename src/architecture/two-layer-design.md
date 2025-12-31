@@ -27,11 +27,11 @@ AnyFS uses a layered architecture that separates concerns:
 
 ## Layer Responsibilities
 
-| Layer | Responsibility | Path Handling |
-|-------|----------------|---------------|
+| Layer         | Responsibility                  | Path Handling                                                   |
+| ------------- | ------------------------------- | --------------------------------------------------------------- |
 | `FileStorage` | Ergonomic API + path resolution | Accepts `impl AsRef<Path>`; resolves paths for virtual backends |
-| Middleware | Policy enforcement | `&Path` (object-safe core traits) |
-| Backend | Storage + FS semantics | `&Path` (object-safe core traits) |
+| Middleware    | Policy enforcement              | `&Path` (object-safe core traits)                               |
+| Backend       | Storage + FS semantics          | `&Path` (object-safe core traits)                               |
 
 Core traits use `&Path` for object safety; `FileStorage`/`FsExt` provide `impl AsRef<Path>` ergonomics. Backends that wrap a real filesystem implement `SelfResolving` so FileStorage can skip its virtual path resolution.
 
@@ -49,12 +49,10 @@ let backend = MemoryBackend::new()
     .layer(QuotaLayer::builder()
         .max_total_size(100 * 1024 * 1024)
         .build())
-    .layer(RestrictionsLayer::builder()
-        .deny_symlinks()
-        .build())
     .layer(PathFilterLayer::builder()
         .allow("/workspace/**")
-        .build());
+        .build())
+    .layer(TracingLayer::new());
 
 // FileStorage is ergonomics + path resolution (no policy)
 let fs = FileStorage::new(backend);
