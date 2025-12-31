@@ -184,16 +184,172 @@ Virtual backends work identically everywhere - paths are just keys, symlinks are
 
 ---
 
-## Use Cases
+## Capabilities
+
+### What AnyFS Provides
+
+| Capability | Description |
+|------------|-------------|
+| **Backend Abstraction** | Single API for memory, SQLite, encrypted SQLite, host filesystem, or custom storage |
+| **Middleware Composition** | Stack policies like quotas, rate limits, access control without changing app code |
+| **Path Sandboxing** | Contain operations to allowed directories with symlink-aware traversal protection |
+| **Storage Quotas** | Enforce per-file and total size limits with streaming byte counting |
+| **Access Control** | Glob-based path filtering, operation restrictions, read-only modes |
+| **Tenant Isolation** | Type-safe markers prevent cross-tenant data access at compile time |
+| **Encryption at Rest** | SQLCipher backend for AES-256 encrypted storage |
+| **Audit & Tracing** | Log all operations with structured tracing integration |
+| **Rate Limiting** | Throttle operations to prevent abuse |
+| **Caching** | LRU cache middleware for repeated reads |
+| **Union Filesystems** | Overlay multiple backends (Docker-like layering) |
+| **Snapshots** | Clone in-memory backends for instant checkpoints |
+| **Virtual Drive Mounting** | Mount any backend as a real filesystem (FUSE/WinFsp) |
+| **Path Canonicalization** | Optimizable symlink and `..` resolution per backend |
+| **FFI-Ready** | Design supports Python (PyO3), C, and other language bindings |
+| **Dynamic Middleware** | Runtime-configured middleware stacks via `Box<dyn Fs>` |
+
+---
+
+## Real-World Examples
+
+### Example 1: Multi-Tenant Cloud Storage
+
+Isolate customer data with per-tenant encryption, quotas, and compile-time safety.
+
+```rust
+use anyfs::{FileStorage, SqliteCipherBackend, QuotaLayer, TracingLayer, Fs};
+
+struct TenantMarker;
+
+pub fn create_tenant_storage(
+    tenant_id: &str, 
+    encryption_key: &[u8; 32]
+) -> Result<FileStorage<Box<dyn Fs>, TenantMarker>, FsError> {
+    let db_path = format!("/data/tenants/{}.db", tenant_id);
+    
+    let backend = SqliteCipherBackend::open(&db_path, encryption_key)?
+        .layer(QuotaLayer::builder()
+            .max_total_size(10 * 1024 * 1024 * 1024)  // 10GB per tenant
+            .max_file_size(500 * 1024 * 1024)         // 500MB max file
+            .build())
+        .layer(TracingLayer::new());
+
+    Ok(FileStorage::new(backend).boxed())
+}
+
+// Type system prevents accidentally mixing FileStorages meant for different purposes
+fn process_tenant<M>(fs: &FileStorage<impl Fs, M>) { /* ... */ }
+```
+
+**Benefits:** Per-tenant encryption, automatic quota enforcement, audit trail, compile-time isolation.
+
+---
+
+### Example 2: Organizational File Indexing
+
+Build a searchable file catalog over any storage backend.
+
+```rust
+use anyfs::{FileStorage, VRootFsBackend, Fs};
+
+pub struct IndexedStorage<B: Fs> {
+    fs: FileStorage<B>,
+    index_db: rusqlite::Connection,
+}
+
+impl<B: Fs> IndexedStorage<B> {
+    /// Scan and index all files
+    pub fn reindex(&self) -> Result<u64, FsError> {
+        let mut count = 0;
+        self.index_recursive("/", &mut count)?;
+        Ok(count)
+    }
+
+    fn index_recursive(&self, dir: &str, count: &mut u64) -> Result<(), FsError> {
+        for entry in self.fs.read_dir(dir)? {
+            let entry = entry?;
+            let meta = self.fs.metadata(&entry.path)?;
+            
+            if meta.file_type.is_dir() {
+                self.index_recursive(&entry.path.to_string_lossy(), count)?;
+            } else {
+                self.index_db.execute(
+                    "INSERT OR REPLACE INTO files (path, size, modified) VALUES (?, ?, ?)",
+                    params![entry.path.to_string_lossy(), meta.size, meta.modified],
+                )?;
+                *count += 1;
+            }
+        }
+        Ok(())
+    }
+
+    /// Search indexed files
+    pub fn search(&self, pattern: &str) -> Vec<String> {
+        // Query index_db with LIKE pattern
+    }
+}
+```
+
+**Benefits:** Works with any backend, searchable metadata, incremental updates.
+
+---
+
+### Example 3: USB Data Encryption, Migration & Backup
+
+Secure USB storage with encrypted backup and cross-device migration.
+
+```rust
+use anyfs::{FileStorage, MemoryBackend, SqliteCipherBackend, VRootFsBackend, Fs};
+
+pub struct SecureUSB {
+    memory: FileStorage<MemoryBackend>,  // Fast working copy
+}
+
+impl SecureUSB {
+    /// Load encrypted USB into memory for fast access
+    pub fn open(usb_path: &str, password: &str) -> Result<Self, FsError> {
+        let key = derive_key(password);
+        let usb = SqliteCipherBackend::open(&format!("{}/vault.db", usb_path), &key)?;
+        
+        let memory = MemoryBackend::new();
+        copy_all(&FileStorage::new(usb), &FileStorage::new(memory.clone()))?;
+        
+        Ok(Self { memory: FileStorage::new(memory) })
+    }
+
+    /// Save encrypted back to USB
+    pub fn save_to_usb(&self, usb_path: &str, password: &str) -> Result<(), FsError> {
+        let key = derive_key(password);
+        let usb = SqliteCipherBackend::open(&format!("{}/vault.db", usb_path), &key)?;
+        copy_all(&self.memory, &FileStorage::new(usb))
+    }
+
+    /// Migrate to new USB with new password
+    pub fn migrate(&self, new_usb: &str, new_password: &str) -> Result<(), FsError> {
+        self.save_to_usb(new_usb, new_password)
+    }
+
+    /// Export decrypted to folder
+    pub fn export(&self, dest: &str) -> Result<(), FsError> {
+        let dest_fs = FileStorage::new(VRootFsBackend::new(dest)?);
+        copy_all(&self.memory, &dest_fs)
+    }
+}
+```
+
+**Benefits:** Encrypted at-rest, fast in-memory working copy, cross-device migration, backup with different credentials.
+
+---
+
+## Use Cases Summary
 
 | Use Case | How AnyFS Helps |
 |----------|-----------------|
 | **AI Agent Sandboxing** | PathFilter + Quota + RateLimit = safe execution |
-| **Multi-tenant SaaS** | One backend per tenant, enforced isolation |
+| **Multi-tenant SaaS** | Per-tenant encrypted DBs, compile-time isolation |
+| **Document Management** | Indexing + search + any backend |
+| **USB Encryption** | SQLCipher + memory cache + migration |
 | **Game Save Systems** | SQLite backend = single portable save file |
-| **Document Storage** | Quota limits + metadata + any backend |
 | **Testing** | MemoryBackend for fast, isolated tests |
-| **Embedded Systems** | Swap backends based on available storage |
 | **Plugin Systems** | Sandbox plugin filesystem access |
 
 ---
