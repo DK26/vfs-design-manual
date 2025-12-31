@@ -45,6 +45,29 @@ AnyFS separates **what** you store from **how** you store it and **what rules** 
 
 **Switch backends without changing code.** Add middleware without touching storage logic.
 
+#### Philosophy: Focused App, Smart Storage
+
+It shifts the architecture from *"Smart App, Dumb Storage"* to **"Focused App, Smart Storage"**.
+
+Instead of burdening your application code with policy logic (*"encrypt this, then log it, then check quota, then write it"*), you define the policy in the storage layer itself:
+
+```
+┌─────────────────────────────────────────┐
+│  Your Application                       │
+│  "Write invoice to /mnt/invoices/..."   │  ← App is simple
+├─────────────────────────────────────────┤
+│  Infrastructure Enforces Policy:        │
+│    1. Encryption (SqliteCipher)         │  ← Safety is intrinsic
+│    2. Quota Check (Middleware)          │  ← Limits are enforced
+│    3. Audit Log (Tracing)               │  ← Compliance is automatic
+│    4. Search Indexing (Sidecar)         │  ← Data is discoverable
+├─────────────────────────────────────────┤
+│  Backend Storage                        │
+└─────────────────────────────────────────┘
+```
+
+**Switch backends without changing code.** Add middleware without touching business logic. Create a **Data Mesh** at the filesystem level.
+
 ---
 
 ## Key Features

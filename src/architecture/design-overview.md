@@ -9,10 +9,18 @@
 
 AnyFS is an **open standard** for pluggable virtual filesystem backends in Rust. It uses a **middleware/decorator pattern** (like Axum/Tower) for composable functionality with complete separation of concerns.
 
+### Philosophy: Focused App, Smart Storage
+
+It decouples application logic from storage policy, enabling a **Data Mesh** at the filesystem level.
+
+- **The App** focuses on business value ("save the document").
+- **The Storage Layer** enforces non-functional requirements ("encrypt, audit, limit, index").
+
 Anyone can:
-- Implement a custom backend for their storage needs
-- Compose middleware to add limits, logging, feature gates
-- Use the ergonomic `FileStorage<B, M>` wrapper
+- **Control how a drive acts, looks, and protects itself.**
+- Implement a custom backend for their specific storage needs (Cloud, DB, RAM).
+- Compose middleware to add limits, logging, and security.
+- Use the ergonomic `FileStorage<B, M>` wrapper for a standard `std::fs`-like API.
 
 ---
 
