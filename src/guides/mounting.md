@@ -417,6 +417,18 @@ let mount = MountHandle::mount(backend, "/mnt/secure")?;
 // - Path-filtered
 // - Rate-limited
 // - Traced/audited
+
+// Imagine: A mounted "USB drive" that reports real-time IOPS
+// to a Prometheus dashboard!
+```
+
+### Real-Time Observability
+
+Because the mount point sits *on top* of your middleware stack, you get **live visibility** into OS operations:
+
+- **Metrics:** See valid IOPS, throughput, and latency for your virtual drive in Grafana.
+- **Audit Logs:** Record every file your legacy app touches.
+- **Virus Scanning:** Scan files as the OS writes them, rejecting malware in real-time.
 ```
 
 ---

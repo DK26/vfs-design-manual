@@ -171,6 +171,23 @@ let mount = MountHandle::mount(backend, "/mnt/virtual")?;
 
 **Opt-in Restrictions**: Use `Restrictions` middleware to block dangerous operations when sandboxing untrusted code.
 
+---
+
+### Killer Feature: Live Mount Observability 🚀
+
+Mount your AnyFS stack as a real drive (FUSE/WinFsp) and get **real-time visibility** into OS operations.
+
+Because AnyFS sits *between* the OS and the storage:
+
+- **Live Dashboard**: Watch file IOPS, throughput, and latency in real-time (Prometheus/Grafana).
+- **Active Defense**: Scan files for viruses *as they are written* by any external app.
+- **Audit Logs**: See exactly which files legacy applications are touching.
+- **Access Control**: Revoke write permissions dynamically while the drive is mounted.
+
+Your rusty app becomes the filesystem controller for the OS!
+
+---
+
 ### Fully Cross-Platform
 
 | Backend | Windows | Linux | macOS | WASM |

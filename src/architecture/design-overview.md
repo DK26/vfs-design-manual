@@ -332,6 +332,131 @@ let backend = av_plugin.wrap(backend);
 
 **Verdict:** The current design supports dynamic middleware via `Box<dyn Fs>`. A formal `MiddlewarePlugin` trait for hot-loading is a post-v1 enhancement.
 
+### Middleware with Configurable Backends
+
+Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.
+
+**Metrics Middleware with Prometheus Exporter:**
+
+```rust
+use prometheus::{Counter, Histogram, Registry};
+
+pub struct Metrics<B> {
+    inner: B,
+    reads: Counter,
+    writes: Counter,
+    read_bytes: Counter,
+    write_bytes: Counter,
+    latency: Histogram,
+}
+
+impl<B> Metrics<B> {
+    pub fn new(inner: B, registry: &Registry) -> Self {
+        let reads = Counter::new("anyfs_reads_total", "Total read operations").unwrap();
+        let writes = Counter::new("anyfs_writes_total", "Total write operations").unwrap();
+        registry.register(Box::new(reads.clone())).unwrap();
+        registry.register(Box::new(writes.clone())).unwrap();
+        // ... register all metrics
+        Self { inner, reads, writes, /* ... */ }
+    }
+}
+
+impl<B: FsRead> FsRead for Metrics<B> {
+    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
+        self.reads.inc();
+        let start = Instant::now();
+        let result = self.inner.read(path);
+        self.latency.observe(start.elapsed().as_secs_f64());
+        if let Ok(ref data) = result {
+            self.read_bytes.inc_by(data.len() as u64);
+        }
+        result
+    }
+}
+
+// Expose via HTTP endpoint
+async fn metrics_handler(registry: web::Data<Registry>) -> impl Responder {
+    let encoder = TextEncoder::new();
+    let metrics = registry.gather();
+    encoder.encode_to_string(&metrics).unwrap()
+}
+```
+
+**Indexing Middleware with Remote Database:**
+
+```rust
+pub trait IndexBackend: Send + Sync {
+    fn record_write(&self, path: &Path, size: u64, hash: &str) -> Result<(), IndexError>;
+    fn record_delete(&self, path: &Path) -> Result<(), IndexError>;
+    fn query(&self, pattern: &str) -> Result<Vec<IndexEntry>, IndexError>;
+}
+
+// SQLite implementation
+pub struct SqliteIndex { conn: Connection }
+
+// PostgreSQL implementation  
+pub struct PostgresIndex { pool: PgPool }
+
+// MariaDB implementation
+pub struct MariaDbIndex { pool: MySqlPool }
+
+pub struct Indexing<B, I: IndexBackend> {
+    inner: B,
+    index: I,
+}
+
+impl<B: FsWrite, I: IndexBackend> FsWrite for Indexing<B, I> {
+    fn write(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
+        self.inner.write(path, data)?;
+        let hash = sha256(data);
+        self.index.record_write(path, data.len() as u64, &hash)
+            .map_err(|e| FsError::Backend(e.to_string()))?;
+        Ok(())
+    }
+}
+
+// Usage with PostgreSQL
+let index = PostgresIndex::connect("postgres://user:pass@db.example.com/files").await?;
+let backend = MemoryBackend::new()
+    .layer(IndexingLayer::new(index));
+```
+
+**Configurable Tracing with Multiple Sinks:**
+
+```rust
+pub trait TraceSink: Send + Sync {
+    fn log_operation(&self, op: &Operation);
+}
+
+// Structured JSON logs
+pub struct JsonSink { writer: Box<dyn Write + Send> }
+
+// CEF (Common Event Format) for SIEM integration
+pub struct CefSink { 
+    host: String,
+    port: u16,
+    device_vendor: String 
+}
+
+impl TraceSink for CefSink {
+    fn log_operation(&self, op: &Operation) {
+        let cef = format!(
+            "CEF:0|AnyFS|FileStorage|1.0|{}|{}|{}|src={} dst={}",
+            op.event_id, op.name, op.severity, op.source_path, op.dest_path
+        );
+        self.send_syslog(&cef);
+    }
+}
+
+// Remote sink (e.g., Loki, Elasticsearch)
+pub struct RemoteSink { endpoint: String, client: reqwest::Client }
+
+pub struct Tracing<B, S: TraceSink> {
+    inner: B,
+    sink: S,
+}
+```
+
 ---
 
 ## Performance: Strategic Boxing (ADR-025)

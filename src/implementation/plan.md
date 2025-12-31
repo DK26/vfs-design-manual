@@ -436,10 +436,12 @@ Required CI checks:
 - URL-based backend registry helper (e.g., `sqlite://`, `mem://`)
 - Copy-on-write overlay variant (Afero-style `CopyOnWriteFs`)
 - Archive backends (zip/tar) as separate crates
-- Indexing middleware (primary) with sidecar SQLite catalog and future pluggable engines
+- Indexing middleware with pluggable index backends (SQLite, PostgreSQL, MariaDB, etc.)
 - Companion shell (`anyfs-shell`) for interactive exploration of backends and middleware
 - **Language bindings** (`anyfs-python` via PyO3, C bindings) - see design-overview.md for approach
 - **Dynamic middleware plugin system** (`MiddlewarePlugin` trait for runtime-loaded `.so`/`.dll` plugins)
+- **Metrics middleware** with Prometheus exporter (`GET /metrics` endpoint)
+- **Configurable tracing/logging backends** (structured logs, CEF events, remote sinks)
 
 ### `anyfs-shell` - Local Companion Shell
 
