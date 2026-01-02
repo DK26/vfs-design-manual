@@ -1,6 +1,6 @@
 # Indexing Middleware (Design Plan)
 
-**Status:** Proposed (post-v1)
+**Status:** Accepted (Post-v1) — See ADR-031
 **Scope:** Design plan only (no API break)
 
 ---
@@ -53,12 +53,12 @@ Provide a consistent, queryable index of file activity and metadata for real fil
 
 ## Where It Fits
 
-| Use Case | Recommended |
-|---------|-------------|
-| AnyFS app wants an audit trail | `Indexing<B>` middleware |
-| Virtual backend needs queryable catalog | `Indexing<B>` middleware |
-| Real FS with external edits to track | Indexing middleware + future watcher/scan helper |
-| Mounted drive where all access goes through AnyFS | Indexing middleware (enough) |
+| Use Case                                          | Recommended                                      |
+| ------------------------------------------------- | ------------------------------------------------ |
+| AnyFS app wants an audit trail                    | `Indexing<B>` middleware                         |
+| Virtual backend needs queryable catalog           | `Indexing<B>` middleware                         |
+| Real FS with external edits to track              | Indexing middleware + future watcher/scan helper |
+| Mounted drive where all access goes through AnyFS | Indexing middleware (enough)                     |
 
 ---
 
@@ -127,16 +127,16 @@ CREATE TABLE IF NOT EXISTS config (
 
 ## Operation Mapping
 
-| Operation | Index Update |
-|----------|--------------|
-| `write`, `append`, `truncate` | Upsert node, update size/mtime, log op |
-| `create_dir`, `create_dir_all` | Insert dir nodes, log op |
-| `remove_file` | Mark `exists=0`, log op |
-| `remove_dir`, `remove_dir_all` | Mark subtree removed (prefix query), log op |
-| `rename` | Update path + parent for subtree, log op |
-| `copy` | Insert new node from source metadata, log op |
-| `symlink`, `hard_link` | Insert node, set link metadata, log op |
-| `read`/`read_range` | Optional op log only (configurable) |
+| Operation                      | Index Update                                 |
+| ------------------------------ | -------------------------------------------- |
+| `write`, `append`, `truncate`  | Upsert node, update size/mtime, log op       |
+| `create_dir`, `create_dir_all` | Insert dir nodes, log op                     |
+| `remove_file`                  | Mark `exists=0`, log op                      |
+| `remove_dir`, `remove_dir_all` | Mark subtree removed (prefix query), log op  |
+| `rename`                       | Update path + parent for subtree, log op     |
+| `copy`                         | Insert new node from source metadata, log op |
+| `symlink`, `hard_link`         | Insert node, set link metadata, log op       |
+| `read`/`read_range`            | Optional op log only (configurable)          |
 
 **Streaming writes:** Wrap `open_write()` with a counting writer that records final size and timestamps on close.
 
