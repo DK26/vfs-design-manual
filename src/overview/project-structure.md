@@ -98,6 +98,7 @@ Each layer implements `Fs`, enabling composition.
 - `memory` — In-memory storage (default)
 - `sqlite` — SQLite-backed persistent storage
 - `sqlite-cipher` — Encrypted SQLite via SQLCipher (mutually exclusive with `sqlite`)
+- `indexed` — SQLite index + disk blobs for large file performance
 - `stdfs` — Direct `std::fs` delegation (no containment)
 - `vrootfs` — Host filesystem backend with path containment (uses `strict-path`)
 

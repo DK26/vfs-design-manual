@@ -232,24 +232,24 @@ Virtual backends work identically everywhere - paths are just keys, symlinks are
 
 ### What AnyFS Provides
 
-| Capability                 | Description                                                                                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **Backend Abstraction**    | Single API for memory, SQLite, encrypted SQLite, host filesystem, or custom storage                             |
-| **Middleware Composition** | Stack policies like quotas, rate limits, access control without changing app code                               |
-| **Path Sandboxing**        | Contain operations to allowed directories (symlink-aware for virtual backends; OS-backed relies on strict-path) |
-| **Storage Quotas**         | Enforce per-file and total size limits with streaming byte counting                                             |
-| **Access Control**         | Glob-based path filtering, operation restrictions, read-only modes                                              |
-| **Tenant Isolation**       | Type-safe markers prevent cross-tenant data access at compile time                                              |
-| **Encryption at Rest**     | SQLCipher backend for AES-256 encrypted storage                                                                 |
-| **Audit & Tracing**        | Log all operations with structured tracing integration                                                          |
-| **Rate Limiting**          | Throttle operations to prevent abuse                                                                            |
-| **Caching**                | LRU cache middleware for repeated reads                                                                         |
-| **Union Filesystems**      | Overlay multiple backends (Docker-like layering)                                                                |
-| **Snapshots**              | Clone in-memory backends for instant checkpoints                                                                |
-| **Virtual Drive Mounting** | Planned companion crate for FUSE/WinFsp mounting (requires `FsFuse`)                                            |
-| **Path Canonicalization**  | Optimizable symlink and `..` resolution per backend                                                             |
-| **FFI-Ready**              | Design supports Python (PyO3), C, and other language bindings                                                   |
-| **Dynamic Middleware**     | Runtime-configured middleware stacks via `Box<dyn Fs>`                                                          |
+| Capability                 | Description                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Backend Abstraction**    | Single API for memory, SQLite, encrypted SQLite, host filesystem, or custom storage                                             |
+| **Middleware Composition** | Stack policies like quotas, rate limits, access control without changing app code                                               |
+| **Path Sandboxing**        | Contain operations to allowed directories (virtual backends are inherently safe; `VRootFsBackend` uses strict-path for real FS) |
+| **Storage Quotas**         | Enforce per-file and total size limits with streaming byte counting                                                             |
+| **Access Control**         | Glob-based path filtering, operation restrictions, read-only modes                                                              |
+| **Tenant Isolation**       | Type-safe markers prevent cross-tenant data access at compile time                                                              |
+| **Encryption at Rest**     | SQLCipher backend for AES-256 encrypted storage                                                                                 |
+| **Audit & Tracing**        | Log all operations with structured tracing integration                                                                          |
+| **Rate Limiting**          | Throttle operations to prevent abuse                                                                                            |
+| **Caching**                | LRU cache middleware for repeated reads                                                                                         |
+| **Union Filesystems**      | Overlay multiple backends (Docker-like layering)                                                                                |
+| **Snapshots**              | Clone in-memory backends for instant checkpoints                                                                                |
+| **Virtual Drive Mounting** | Planned companion crate for FUSE/WinFsp mounting (requires `FsFuse`)                                                            |
+| **Path Canonicalization**  | Optimizable symlink and `..` resolution per backend                                                                             |
+| **FFI-Ready**              | Design supports Python (PyO3), C, and other language bindings                                                                   |
+| **Dynamic Middleware**     | Runtime-configured middleware stacks via `Box<dyn Fs>`                                                                          |
 
 ---
 
