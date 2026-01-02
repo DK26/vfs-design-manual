@@ -1,49 +1,46 @@
 <!DOCTYPE HTML>
 <html lang="en" class="rust sidebar-visible" dir="ltr">
-
-<head>
-    <!-- Book generated using mdBook -->
-    <meta charset="UTF-8">
-    <title>Design Overview - AnyFS Ecosystem Manual</title>
-
-
-    <!-- Custom HTML head -->
-
-    <meta name="description"
-        content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
-
-    <link rel="icon" href="../favicon-de23e50b.svg">
-    <link rel="shortcut icon" href="../favicon-8114d1fc.png">
-    <link rel="stylesheet" href="../css/variables-8adf115d.css">
-    <link rel="stylesheet" href="../css/general-2459343d.css">
-    <link rel="stylesheet" href="../css/chrome-ae938929.css">
-    <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
-
-    <!-- Fonts -->
-    <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
-
-    <!-- Highlight.js Stylesheets -->
-    <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
-    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
-    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
-
-    <!-- Custom theme stylesheets -->
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Design Overview - AnyFS Ecosystem Manual</title>
 
 
-    <!-- Provide site root and default themes to javascript -->
-    <script>
-        const path_to_root = "../";
-        const default_light_theme = "rust";
-        const default_dark_theme = "coal";
-        window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
-    </script>
-    <!-- Start loading toc.js asap -->
-    <script src="../toc-30b1f61e.js"></script>
-</head>
+        <!-- Custom HTML head -->
 
-<body>
+        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "rust";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex-0cc552b6.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-f2dc2851.js"></script>
+    </head>
+    <body>
     <div id="mdbook-help-container">
         <div id="mdbook-help-popup">
             <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
@@ -76,7 +73,7 @@
         <script>
             const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
             let theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
             html.classList.remove('rust')
@@ -91,7 +88,7 @@
             let sidebar = null;
             const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
@@ -121,46 +118,22 @@
                 <div id="mdbook-menu-bar-hover-placeholder"></div>
                 <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor"
-                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
-                            aria-controls="mdbook-sidebar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z" />
-                                </svg></span>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
                         </label>
-                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme"
-                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
-                            aria-controls="mdbook-theme-list">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z" />
-                                </svg></span>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme"
-                                    id="mdbook-theme-default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button>
-                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
                         </ul>
-                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)"
-                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s"
-                            aria-controls="mdbook-searchbar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z" />
-                                </svg></span>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
                         </button>
                     </div>
 
@@ -168,27 +141,13 @@
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
-                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z" />
-                                </svg></span>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository"
-                            aria-label="Git repository">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/architecture/design-overview.md"
-                            title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
-                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/architecture/design-overview.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
                     </div>
@@ -197,15 +156,9 @@
                 <div id="mdbook-search-wrapper" class="hidden">
                     <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="mdbook-searchbar" name="searchbar"
-                                placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer"
-                                aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                        <path
-                                            d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z" />
-                                    </svg></span>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
                             </div>
                         </div>
                     </form>
@@ -220,47 +173,35 @@
                 <script>
                     document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function (link) {
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="anyfs---design-overview"><a class="header" href="#anyfs---design-overview">AnyFS -
-                                Design Overview</a></h1>
-                        <p><strong>Status:</strong> Current
-                            <strong>Last updated:</strong> 2025-12-24
-                        </p>
-                        <hr>
-                        <h2 id="what-this-project-is"><a class="header" href="#what-this-project-is">What This Project
-                                Is</a></h2>
-                        <p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust.
-                            It uses a <strong>middleware/decorator pattern</strong> (like Axum/Tower) for composable
-                            functionality with complete separation of concerns.</p>
-                        <h3 id="philosophy-focused-app-smart-storage"><a class="header"
-                                href="#philosophy-focused-app-smart-storage">Philosophy: Focused App, Smart Storage</a>
-                        </h3>
-                        <p>It decouples application logic from storage policy, enabling a <strong>Data Mesh</strong> at
-                            the filesystem level.</p>
-                        <ul>
-                            <li><strong>The App</strong> focuses on business value (“save the document”).</li>
-                            <li><strong>The Storage Layer</strong> enforces non-functional requirements (“encrypt,
-                                audit, limit, index”).</li>
-                        </ul>
-                        <p>Anyone can:</p>
-                        <ul>
-                            <li><strong>Control how a drive acts, looks, and protects itself.</strong></li>
-                            <li>Implement a custom backend for their specific storage needs (Cloud, DB, RAM).</li>
-                            <li>Compose middleware to add limits, logging, and security.</li>
-                            <li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper for a standard
-                                <code>std::fs</code>-like API.</li>
-                        </ul>
-                        <hr>
-                        <h2 id="architecture-tower-style-middleware"><a class="header"
-                                href="#architecture-tower-style-middleware">Architecture (Tower-style Middleware)</a>
-                        </h2>
-                        <pre><code>┌─────────────────────────────────────────┐
+                        <h1 id="anyfs---design-overview"><a class="header" href="#anyfs---design-overview">AnyFS - Design Overview</a></h1>
+<p><strong>Status:</strong> Current
+<strong>Last updated:</strong> 2025-12-24</p>
+<hr>
+<h2 id="what-this-project-is"><a class="header" href="#what-this-project-is">What This Project Is</a></h2>
+<p>AnyFS is an <strong>open standard</strong> for pluggable virtual filesystem backends in Rust. It uses a <strong>middleware/decorator pattern</strong> (like Axum/Tower) for composable functionality with complete separation of concerns.</p>
+<h3 id="philosophy-focused-app-smart-storage"><a class="header" href="#philosophy-focused-app-smart-storage">Philosophy: Focused App, Smart Storage</a></h3>
+<p>It decouples application logic from storage policy, enabling a <strong>Data Mesh</strong> at the filesystem level.</p>
+<ul>
+<li><strong>The App</strong> focuses on business value (“save the document”).</li>
+<li><strong>The Storage Layer</strong> enforces non-functional requirements (“encrypt, audit, limit, index”).</li>
+</ul>
+<p>Anyone can:</p>
+<ul>
+<li><strong>Control how a drive acts, looks, and protects itself.</strong></li>
+<li>Implement a custom backend for their specific storage needs (Cloud, DB, RAM).</li>
+<li>Compose middleware to add limits, logging, and security.</li>
+<li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
+</ul>
+<hr>
+<h2 id="architecture-tower-style-middleware"><a class="header" href="#architecture-tower-style-middleware">Architecture (Tower-style Middleware)</a></h2>
+<pre><code>┌─────────────────────────────────────────┐
 │  FileStorage&lt;B, M&gt;                      │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
@@ -288,99 +229,54 @@
 │  (Memory, SQLite, VRootFs, custom...)   │
 └─────────────────────────────────────────┘
 </code></pre>
-                        <p><strong>Each layer has exactly one responsibility:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Layer</th>
-                                        <th>Responsibility</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Backend (<code>Fs</code>+)</td>
-                                        <td>Storage + filesystem semantics</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>Quota&lt;B&gt;</code></td>
-                                        <td>Resource limits (size, count, depth)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>Restrictions&lt;B&gt;</code></td>
-                                        <td>Opt-in operation restrictions</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>PathFilter&lt;B&gt;</code></td>
-                                        <td>Path-based access control</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>ReadOnly&lt;B&gt;</code></td>
-                                        <td>Prevent all write operations</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>RateLimit&lt;B&gt;</code></td>
-                                        <td>Limit operations per second</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>Tracing&lt;B&gt;</code></td>
-                                        <td>Instrumentation / audit trail</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="design-principle-predictable-defaults-opt-in-security"><a class="header"
-                                href="#design-principle-predictable-defaults-opt-in-security">Design Principle:
-                                Predictable Defaults, Opt-in Security</a></h2>
-                        <p><strong>The <code>Fs</code> traits mimic <code>std::fs</code> with predictable, permissive
-                                defaults.</strong></p>
-                        <p>See ADR-027 for the decision rationale.</p>
-                        <p>The traits are low-level interfaces that any backend can implement - memory, SQLite, real
-                            filesystem, network storage, etc. To maintain consistent behavior across all backends:</p>
-                        <ul>
-                            <li>All operations work by default (<code>symlink()</code>, <code>hard_link()</code>,
-                                <code>set_permissions()</code>)</li>
-                            <li>No security restrictions at the trait level</li>
-                            <li>Behavior matches what you’d expect from a real filesystem</li>
-                        </ul>
-                        <p><strong>Why not secure-by-default at this layer?</strong></p>
-                        <ol>
-                            <li><strong>Predictability</strong>: A backend should behave like a filesystem. Surprising
-                                restrictions break expectations.</li>
-                            <li><strong>Backend-agnostic</strong>: The traits don’t know if they’re wrapping a sandboxed
-                                memory store or a real filesystem. Restrictions that make sense for one may not for
-                                another.</li>
-                            <li><strong>Composition</strong>: Security is achieved by layering middleware, not by baking
-                                it into the storage layer.</li>
-                        </ol>
-                        <p><strong>Security is the responsibility of higher-level APIs:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Layer</th>
-                                        <th>Security Responsibility</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Backend (<code>Fs</code>+)</td>
-                                        <td>None - pure filesystem semantics</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Middleware (<code>Restrictions</code>, <code>PathFilter</code>, etc.)</td>
-                                        <td>Opt-in restrictions</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>FileStorage</code> or application code</td>
-                                        <td>Configure appropriate middleware</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Example: Secure AI Agent Sandbox</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Each layer has exactly one responsibility:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td>Backend (<code>Fs</code>+)</td><td>Storage + filesystem semantics</td></tr>
+<tr><td><code>Quota&lt;B&gt;</code></td><td>Resource limits (size, count, depth)</td></tr>
+<tr><td><code>Restrictions&lt;B&gt;</code></td><td>Opt-in operation restrictions</td></tr>
+<tr><td><code>PathFilter&lt;B&gt;</code></td><td>Path-based access control</td></tr>
+<tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Prevent all write operations</td></tr>
+<tr><td><code>RateLimit&lt;B&gt;</code></td><td>Limit operations per second</td></tr>
+<tr><td><code>Tracing&lt;B&gt;</code></td><td>Instrumentation / audit trail</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="design-principle-predictable-defaults-opt-in-security"><a class="header" href="#design-principle-predictable-defaults-opt-in-security">Design Principle: Predictable Defaults, Opt-in Security</a></h2>
+<p><strong>The <code>Fs</code> traits mimic <code>std::fs</code> with predictable, permissive defaults.</strong></p>
+<p>See ADR-027 for the decision rationale.</p>
+<p>The traits are low-level interfaces that any backend can implement - memory, SQLite, real filesystem, network storage, etc. To maintain consistent behavior across all backends:</p>
+<ul>
+<li>All operations work by default (<code>symlink()</code>, <code>hard_link()</code>, <code>set_permissions()</code>)</li>
+<li>No security restrictions at the trait level</li>
+<li>Behavior matches what you’d expect from a real filesystem</li>
+</ul>
+<p><strong>Why not secure-by-default at this layer?</strong></p>
+<ol>
+<li><strong>Predictability</strong>: A backend should behave like a filesystem. Surprising restrictions break expectations.</li>
+<li><strong>Backend-agnostic</strong>: The traits don’t know if they’re wrapping a sandboxed memory store or a real filesystem. Restrictions that make sense for one may not for another.</li>
+<li><strong>Composition</strong>: Security is achieved by layering middleware, not by baking it into the storage layer.</li>
+</ol>
+<p><strong>Security is the responsibility of higher-level APIs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Security Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td>Backend (<code>Fs</code>+)</td><td>None - pure filesystem semantics</td></tr>
+<tr><td>Middleware (<code>Restrictions</code>, <code>PathFilter</code>, etc.)</td><td>Opt-in restrictions</td></tr>
+<tr><td><code>FileStorage</code> or application code</td><td>Configure appropriate middleware</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Example: Secure AI Agent Sandbox</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, FileStorage};
 
@@ -398,124 +294,70 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
             .build())
 );
 <span class="boring">}</span></code></pre>
-                        <p>The backend is permissive. The application adds restrictions appropriate for its use case.
-                        </p>
-                        <hr>
-                        <h2 id="crates"><a class="header" href="#crates">Crates</a></h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Crate</th>
-                                        <th>Purpose</th>
-                                        <th>Contains</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>anyfs-backend</code></td>
-                                        <td>Minimal contract</td>
-                                        <td>Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>,
-                                            <code>FsPosix</code>), <code>Layer</code> trait, types, <code>FsExt</code>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>anyfs</code></td>
-                                        <td>Backends + middleware + ergonomics</td>
-                                        <td>Built-in backends, all middleware layers,
-                                            <code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code> builder</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="dependency-graph"><a class="header" href="#dependency-graph">Dependency Graph</a></h3>
-                        <pre><code>anyfs-backend (trait + types)
+<p>The backend is permissive. The application adds restrictions appropriate for its use case.</p>
+<hr>
+<h2 id="crates"><a class="header" href="#crates">Crates</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Crate</th><th>Purpose</th><th>Contains</th></tr>
+</thead>
+<tbody>
+<tr><td><code>anyfs-backend</code></td><td>Minimal contract</td><td>Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>), <code>Layer</code> trait, types, <code>FsExt</code></td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code> builder</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="dependency-graph"><a class="header" href="#dependency-graph">Dependency Graph</a></h3>
+<pre><code>anyfs-backend (trait + types)
      ^
      |-- anyfs (backends + middleware + ergonomics)
            ^-- vrootfs feature may use strict-path
 </code></pre>
-                        <hr>
-                        <h2 id="future-ideas-post-v1"><a class="header" href="#future-ideas-post-v1">Future Ideas
-                                (Post-v1)</a></h2>
-                        <p>These are optional extensions to explore after the core is stable. They are intentionally not
-                            part of v1.</p>
-                        <p><strong>Keep (post-v1 add-ons that fit the current design):</strong></p>
-                        <ul>
-                            <li>URL-based backend registry (<code>sqlite://</code>, <code>mem://</code>,
-                                <code>stdfs://</code>) as a helper crate, not in core APIs.</li>
-                            <li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>,
-                                <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a
-                                utilities crate.</li>
-                            <li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without
-                                changing sync traits.</li>
-                            <li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes
-                                <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to
-                                demonstrate middleware and backend neutrality (navigation and file management only, not
-                                full bash scripting).</li>
-                            <li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a
-                                specialized <code>Overlay</code> variant.</li>
-                            <li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code> (inspired by
-                                PyFilesystem/fsspec).</li>
-                            <li>Indexing middleware (<code>Indexing&lt;B&gt;</code> + <code>IndexLayer</code>) with
-                                pluggable index engines (SQLite default). See <a
-                                    href="./indexed-realfs-backend.html">Indexing Middleware</a>.</li>
-                        </ul>
-                        <p><strong>Defer (valuable, but needs data or wider review):</strong></p>
-                        <ul>
-                            <li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style
-                                block cache).</li>
-                            <li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection
-                                (symlink control, case sensitivity, max path length).</li>
-                            <li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code
-                                (System.IO.Abstractions-style).</li>
-                            <li>Retry/timeout middleware for remote backends (when network backends are real).</li>
-                        </ul>
-                        <p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
-                        <ul>
-                            <li>Change notification support (optional <code>FsWatch</code> trait or polling middleware).
-                            </li>
-                        </ul>
-                        <p>Detailed rationale lives in <code>src/comparisons/prior-art-analysis.md</code>.</p>
-                        <hr>
-                        <h3 id="language-bindings-python-c-etc"><a class="header"
-                                href="#language-bindings-python-c-etc">Language Bindings (Python, C, etc.)</a></h3>
-                        <p>The AnyFS design is <strong>FFI-friendly</strong> and can be exposed to other languages with
-                            minimal friction.</p>
-                        <p><strong>Why the design works well for FFI:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Design Choice</th>
-                                        <th>FFI Benefit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>&amp;self</code> methods (ADR-023)</td>
-                                        <td>Interior mutability allows holding a single
-                                            <code>Arc&lt;FileStorage&lt;...&gt;&gt;</code> across FFI</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>Box&lt;dyn Fs&gt;</code> type erasure</td>
-                                        <td><code>FileStorage::boxed()</code> provides a concrete type suitable for FFI
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Owned return types</td>
-                                        <td><code>Vec&lt;u8&gt;</code>, <code>String</code>, <code>bool</code> - no
-                                            lifetime issues across FFI boundary</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Simple structs</td>
-                                        <td><code>Metadata</code>, <code>DirEntry</code>, <code>Permissions</code> map
-                                            directly to Python/C structs</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Recommended approach for Python (PyO3):</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="future-ideas-post-v1"><a class="header" href="#future-ideas-post-v1">Future Ideas (Post-v1)</a></h2>
+<p>These are optional extensions to explore after the core is stable. They are intentionally not part of v1.</p>
+<p><strong>Keep (post-v1 add-ons that fit the current design):</strong></p>
+<ul>
+<li>URL-based backend registry (<code>sqlite://</code>, <code>mem://</code>, <code>stdfs://</code>) as a helper crate, not in core APIs.</li>
+<li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>, <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a utilities crate.</li>
+<li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without changing sync traits.</li>
+<li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to demonstrate middleware and backend neutrality (navigation and file management only, not full bash scripting).</li>
+<li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a specialized <code>Overlay</code> variant.</li>
+<li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code> (inspired by PyFilesystem/fsspec).</li>
+<li>Indexing middleware (<code>Indexing&lt;B&gt;</code> + <code>IndexLayer</code>) with pluggable index engines (SQLite default). See <a href="./indexed-realfs-backend.html">Indexing Middleware</a>.</li>
+</ul>
+<p><strong>Defer (valuable, but needs data or wider review):</strong></p>
+<ul>
+<li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style block cache).</li>
+<li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection (symlink control, case sensitivity, max path length).</li>
+<li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code (System.IO.Abstractions-style).</li>
+<li>Retry/timeout middleware for remote backends (when network backends are real).</li>
+</ul>
+<p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
+<ul>
+<li>Change notification support (optional <code>FsWatch</code> trait or polling middleware).</li>
+</ul>
+<p>Detailed rationale lives in <code>src/comparisons/prior-art-analysis.md</code>.</p>
+<hr>
+<h3 id="language-bindings-python-c-etc"><a class="header" href="#language-bindings-python-c-etc">Language Bindings (Python, C, etc.)</a></h3>
+<p>The AnyFS design is <strong>FFI-friendly</strong> and can be exposed to other languages with minimal friction.</p>
+<p><strong>Why the design works well for FFI:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Design Choice</th><th>FFI Benefit</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;self</code> methods (ADR-023)</td><td>Interior mutability allows holding a single <code>Arc&lt;FileStorage&lt;...&gt;&gt;</code> across FFI</td></tr>
+<tr><td><code>Box&lt;dyn Fs&gt;</code> type erasure</td><td><code>FileStorage::boxed()</code> provides a concrete type suitable for FFI</td></tr>
+<tr><td>Owned return types</td><td><code>Vec&lt;u8&gt;</code>, <code>String</code>, <code>bool</code> - no lifetime issues across FFI boundary</td></tr>
+<tr><td>Simple structs</td><td><code>Metadata</code>, <code>DirEntry</code>, <code>Permissions</code> map directly to Python/C structs</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommended approach for Python (PyO3):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// anyfs-python/src/lib.rs
 use pyo3::prelude::*;
@@ -557,59 +399,40 @@ fn anyfs_python(_py: Python, m: &amp;PyModule) -&gt; PyResult&lt;()&gt; {
     Ok(())
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Python usage:</strong></p>
-                        <pre><code class="language-python">from anyfs_python import PyFileStorage
+<p><strong>Python usage:</strong></p>
+<pre><code class="language-python">from anyfs_python import PyFileStorage
 
 fs = PyFileStorage.memory()
 fs.write("/hello.txt", b"Hello from Python!")
 data = fs.read("/hello.txt")
 print(data)  # b"Hello from Python!"
 </code></pre>
-                        <p><strong>Key considerations for FFI:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Concern</th>
-                                        <th>Solution</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Generics (<code>FileStorage&lt;B, M&gt;</code>)</td>
-                                        <td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;&gt;</code> (boxed form) for FFI
-                                            layer</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Streaming (<code>Box&lt;dyn Read&gt;</code>)</td>
-                                        <td>Wrap in language-native class with <code>read(n)</code> method</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Middleware composition</td>
-                                        <td>Pre-build common stacks, expose as factory functions</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Error handling</td>
-                                        <td>Convert <code>FsError</code> to language-native exceptions</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Future crate:</strong> <code>anyfs-python</code> (post-v1)</p>
-                        <h3 id="dynamic-middleware"><a class="header" href="#dynamic-middleware">Dynamic Middleware</a>
-                        </h3>
-                        <p>The current design uses <strong>compile-time generics</strong> for zero-cost middleware
-                            composition:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Key considerations for FFI:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Solution</th></tr>
+</thead>
+<tbody>
+<tr><td>Generics (<code>FileStorage&lt;B, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;&gt;</code> (boxed form) for FFI layer</td></tr>
+<tr><td>Streaming (<code>Box&lt;dyn Read&gt;</code>)</td><td>Wrap in language-native class with <code>read(n)</code> method</td></tr>
+<tr><td>Middleware composition</td><td>Pre-build common stacks, expose as factory functions</td></tr>
+<tr><td>Error handling</td><td>Convert <code>FsError</code> to language-native exceptions</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Future crate:</strong> <code>anyfs-python</code> (post-v1)</p>
+<h3 id="dynamic-middleware"><a class="header" href="#dynamic-middleware">Dynamic Middleware</a></h3>
+<p>The current design uses <strong>compile-time generics</strong> for zero-cost middleware composition:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Static: type known at compile time
 let fs: Tracing&lt;Quota&lt;MemoryBackend&gt;&gt; = MemoryBackend::new()
     .layer(QuotaLayer::builder().max_total_size(100).build())
     .layer(TracingLayer::new());
 <span class="boring">}</span></code></pre>
-                        <p>For <strong>runtime-configured</strong> middleware (e.g., based on config files), use
-                            <code>Box&lt;dyn Fs&gt;</code>:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>For <strong>runtime-configured</strong> middleware (e.g., based on config files), use <code>Box&lt;dyn Fs&gt;</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn build_from_config(config: &amp;Config) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;&gt; {
     let mut backend: Box&lt;dyn Fs&gt; = Box::new(MemoryBackend::new());
@@ -629,10 +452,9 @@ let fs: Tracing&lt;Quota&lt;MemoryBackend&gt;&gt; = MemoryBackend::new()
     FileStorage::new(backend)
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Trade-off:</strong> One <code>Box</code> allocation per layer + vtable dispatch. For
-                            I/O-bound workloads, this overhead is negligible (&lt;1% of operation time).</p>
-                        <p><strong>Example: Antivirus Middleware</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Trade-off:</strong> One <code>Box</code> allocation per layer + vtable dispatch. For I/O-bound workloads, this overhead is negligible (&lt;1% of operation time).</p>
+<p><strong>Example: Antivirus Middleware</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub struct Antivirus&lt;B&gt; {
     inner: B,
@@ -660,10 +482,9 @@ impl&lt;B: FsWrite&gt; FsWrite for Antivirus&lt;B&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Future: Plugin System</strong></p>
-                        <p>For true runtime-loaded plugins (<code>.so</code>/<code>.dll</code>), a future
-                            <code>MiddlewarePlugin</code> trait could enable:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Future: Plugin System</strong></p>
+<p>For true runtime-loaded plugins (<code>.so</code>/<code>.dll</code>), a future <code>MiddlewarePlugin</code> trait could enable:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait MiddlewarePlugin: Send + Sync {
     fn name(&amp;self) -&gt; &amp;str;
@@ -677,47 +498,25 @@ let av_plugin = create_plugin();
 
 let backend = av_plugin.wrap(backend);
 <span class="boring">}</span></code></pre>
-                        <p><strong>When to use each approach:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Scenario</th>
-                                        <th>Approach</th>
-                                        <th>Overhead</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Fixed middleware stack</td>
-                                        <td>Generics (compile-time)</td>
-                                        <td>Zero-cost</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Config-driven middleware</td>
-                                        <td><code>Box&lt;dyn Fs&gt;</code> chaining</td>
-                                        <td>~50ns per layer</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Runtime-loaded plugins</td>
-                                        <td><code>MiddlewarePlugin</code> trait</td>
-                                        <td>~50ns + plugin load</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Verdict:</strong> The current design supports dynamic middleware via
-                            <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading
-                            is a post-v1 enhancement.</p>
-                        <h3 id="middleware-with-configurable-backends"><a class="header"
-                                href="#middleware-with-configurable-backends">Middleware with Configurable Backends</a>
-                        </h3>
-                        <p>Some middleware benefit from pluggable backends for their own storage or output. The pattern
-                            is to inject a trait object or configuration at construction time.</p>
-                        <p><strong>Metrics Middleware with Prometheus Exporter (Post-v1):</strong>
-                            <em>(Requires <code>features = ["metrics"]</code>)</em>
-                        </p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>When to use each approach:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Scenario</th><th>Approach</th><th>Overhead</th></tr>
+</thead>
+<tbody>
+<tr><td>Fixed middleware stack</td><td>Generics (compile-time)</td><td>Zero-cost</td></tr>
+<tr><td>Config-driven middleware</td><td><code>Box&lt;dyn Fs&gt;</code> chaining</td><td>~50ns per layer</td></tr>
+<tr><td>Runtime-loaded plugins</td><td><code>MiddlewarePlugin</code> trait</td><td>~50ns + plugin load</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Verdict:</strong> The current design supports dynamic middleware via <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading is a post-v1 enhancement.</p>
+<h3 id="middleware-with-configurable-backends"><a class="header" href="#middleware-with-configurable-backends">Middleware with Configurable Backends</a></h3>
+<p>Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.</p>
+<p><strong>Metrics Middleware with Prometheus Exporter (Post-v1):</strong>
+<em>(Requires <code>features = ["metrics"]</code>)</em></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use prometheus::{Counter, Histogram, Registry};
 
@@ -761,8 +560,8 @@ async fn metrics_handler(registry: web::Data&lt;Registry&gt;) -&gt; impl Respond
     encoder.encode_to_string(&amp;metrics).unwrap()
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Indexing Middleware with Remote Database:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Indexing Middleware with Remote Database:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait IndexBackend: Send + Sync {
     fn record_write(&amp;self, path: &amp;Path, size: u64, hash: &amp;str) -&gt; Result&lt;(), IndexError&gt;;
@@ -799,8 +598,8 @@ let index = PostgresIndex::connect("postgres://user:pass@db.example.com/files").
 let backend = MemoryBackend::new()
     .layer(IndexingLayer::new(index));
 <span class="boring">}</span></code></pre>
-                        <p><strong>Configurable Tracing with Multiple Sinks:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Configurable Tracing with Multiple Sinks:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait TraceSink: Send + Sync {
     fn log_operation(&amp;self, op: &amp;Operation);
@@ -834,78 +633,41 @@ pub struct Tracing&lt;B, S: TraceSink&gt; {
     sink: S,
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="performance-strategic-boxing-adr-025"><a class="header"
-                                href="#performance-strategic-boxing-adr-025">Performance: Strategic Boxing (ADR-025)</a>
-                        </h2>
-                        <p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path,
-                                box at boundaries where flexibility is needed</strong>. We avoid heap allocations and
-                            dynamic dispatch unless they add flexibility without meaningful performance impact.</p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Path</th>
-                                        <th>Operations</th>
-                                        <th>Cost</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><strong>Hot path</strong> (zero-cost)</td>
-                                        <td><code>read()</code>, <code>write()</code>, <code>metadata()</code>,
-                                            <code>exists()</code></td>
-                                        <td>Concrete types, no boxing</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Hot path</strong> (zero-cost)</td>
-                                        <td>Middleware composition: <code>Quota&lt;Tracing&lt;B&gt;&gt;</code></td>
-                                        <td>Generics, monomorphized</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Cold path</strong> (boxed)</td>
-                                        <td><code>open_read()</code>, <code>open_write()</code>, <code>read_dir()</code>
-                                        </td>
-                                        <td>One <code>Box</code> allocation per call</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Opt-in</strong></td>
-                                        <td><code>FileStorage::boxed()</code></td>
-                                        <td>Explicit type erasure</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Hot-loop guidance:</strong> If you open many small files and care about
-                            micro-overhead (especially on virtual backends), prefer
-                            <code>read()</code>/<code>write()</code> or the typed streaming extension
-                            (<code>FsReadTyped</code>/<code>FsWriteTyped</code>) when the backend type is known. These
-                            are the zero-allocation fast paths.</p>
-                        <p><strong>Why box streams and iterators?</strong></p>
-                        <ol>
-                            <li>Middleware needs to wrap them (<code>QuotaWriter</code> counts bytes,
-                                <code>PathFilter</code> filters entries)</li>
-                            <li>Box allocation (~50ns) is &lt;1% of actual I/O time</li>
-                            <li>Avoids type explosion:
-                                <code>QuotaReader&lt;PathFilterReader&lt;TracingReader&lt;Cursor&lt;...&gt;&gt;&gt;&gt;</code>
-                            </li>
-                        </ol>
-                        <p><strong>Why NOT box bulk operations?</strong></p>
-                        <ol>
-                            <li><code>read()</code> and <code>write()</code> are the most common operations</li>
-                            <li>They return concrete types (<code>Vec&lt;u8&gt;</code>, <code>()</code>)</li>
-                            <li>Zero overhead for the typical use case</li>
-                        </ol>
-                        <p>See <a href="./adrs.html#adr-025-strategic-boxing-tower-style">ADR-025</a> and <a
-                                href="./zero-cost-alternatives.html">Zero-Cost Alternatives</a> for full analysis.</p>
-                        <hr>
-                        <h2 id="trait-architecture-in-anyfs-backend"><a class="header"
-                                href="#trait-architecture-in-anyfs-backend">Trait Architecture (in
-                                <code>anyfs-backend</code>)</a></h2>
-                        <p>AnyFS uses <strong>layered traits</strong> for maximum flexibility with minimal complexity.
-                        </p>
-                        <p>See ADR-030 for the rationale behind the layered hierarchy.</p>
-                        <pre><code>                        FsPosix
+<hr>
+<h2 id="performance-strategic-boxing-adr-025"><a class="header" href="#performance-strategic-boxing-adr-025">Performance: Strategic Boxing (ADR-025)</a></h2>
+<p>AnyFS follows Tower/Axum’s approach to dynamic dispatch: <strong>zero-cost on the hot path, box at boundaries where flexibility is needed</strong>. We avoid heap allocations and dynamic dispatch unless they add flexibility without meaningful performance impact.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Path</th><th>Operations</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Hot path</strong> (zero-cost)</td><td><code>read()</code>, <code>write()</code>, <code>metadata()</code>, <code>exists()</code></td><td>Concrete types, no boxing</td></tr>
+<tr><td><strong>Hot path</strong> (zero-cost)</td><td>Middleware composition: <code>Quota&lt;Tracing&lt;B&gt;&gt;</code></td><td>Generics, monomorphized</td></tr>
+<tr><td><strong>Cold path</strong> (boxed)</td><td><code>open_read()</code>, <code>open_write()</code>, <code>read_dir()</code></td><td>One <code>Box</code> allocation per call</td></tr>
+<tr><td><strong>Opt-in</strong></td><td><code>FileStorage::boxed()</code></td><td>Explicit type erasure</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Hot-loop guidance:</strong> If you open many small files and care about micro-overhead (especially on virtual backends), prefer <code>read()</code>/<code>write()</code> or the typed streaming extension (<code>FsReadTyped</code>/<code>FsWriteTyped</code>) when the backend type is known. These are the zero-allocation fast paths.</p>
+<p><strong>Why box streams and iterators?</strong></p>
+<ol>
+<li>Middleware needs to wrap them (<code>QuotaWriter</code> counts bytes, <code>PathFilter</code> filters entries)</li>
+<li>Box allocation (~50ns) is &lt;1% of actual I/O time</li>
+<li>Avoids type explosion: <code>QuotaReader&lt;PathFilterReader&lt;TracingReader&lt;Cursor&lt;...&gt;&gt;&gt;&gt;</code></li>
+</ol>
+<p><strong>Why NOT box bulk operations?</strong></p>
+<ol>
+<li><code>read()</code> and <code>write()</code> are the most common operations</li>
+<li>They return concrete types (<code>Vec&lt;u8&gt;</code>, <code>()</code>)</li>
+<li>Zero overhead for the typical use case</li>
+</ol>
+<p>See <a href="./adrs.html#adr-025-strategic-boxing-tower-style">ADR-025</a> and <a href="./zero-cost-alternatives.html">Zero-Cost Alternatives</a> for full analysis.</p>
+<hr>
+<h2 id="trait-architecture-in-anyfs-backend"><a class="header" href="#trait-architecture-in-anyfs-backend">Trait Architecture (in <code>anyfs-backend</code>)</a></h2>
+<p>AnyFS uses <strong>layered traits</strong> for maximum flexibility with minimal complexity.</p>
+<p>See ADR-030 for the rationale behind the layered hierarchy.</p>
+<pre><code>                        FsPosix
                            │
             ┌──────────────┼──────────────┐
             │              │              │
@@ -931,14 +693,11 @@ pub struct Tracing&lt;B, S: TraceSink&gt; {
                │           │           │
             FsRead    FsWrite     FsDir
 </code></pre>
-                        <p><strong>Simple rule:</strong> Import <code>Fs</code> for basic use. Add traits as needed for
-                            advanced features.</p>
-                        <hr>
-                        <h2 id="core-traits-layer-1"><a class="header" href="#core-traits-layer-1">Core Traits (Layer
-                                1)</a></h2>
-                        <h3 id="fsread---read-operations"><a class="header" href="#fsread---read-operations">FsRead -
-                                Read Operations</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Simple rule:</strong> Import <code>Fs</code> for basic use. Add traits as needed for advanced features.</p>
+<hr>
+<h2 id="core-traits-layer-1"><a class="header" href="#core-traits-layer-1">Core Traits (Layer 1)</a></h2>
+<h3 id="fsread---read-operations"><a class="header" href="#fsread---read-operations">FsRead - Read Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
@@ -949,9 +708,8 @@ pub struct Tracing&lt;B, S: TraceSink&gt; {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fswrite---write-operations"><a class="header" href="#fswrite---write-operations">FsWrite
-                                - Write Operations</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fswrite---write-operations"><a class="header" href="#fswrite---write-operations">FsWrite - Write Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsWrite: Send + Sync {
     fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
@@ -963,13 +721,11 @@ pub struct Tracing&lt;B, S: TraceSink&gt; {
     fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <blockquote>
-                            <p><strong>Note:</strong> All methods use <code>&amp;self</code> (interior mutability).
-                                Backends manage their own synchronization. See ADR-023.</p>
-                        </blockquote>
-                        <h3 id="fsdir---directory-operations"><a class="header"
-                                href="#fsdir---directory-operations">FsDir - Directory Operations</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<blockquote>
+<p><strong>Note:</strong> All methods use <code>&amp;self</code> (interior mutability). Backends manage their own synchronization. See ADR-023.</p>
+</blockquote>
+<h3 id="fsdir---directory-operations"><a class="header" href="#fsdir---directory-operations">FsDir - Directory Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsDir: Send + Sync {
     fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
@@ -979,10 +735,9 @@ pub struct Tracing&lt;B, S: TraceSink&gt; {
     fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="extended-traits-layer-2---optional"><a class="header"
-                                href="#extended-traits-layer-2---optional">Extended Traits (Layer 2 - Optional)</a></h2>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="extended-traits-layer-2---optional"><a class="header" href="#extended-traits-layer-2---optional">Extended Traits (Layer 2 - Optional)</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsLink: Send + Sync {
     fn symlink(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
@@ -1004,10 +759,9 @@ pub trait FsStats: Send + Sync {
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="inode-traits-layer-3---for-fuse"><a class="header"
-                                href="#inode-traits-layer-3---for-fuse">Inode Traits (Layer 3 - For FUSE)</a></h2>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="inode-traits-layer-3---for-fuse"><a class="header" href="#inode-traits-layer-3---for-fuse">Inode Traits (Layer 3 - For FUSE)</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsInode: Send + Sync {
     fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt;;
@@ -1016,10 +770,9 @@ pub trait FsStats: Send + Sync {
     fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="posix-traits-layer-4---full-posix"><a class="header"
-                                href="#posix-traits-layer-4---full-posix">POSIX Traits (Layer 4 - Full POSIX)</a></h2>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="posix-traits-layer-4---full-posix"><a class="header" href="#posix-traits-layer-4---full-posix">POSIX Traits (Layer 4 - Full POSIX)</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsHandles: Send + Sync {
     fn open(&amp;self, path: &amp;Path, flags: OpenFlags) -&gt; Result&lt;Handle, FsError&gt;;
@@ -1041,10 +794,9 @@ pub trait FsXattr: Send + Sync {
     fn list_xattr(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;String&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="convenience-supertraits-simple-api"><a class="header"
-                                href="#convenience-supertraits-simple-api">Convenience Supertraits (Simple API)</a></h2>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="convenience-supertraits-simple-api"><a class="header" href="#convenience-supertraits-simple-api">Convenience Supertraits (Simple API)</a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Basic filesystem - covers 90% of use cases
 pub trait Fs: FsRead + FsWrite + FsDir {}
@@ -1062,13 +814,11 @@ impl&lt;T: FsFull + FsInode&gt; FsFuse for T {}
 pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 impl&lt;T: FsFuse + FsHandles + FsLock + FsXattr&gt; FsPosix for T {}
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="usage-examples"><a class="header" href="#usage-examples">Usage Examples</a></h2>
-                        <p>Application code should use <code>FileStorage</code> for the std::fs-style DX (string paths).
-                            Core trait examples are shown separately for implementers and generic code.</p>
-                        <h3 id="most-users-filestorage"><a class="header" href="#most-users-filestorage">Most Users:
-                                FileStorage</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="usage-examples"><a class="header" href="#usage-examples">Usage Examples</a></h2>
+<p>Application code should use <code>FileStorage</code> for the std::fs-style DX (string paths). Core trait examples are shown separately for implementers and generic code.</p>
+<h3 id="most-users-filestorage"><a class="header" href="#most-users-filestorage">Most Users: FileStorage</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, MemoryBackend};
 
@@ -1079,9 +829,8 @@ fn process_files() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="generic-code-over-core-traits"><a class="header"
-                                href="#generic-code-over-core-traits">Generic Code over Core Traits</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="generic-code-over-core-traits"><a class="header" href="#generic-code-over-core-traits">Generic Code over Core Traits</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, Fs};
 
@@ -1090,9 +839,8 @@ fn process_files&lt;B: Fs&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     fs.write("/output.txt", &amp;processed(data))?;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="need-links-add-the-trait"><a class="header" href="#need-links-add-the-trait">Need Links?
-                                Add the Trait</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="need-links-add-the-trait"><a class="header" href="#need-links-add-the-trait">Need Links? Add the Trait</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, Fs, FsLink};
 
@@ -1101,12 +849,9 @@ fn with_symlinks&lt;B: Fs + FsLink&gt;(fs: &amp;FileStorage&lt;B&gt;) {
     fs.symlink("/target.txt", "/link.txt")?;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fuse-mount-companion-crate-in-progress"><a class="header"
-                                href="#fuse-mount-companion-crate-in-progress">FUSE Mount (Companion Crate in
-                                Progress)</a></h3>
-                        <p>Mounting is delivered by <code>anyfs-mount</code> with a staged roadmap; see
-                            <code>src/guides/mounting.md</code>.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fuse-mount-companion-crate-in-progress"><a class="header" href="#fuse-mount-companion-crate-in-progress">FUSE Mount (Companion Crate in Progress)</a></h3>
+<p>Mounting is delivered by <code>anyfs-mount</code> with a staged roadmap; see <code>src/guides/mounting.md</code>.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::FsFuse;
 use anyfs_mount::MountHandle;
@@ -1115,9 +860,8 @@ fn mount_filesystem(fs: impl FsFuse) {
     MountHandle::mount(fs, "/mnt/myfs")?;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="full-posix-application"><a class="header" href="#full-posix-application">Full POSIX
-                                Application</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="full-posix-application"><a class="header" href="#full-posix-application">Full POSIX Application</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, FsPosix};
 
@@ -1139,8 +883,8 @@ fn database_app&lt;B: FsPosix&gt;(fs: &amp;FileStorage&lt;B&gt;) {
 /// Root directory inode. FUSE convention.
 pub const ROOT_INODE: u64 = 1;
 <span class="boring">}</span></code></pre>
-                        <h3 id="metadata"><a class="header" href="#metadata">Metadata</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="metadata"><a class="header" href="#metadata">Metadata</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// File or directory metadata.
 #[derive(Debug, Clone)]
@@ -1181,8 +925,8 @@ impl Metadata {
     pub fn is_symlink(&amp;self) -&gt; bool { self.file_type == FileType::Symlink }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="filetype"><a class="header" href="#filetype">FileType</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="filetype"><a class="header" href="#filetype">FileType</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileType {
@@ -1191,8 +935,8 @@ pub enum FileType {
     Symlink,
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="direntry"><a class="header" href="#direntry">DirEntry</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="direntry"><a class="header" href="#direntry">DirEntry</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Entry in a directory listing.
 #[derive(Debug, Clone)]
@@ -1213,8 +957,8 @@ pub struct DirEntry {
     pub inode: u64,
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="permissions"><a class="header" href="#permissions">Permissions</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Unix-style permission bits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1237,8 +981,8 @@ impl Permissions {
     pub fn default_dir() -&gt; Self { Permissions(0o755) }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="statfs"><a class="header" href="#statfs">StatFs</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="statfs"><a class="header" href="#statfs">StatFs</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Filesystem statistics.
 #[derive(Debug, Clone)]
@@ -1268,14 +1012,12 @@ pub struct StatFs {
     pub max_name_len: u64,
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="middleware-in-anyfs"><a class="header" href="#middleware-in-anyfs">Middleware (in
-                                <code>anyfs</code>)</a></h2>
-                        <p>Each middleware implements the same traits as its inner backend. This enables composition
-                            while preserving capabilities.</p>
-                        <h3 id="quota"><a class="header" href="#quota">Quota<b></b></a></h3>
-                        <p>Enforces quota limits. Tracks usage and rejects operations that would exceed limits.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="middleware-in-anyfs"><a class="header" href="#middleware-in-anyfs">Middleware (in <code>anyfs</code>)</a></h2>
+<p>Each middleware implements the same traits as its inner backend. This enables composition while preserving capabilities.</p>
+<h3 id="quota"><a class="header" href="#quota">Quota<b></b></a></h3>
+<p>Enforces quota limits. Tracks usage and rejects operations that would exceed limits.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, Quota};
 
@@ -1292,9 +1034,9 @@ let backend = QuotaLayer::builder()
 let usage = backend.usage();
 let remaining = backend.remaining();
 <span class="boring">}</span></code></pre>
-                        <h3 id="restrictions"><a class="header" href="#restrictions">Restrictions<b></b></a></h3>
-                        <p>Blocks permission-related operations when needed.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="restrictions"><a class="header" href="#restrictions">Restrictions<b></b></a></h3>
+<p>Blocks permission-related operations when needed.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, Restrictions};
 
@@ -1305,11 +1047,10 @@ let backend = RestrictionsLayer::builder()
     .build()
     .layer(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
-                        <p>When blocked, operations return <code>FsError::FeatureNotEnabled</code>.</p>
-                        <h3 id="tracing"><a class="header" href="#tracing">Tracing<b></b></a></h3>
-                        <p>Integrates with the <a href="https://docs.rs/tracing">tracing</a> ecosystem for structured
-                            logging and instrumentation.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>When blocked, operations return <code>FsError::FeatureNotEnabled</code>.</p>
+<h3 id="tracing"><a class="header" href="#tracing">Tracing<b></b></a></h3>
+<p>Integrates with the <a href="https://docs.rs/tracing">tracing</a> ecosystem for structured logging and instrumentation.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, TracingLayer};
 
@@ -1321,16 +1062,16 @@ let backend = SqliteBackend::open("data.db")?
 // Users configure tracing subscribers as they prefer
 tracing_subscriber::fmt::init();
 <span class="boring">}</span></code></pre>
-                        <p><strong>Why tracing instead of custom logging?</strong></p>
-                        <ul>
-                            <li>Works with existing tracing infrastructure</li>
-                            <li>Structured logging with spans</li>
-                            <li>Compatible with OpenTelemetry, Jaeger, etc.</li>
-                            <li>Users choose their subscriber (console, file, distributed tracing)</li>
-                        </ul>
-                        <h3 id="pathfilter"><a class="header" href="#pathfilter">PathFilter<b></b></a></h3>
-                        <p>Restricts access to specific paths. Essential for sandboxing.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Why tracing instead of custom logging?</strong></p>
+<ul>
+<li>Works with existing tracing infrastructure</li>
+<li>Structured logging with spans</li>
+<li>Compatible with OpenTelemetry, Jaeger, etc.</li>
+<li>Users choose their subscriber (console, file, distributed tracing)</li>
+</ul>
+<h3 id="pathfilter"><a class="header" href="#pathfilter">PathFilter<b></b></a></h3>
+<p>Restricts access to specific paths. Essential for sandboxing.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, PathFilter};
 
@@ -1342,10 +1083,10 @@ let backend = PathFilterLayer::builder()
     .build()
     .layer(MemoryBackend::new());
 <span class="boring">}</span></code></pre>
-                        <p>When a path is denied, operations return <code>FsError::AccessDenied</code>.</p>
-                        <h3 id="readonly"><a class="header" href="#readonly">ReadOnly<b></b></a></h3>
-                        <p>Prevents all write operations. Useful for publishing immutable data.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>When a path is denied, operations return <code>FsError::AccessDenied</code>.</p>
+<h3 id="readonly"><a class="header" href="#readonly">ReadOnly<b></b></a></h3>
+<p>Prevents all write operations. Useful for publishing immutable data.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, ReadOnly, FileStorage};
 
@@ -1356,9 +1097,9 @@ let fs = FileStorage::new(backend);
 fs.read("/doc.txt")?;     // OK
 fs.write("/doc.txt", b"x"); // Error: FsError::ReadOnly
 <span class="boring">}</span></code></pre>
-                        <h3 id="ratelimit"><a class="header" href="#ratelimit">RateLimit<b></b></a></h3>
-                        <p>Limits operations per second. Prevents runaway agents.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="ratelimit"><a class="header" href="#ratelimit">RateLimit<b></b></a></h3>
+<p>Limits operations per second. Prevents runaway agents.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, RateLimit};
 use std::time::Duration;
@@ -1372,9 +1113,9 @@ let backend = RateLimitLayer::builder()
 
 // When rate exceeded: FsError::RateLimitExceeded
 <span class="boring">}</span></code></pre>
-                        <h3 id="dryrun"><a class="header" href="#dryrun">DryRun<b></b></a></h3>
-                        <p>Logs operations without executing writes. Great for testing and debugging.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="dryrun"><a class="header" href="#dryrun">DryRun<b></b></a></h3>
+<p>Logs operations without executing writes. Great for testing and debugging.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, DryRun, FileStorage};
 
@@ -1386,9 +1127,9 @@ let _ = fs.read("/test.txt");       // Error: file doesn't exist
 
 // To inspect recorded operations, keep the DryRun handle before wrapping it.
 <span class="boring">}</span></code></pre>
-                        <h3 id="cache"><a class="header" href="#cache">Cache<b></b></a></h3>
-                        <p>LRU cache for read operations. Essential for slow backends (S3, network).</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="cache"><a class="header" href="#cache">Cache<b></b></a></h3>
+<p>LRU cache for read operations. Essential for slow backends (S3, network).</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, Cache, FileStorage};
 
@@ -1406,10 +1147,9 @@ let data = fs.read("/file.txt")?;
 // Second read: served from cache (fast!)
 let data = fs.read("/file.txt")?;
 <span class="boring">}</span></code></pre>
-                        <h3 id="overlaybase-upper"><a class="header" href="#overlaybase-upper">Overlay&lt;Base,
-                                Upper&gt;</a></h3>
-                        <p>Union filesystem with a read-only base and writable upper layer. Like Docker.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="overlaybase-upper"><a class="header" href="#overlaybase-upper">Overlay&lt;Base, Upper&gt;</a></h3>
+<p>Union filesystem with a read-only base and writable upper layer. Like Docker.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, MemoryBackend, Overlay};
 
@@ -1425,25 +1165,22 @@ let backend = Overlay::new(base, upper);
 // Writes always go to upper
 // Deletes in upper "shadow" base files
 <span class="boring">}</span></code></pre>
-                        <p><strong>Use cases:</strong></p>
-                        <ul>
-                            <li>Container images (base image + writable layer)</li>
-                            <li>Template filesystems with per-user modifications</li>
-                            <li>Testing with rollback capability</li>
-                        </ul>
-                        <hr>
-                        <h2 id="filestorageb-m-in-anyfs"><a class="header"
-                                href="#filestorageb-m-in-anyfs">FileStorage&lt;B, M&gt; (in <code>anyfs</code>)</a></h2>
-                        <p><code>FileStorage&lt;B, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:
-                        </p>
-                        <ul>
-                            <li><strong><code>B</code></strong> - Backend type (generic, no boxing)</li>
-                            <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
-                        </ul>
-                        <p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in via
-                            <code>.boxed()</code>.</p>
-                        <h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Container images (base image + writable layer)</li>
+<li>Template filesystems with per-user modifications</li>
+<li>Testing with rollback capability</li>
+</ul>
+<hr>
+<h2 id="filestorageb-m-in-anyfs"><a class="header" href="#filestorageb-m-in-anyfs">FileStorage&lt;B, M&gt; (in <code>anyfs</code>)</a></h2>
+<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
+<ul>
+<li><strong><code>B</code></strong> - Backend type (generic, no boxing)</li>
+<li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
+</ul>
+<p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in via <code>.boxed()</code>.</p>
+<h3 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, FileStorage};
 
@@ -1454,10 +1191,9 @@ fs.create_dir_all("/documents")?;
 fs.write("/documents/hello.txt", b"Hello!")?;
 let content = fs.read("/documents/hello.txt")?;
 <span class="boring">}</span></code></pre>
-                        <h3 id="marker-types-type-safe-containers"><a class="header"
-                                href="#marker-types-type-safe-containers">Marker Types (Type-Safe Containers)</a></h3>
-                        <p>Use <code>_</code> to infer backend while specifying marker:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="marker-types-type-safe-containers"><a class="header" href="#marker-types-type-safe-containers">Marker Types (Type-Safe Containers)</a></h3>
+<p>Use <code>_</code> to infer backend while specifying marker:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage};
 
@@ -1482,18 +1218,16 @@ fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str,
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <span class="boring">}</span></code></pre>
-                        <h3 id="self-documenting-types"><a class="header"
-                                href="#self-documenting-types">Self-Documenting Types</a></h3>
-                        <p>Both type parameters are meaningful:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="self-documenting-types"><a class="header" href="#self-documenting-types">Self-Documenting Types</a></h3>
+<p>Both type parameters are meaningful:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
 FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
 FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
 <span class="boring">}</span></code></pre>
-                        <h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type
-                                Aliases for Clean Code</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Define your standard secure stack
 type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
@@ -1505,9 +1239,8 @@ type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
 // Clean function signatures
 fn run_agent(fs: &amp;SandboxFs) { ... }
 <span class="boring">}</span></code></pre>
-                        <h3 id="filestorage-implementation"><a class="header"
-                                href="#filestorage-implementation">FileStorage Implementation</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="filestorage-implementation"><a class="header" href="#filestorage-implementation">FileStorage Implementation</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::marker::PhantomData;
 
@@ -1531,10 +1264,9 @@ impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure
-                                (Opt-in)</a></h3>
-                        <p>When you need uniform types (e.g., collections), use <code>.boxed()</code>:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure (Opt-in)</a></h3>
+<p>When you need uniform types (e.g., collections), use <code>.boxed()</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Type-erased for uniform storage
 let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
@@ -1542,12 +1274,10 @@ let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
     FileStorage::new(SqliteBackend::open("a.db")?).boxed(),
 ];
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="layer-trait-in-anyfs-backend"><a class="header"
-                                href="#layer-trait-in-anyfs-backend">Layer Trait (in <code>anyfs-backend</code>)</a>
-                        </h2>
-                        <p>The <code>Layer</code> trait (inspired by Tower) standardizes middleware composition:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="layer-trait-in-anyfs-backend"><a class="header" href="#layer-trait-in-anyfs-backend">Layer Trait (in <code>anyfs-backend</code>)</a></h2>
+<p>The <code>Layer</code> trait (inspired by Tower) standardizes middleware composition:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// A layer that wraps a backend to add functionality.
 pub trait Layer&lt;B: Fs&gt; {
@@ -1555,8 +1285,8 @@ pub trait Layer&lt;B: Fs&gt; {
     fn layer(self, backend: B) -&gt; Self::Backend;
 }
 <span class="boring">}</span></code></pre>
-                        <p>Each middleware provides a corresponding <code>Layer</code> implementation:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>Each middleware provides a corresponding <code>Layer</code> implementation:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// QuotaLayer, TracingLayer, RestrictionsLayer, etc.
 pub struct QuotaLayer { limits: QuotaLimits }
@@ -1568,17 +1298,13 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for QuotaLayer {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Note:</strong> Middleware that implements additional traits (like
-                            <code>FsInode</code>) can use more specific bounds to preserve capabilities through the
-                            layer.</p>
-                        <hr>
-                        <h2 id="composing-middleware"><a class="header" href="#composing-middleware">Composing
-                                Middleware</a></h2>
-                        <p>Middleware composes by wrapping. Order matters - innermost applies first.</p>
-                        <h3 id="fluent-composition"><a class="header" href="#fluent-composition">Fluent Composition</a>
-                        </h3>
-                        <p>Use the <code>.layer()</code> extension method for Axum-style composition:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Note:</strong> Middleware that implements additional traits (like <code>FsInode</code>) can use more specific bounds to preserve capabilities through the layer.</p>
+<hr>
+<h2 id="composing-middleware"><a class="header" href="#composing-middleware">Composing Middleware</a></h2>
+<p>Middleware composes by wrapping. Order matters - innermost applies first.</p>
+<h3 id="fluent-composition"><a class="header" href="#fluent-composition">Fluent Composition</a></h3>
+<p>Use the <code>.layer()</code> extension method for Axum-style composition:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{SqliteBackend, QuotaLayer, RestrictionsLayer, TracingLayer};
 
@@ -1591,10 +1317,9 @@ let backend = SqliteBackend::open("data.db")?
         .build())
     .layer(TracingLayer::new());
 <span class="boring">}</span></code></pre>
-                        <h3 id="backendstack-builder"><a class="header" href="#backendstack-builder">BackendStack
-                                Builder</a></h3>
-                        <p>For complex stacks, use <code>BackendStack</code> for a fluent API:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="backendstack-builder"><a class="header" href="#backendstack-builder">BackendStack Builder</a></h3>
+<p>For complex stacks, use <code>BackendStack</code> for a fluent API:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::BackendStack;
 
@@ -1607,83 +1332,48 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
     .traced()
     .into_container();
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="built-in-backends"><a class="header" href="#built-in-backends">Built-in Backends</a>
-                        </h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Backend</th>
-                                        <th>Feature</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>MemoryBackend</code></td>
-                                        <td><code>memory</code> (default)</td>
-                                        <td>In-memory storage</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>SqliteBackend</code></td>
-                                        <td><code>sqlite</code></td>
-                                        <td>Single-file portable database</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>SqliteCipherBackend</code></td>
-                                        <td><code>sqlite-cipher</code></td>
-                                        <td>Encrypted SQLite via SQLCipher (AES-256)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>StdFsBackend</code></td>
-                                        <td><code>stdfs</code></td>
-                                        <td>Direct <code>std::fs</code> delegation (no containment)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>VRootFsBackend</code></td>
-                                        <td><code>vrootfs</code></td>
-                                        <td>Host filesystem with path containment (via strict-path)</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Note:</strong> <code>sqlite</code> and <code>sqlite-cipher</code> features are
-                            mutually exclusive (both use rusqlite with different SQLite builds).</p>
-                        <hr>
-                        <h2 id="path-handling"><a class="header" href="#path-handling">Path Handling</a></h2>
-                        <p>Core traits take <code>&amp;Path</code> so they are object-safe (<code>dyn Fs</code> works).
-                            The ergonomic layer (<code>FileStorage</code> and <code>FsExt</code>) accepts
-                            <code>impl AsRef&lt;Path&gt;</code>:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="built-in-backends"><a class="header" href="#built-in-backends">Built-in Backends</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Feature</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td><code>memory</code> (default)</td><td>In-memory storage</td></tr>
+<tr><td><code>SqliteBackend</code></td><td><code>sqlite</code></td><td>Single-file portable database</td></tr>
+<tr><td><code>SqliteCipherBackend</code></td><td><code>sqlite-cipher</code></td><td>Encrypted SQLite via SQLCipher (AES-256)</td></tr>
+<tr><td><code>IndexedBackend</code></td><td><code>indexed</code></td><td>Virtual paths + disk blobs (large file support with isolation)</td></tr>
+<tr><td><code>StdFsBackend</code></td><td><code>stdfs</code></td><td>Direct <code>std::fs</code> delegation (no containment)</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td><code>vrootfs</code></td><td>Host filesystem with path containment (via strict-path)</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Note:</strong> <code>sqlite</code> and <code>sqlite-cipher</code> features are mutually exclusive (both use rusqlite with different SQLite builds).</p>
+<hr>
+<h2 id="path-handling"><a class="header" href="#path-handling">Path Handling</a></h2>
+<p>Core traits take <code>&amp;Path</code> so they are object-safe (<code>dyn Fs</code> works). The ergonomic layer (<code>FileStorage</code> and <code>FsExt</code>) accepts <code>impl AsRef&lt;Path&gt;</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// These work via FileStorage/FsExt
 fs.write("/file.txt", data)?;
 fs.write(String::from("/file.txt"), data)?;
 fs.write(PathBuf::from("/file.txt"), data)?;
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="path-resolution"><a class="header" href="#path-resolution">Path Resolution</a></h2>
-                        <p>Path resolution (walking directory structure, following symlinks) operates on the
-                            <strong><code>Fs</code> abstraction</strong>, not reimplemented per-backend.</p>
-                        <p>See ADR-029 for the path-resolution decision.</p>
-                        <h3 id="why-abstract-path-resolution"><a class="header" href="#why-abstract-path-resolution">Why
-                                Abstract Path Resolution?</a></h3>
-                        <p>We simulate inodes - that’s the whole point of virtualizing a filesystem. Path resolution
-                            must work on that abstraction:</p>
-                        <ul>
-                            <li><code>/foo/../bar</code> cannot be resolved lexically - <code>foo</code> might be a
-                                symlink to <code>/other/place</code>, making <code>..</code> resolve to
-                                <code>/other</code></li>
-                            <li>Resolution requires following the actual directory structure (inodes)</li>
-                            <li>The <code>Fs</code> traits have the needed methods: <code>metadata()</code>,
-                                <code>read_link()</code>, <code>read_dir()</code></li>
-                        </ul>
-                        <h3 id="internal-resolution-private"><a class="header"
-                                href="#internal-resolution-private">Internal Resolution (Private)</a></h3>
-                        <p><code>FileStorage</code> uses an internal resolution function to walk paths before passing
-                            them to backends:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="path-resolution"><a class="header" href="#path-resolution">Path Resolution</a></h2>
+<p>Path resolution (walking directory structure, following symlinks) operates on the <strong><code>Fs</code> abstraction</strong>, not reimplemented per-backend.</p>
+<p>See ADR-029 for the path-resolution decision.</p>
+<h3 id="why-abstract-path-resolution"><a class="header" href="#why-abstract-path-resolution">Why Abstract Path Resolution?</a></h3>
+<p>We simulate inodes - that’s the whole point of virtualizing a filesystem. Path resolution must work on that abstraction:</p>
+<ul>
+<li><code>/foo/../bar</code> cannot be resolved lexically - <code>foo</code> might be a symlink to <code>/other/place</code>, making <code>..</code> resolve to <code>/other</code></li>
+<li>Resolution requires following the actual directory structure (inodes)</li>
+<li>The <code>Fs</code> traits have the needed methods: <code>metadata()</code>, <code>read_link()</code>, <code>read_dir()</code></li>
+</ul>
+<h3 id="internal-resolution-private"><a class="header" href="#internal-resolution-private">Internal Resolution (Private)</a></h3>
+<p><code>FileStorage</code> uses an internal resolution function to walk paths before passing them to backends:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Internal: Resolve a path (symlink-aware for virtual backends).
 /// Used by FileStorage before delegating to backend.
@@ -1698,48 +1388,24 @@ fn resolve_path_internal(
     // Return fully resolved canonical path
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>This is NOT a public API.</strong> The public API for path resolution is the
-                            <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path
-                            Canonicalization Utilities” below).</p>
-                        <p><strong>Note:</strong> The internal resolution function requires <code>Fs + FsLink</code>.
-                            For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified
-                            resolution that traverses directories but cannot follow symlinks. All built-in virtual
-                            backends implement <code>FsLink</code>.</p>
-                        <h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When
-                                Resolution Is Needed</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Backend</th>
-                                        <th>Needs Our Resolution?</th>
-                                        <th>Why</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>MemoryBackend</code></td>
-                                        <td>Yes</td>
-                                        <td>Storage (HashMap) has no FS semantics</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>SqliteBackend</code></td>
-                                        <td>Yes</td>
-                                        <td>Storage (SQL tables) has no FS semantics</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>VRootFsBackend</code></td>
-                                        <td>No</td>
-                                        <td>OS handles resolution; <code>strict-path</code> prevents escapes</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="opt-out-mechanism"><a class="header" href="#opt-out-mechanism">Opt-out Mechanism</a>
-                        </h3>
-                        <p>Virtual backends need resolution by default. Real filesystem backends opt out via a marker
-                            trait or associated constant:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>This is NOT a public API.</strong> The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
+<p><strong>Note:</strong> The internal resolution function requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
+<h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Needs Our Resolution?</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td>Yes</td><td>Storage (HashMap) has no FS semantics</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>Yes</td><td>Storage (SQL tables) has no FS semantics</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td>No</td><td>OS handles resolution; <code>strict-path</code> prevents escapes</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="opt-out-mechanism"><a class="header" href="#opt-out-mechanism">Opt-out Mechanism</a></h3>
+<p>Virtual backends need resolution by default. Real filesystem backends opt out via a marker trait or associated constant:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Marker trait for backends that handle their own path resolution.
 /// VRootFsBackend implements this because the OS handles resolution.
@@ -1747,11 +1413,8 @@ pub trait SelfResolving {}
 
 impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-                        <p><code>FileStorage</code> (or a dedicated wrapper) applies resolution automatically for
-                            backends that don’t implement <code>SelfResolving</code>. Symlink following is part of
-                            backend semantics: virtual backends that implement <code>FsLink</code> are resolved with
-                            symlink awareness, and there is no runtime toggle.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><code>FileStorage</code> (or a dedicated wrapper) applies resolution automatically for backends that don’t implement <code>SelfResolving</code>. Symlink following is part of backend semantics: virtual backends that implement <code>FsLink</code> are resolved with symlink awareness, and there is no runtime toggle.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
     pub fn new(backend: B) -&gt; Self { /* ... */ }
@@ -1762,21 +1425,13 @@ impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
     pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; { /* ... */ }
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="path-canonicalization-utilities"><a class="header"
-                                href="#path-canonicalization-utilities">Path Canonicalization Utilities</a></h2>
-                        <p><code>FileStorage</code> provides path canonicalization methods modeled after the <a
-                                href="https://crates.io/crates/soft-canonicalize">soft-canonicalize</a> crate, adapted
-                            to work on the virtual filesystem abstraction.</p>
-                        <h3 id="why-we-need-our-own-canonicalization"><a class="header"
-                                href="#why-we-need-our-own-canonicalization">Why We Need Our Own Canonicalization</a>
-                        </h3>
-                        <p><code>std::fs::canonicalize</code> operates on the <strong>real</strong> filesystem. For
-                            virtual backends (<code>MemoryBackend</code>, <code>SqliteBackend</code>), there is no real
-                            filesystem - we need canonicalization that queries the virtual structure via
-                            <code>metadata()</code> and <code>read_link()</code>.</p>
-                        <h3 id="core-methods"><a class="header" href="#core-methods">Core Methods</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="path-canonicalization-utilities"><a class="header" href="#path-canonicalization-utilities">Path Canonicalization Utilities</a></h2>
+<p><code>FileStorage</code> provides path canonicalization methods modeled after the <a href="https://crates.io/crates/soft-canonicalize">soft-canonicalize</a> crate, adapted to work on the virtual filesystem abstraction.</p>
+<h3 id="why-we-need-our-own-canonicalization"><a class="header" href="#why-we-need-our-own-canonicalization">Why We Need Our Own Canonicalization</a></h3>
+<p><code>std::fs::canonicalize</code> operates on the <strong>real</strong> filesystem. For virtual backends (<code>MemoryBackend</code>, <code>SqliteBackend</code>), there is no real filesystem - we need canonicalization that queries the virtual structure via <code>metadata()</code> and <code>read_link()</code>.</p>
+<h3 id="core-methods"><a class="header" href="#core-methods">Core Methods</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
     /// Strict canonicalization - entire path must exist.
@@ -1816,11 +1471,9 @@ impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
 /// - Does NOT follow symlinks
 pub fn normalize(path: impl AsRef&lt;Path&gt;) -&gt; PathBuf;
 <span class="boring">}</span></code></pre>
-                        <h3 id="algorithm-component-by-component-resolution"><a class="header"
-                                href="#algorithm-component-by-component-resolution">Algorithm: Component-by-Component
-                                Resolution</a></h3>
-                        <p>The canonicalization algorithm walks the path one component at a time:</p>
-                        <pre><code>Input: /a/b/c/d/e
+<h3 id="algorithm-component-by-component-resolution"><a class="header" href="#algorithm-component-by-component-resolution">Algorithm: Component-by-Component Resolution</a></h3>
+<p>The canonicalization algorithm walks the path one component at a time:</p>
+<pre><code>Input: /a/b/c/d/e
 
 1. Start at root (/)
 2. Check /a exists?
@@ -1832,142 +1485,85 @@ pub fn normalize(path: impl AsRef&lt;Path&gt;) -&gt; PathBuf;
    - No → stop resolution, append "c/d/e" lexically
 5. Result: /resolved/path/to/b/c/d/e
 </code></pre>
-                        <p><strong>Key behaviors:</strong></p>
-                        <ul>
-                            <li><strong>Symlink following</strong>: Existing symlinks are resolved to their targets</li>
-                            <li><strong>Non-existent handling</strong>: When a component doesn’t exist, the remainder is
-                                appended as-is</li>
-                            <li><strong>Cycle detection</strong>: Bounded depth tracking prevents infinite loops from
-                                circular symlinks</li>
-                            <li><strong>Root boundary</strong>: Never ascends past the filesystem root</li>
-                        </ul>
-                        <h3 id="comparison-with-stdfs"><a class="header" href="#comparison-with-stdfs">Comparison with
-                                std::fs</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Function</th>
-                                        <th><code>std::fs</code></th>
-                                        <th><code>FileStorage</code></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>canonicalize</code></td>
-                                        <td>Requires all components exist</td>
-                                        <td>Same - returns error if path doesn’t exist</td>
-                                    </tr>
-                                    <tr>
-                                        <td>N/A</td>
-                                        <td>N/A</td>
-                                        <td><code>soft_canonicalize</code> - handles non-existent paths</td>
-                                    </tr>
-                                    <tr>
-                                        <td>N/A</td>
-                                        <td>N/A</td>
-                                        <td><code>anchored_canonicalize</code> - sandboxed resolution</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="security-considerations"><a class="header" href="#security-considerations">Security
-                                Considerations</a></h3>
-                        <p><strong>For virtual backends:</strong> Canonicalization happens entirely within the virtual
-                            structure. There is no host filesystem to escape to.</p>
-                        <p><strong>For <code>VRootFsBackend</code>:</strong> Delegates to OS canonicalization +
-                            <code>strict-path</code> containment. The <code>anchored_canonicalize</code> provides
-                            additional safety by clamping paths within a boundary.</p>
-                        <h3 id="platform-notes-vrootfsbackend-only"><a class="header"
-                                href="#platform-notes-vrootfsbackend-only">Platform Notes (VRootFsBackend only)</a></h3>
-                        <p>When delegating to OS canonicalization:</p>
-                        <ul>
-                            <li><strong>Windows</strong>: Returns extended-length UNC paths (<code>\\?\C:\path</code>)
-                                by default</li>
-                            <li><strong>Linux/macOS</strong>: Standard canonical paths</li>
-                        </ul>
-                        <h4 id="windows-unc-path-simplification"><a class="header"
-                                href="#windows-unc-path-simplification">Windows UNC Path Simplification</a></h4>
-                        <p>The <code>dunce</code> crate provides <code>simplified()</code> - a <strong>lexical</strong>
-                            function that converts UNC paths to regular paths without filesystem access:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Key behaviors:</strong></p>
+<ul>
+<li><strong>Symlink following</strong>: Existing symlinks are resolved to their targets</li>
+<li><strong>Non-existent handling</strong>: When a component doesn’t exist, the remainder is appended as-is</li>
+<li><strong>Cycle detection</strong>: Bounded depth tracking prevents infinite loops from circular symlinks</li>
+<li><strong>Root boundary</strong>: Never ascends past the filesystem root</li>
+</ul>
+<h3 id="comparison-with-stdfs"><a class="header" href="#comparison-with-stdfs">Comparison with std::fs</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Function</th><th><code>std::fs</code></th><th><code>FileStorage</code></th></tr>
+</thead>
+<tbody>
+<tr><td><code>canonicalize</code></td><td>Requires all components exist</td><td>Same - returns error if path doesn’t exist</td></tr>
+<tr><td>N/A</td><td>N/A</td><td><code>soft_canonicalize</code> - handles non-existent paths</td></tr>
+<tr><td>N/A</td><td>N/A</td><td><code>anchored_canonicalize</code> - sandboxed resolution</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="security-considerations"><a class="header" href="#security-considerations">Security Considerations</a></h3>
+<p><strong>For virtual backends:</strong> Canonicalization happens entirely within the virtual structure. There is no host filesystem to escape to.</p>
+<p><strong>For <code>VRootFsBackend</code>:</strong> Delegates to OS canonicalization + <code>strict-path</code> containment. The <code>anchored_canonicalize</code> provides additional safety by clamping paths within a boundary.</p>
+<h3 id="platform-notes-vrootfsbackend-only"><a class="header" href="#platform-notes-vrootfsbackend-only">Platform Notes (VRootFsBackend only)</a></h3>
+<p>When delegating to OS canonicalization:</p>
+<ul>
+<li><strong>Windows</strong>: Returns extended-length UNC paths (<code>\\?\C:\path</code>) by default</li>
+<li><strong>Linux/macOS</strong>: Standard canonical paths</li>
+</ul>
+<h4 id="windows-unc-path-simplification"><a class="header" href="#windows-unc-path-simplification">Windows UNC Path Simplification</a></h4>
+<p>The <code>dunce</code> crate provides <code>simplified()</code> - a <strong>lexical</strong> function that converts UNC paths to regular paths without filesystem access:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use dunce::simplified;
 
 // \\?\C:\Users\foo\bar.txt → C:\Users\foo\bar.txt
 let path = simplified(r"\\?\C:\Users\foo\bar.txt");
 <span class="boring">}</span></code></pre>
-                        <p><strong>Why this matters for <code>soft_canonicalize</code>:</strong></p>
-                        <ul>
-                            <li><code>soft_canonicalize</code> works with non-existent paths</li>
-                            <li>We can’t use <code>dunce::canonicalize</code> (requires path to exist)</li>
-                            <li><code>dunce::simplified</code> is pure string manipulation - works on any path</li>
-                        </ul>
-                        <p><strong>When UNC can be simplified:</strong></p>
-                        <ul>
-                            <li>Path is on a local drive (C:, D:, etc.)</li>
-                            <li>Path doesn’t exceed MAX_PATH (260 chars)</li>
-                            <li>No reserved names (CON, PRN, etc.)</li>
-                        </ul>
-                        <p><strong>When UNC must be kept:</strong></p>
-                        <ul>
-                            <li>Network paths (<code>\\?\UNC\server\share</code>)</li>
-                            <li>Paths exceeding MAX_PATH</li>
-                            <li>Paths with reserved device names</li>
-                        </ul>
-                        <p>Virtual backends have no platform differences - paths are just strings.</p>
-                        <hr>
-                        <h2 id="filesystem-semantics-linux-like-by-default"><a class="header"
-                                href="#filesystem-semantics-linux-like-by-default">Filesystem Semantics: Linux-like by
-                                Default</a></h2>
-                        <p><strong>Design principle:</strong> Simple, secure defaults. Don’t close doors for alternative
-                            semantics.</p>
-                        <p>See ADR-028 for the decision rationale.</p>
-                        <h3 id="default-behavior-built-in-backends"><a class="header"
-                                href="#default-behavior-built-in-backends">Default Behavior (Built-in Backends)</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Aspect</th>
-                                        <th>Behavior</th>
-                                        <th>Rationale</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Case sensitivity</td>
-                                        <td><strong>Case-sensitive</strong></td>
-                                        <td>Simpler, more secure, Unix standard</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Path separator</td>
-                                        <td><strong><code>/</code> internally</strong></td>
-                                        <td>Cross-platform consistency</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Reserved names</td>
-                                        <td><strong>None</strong></td>
-                                        <td>No artificial restrictions</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Max path length</td>
-                                        <td><strong>No limit</strong></td>
-                                        <td>Virtual, no OS constraints</td>
-                                    </tr>
-                                    <tr>
-                                        <td>ADS (<code>:stream</code>)</td>
-                                        <td><strong>Not supported</strong></td>
-                                        <td>Security risk, complexity</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="trait-is-agnostic"><a class="header" href="#trait-is-agnostic">Trait is Agnostic</a>
-                        </h3>
-                        <p>The <code>Fs</code> trait doesn’t enforce filesystem semantics - backends decide their
-                            behavior:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Why this matters for <code>soft_canonicalize</code>:</strong></p>
+<ul>
+<li><code>soft_canonicalize</code> works with non-existent paths</li>
+<li>We can’t use <code>dunce::canonicalize</code> (requires path to exist)</li>
+<li><code>dunce::simplified</code> is pure string manipulation - works on any path</li>
+</ul>
+<p><strong>When UNC can be simplified:</strong></p>
+<ul>
+<li>Path is on a local drive (C:, D:, etc.)</li>
+<li>Path doesn’t exceed MAX_PATH (260 chars)</li>
+<li>No reserved names (CON, PRN, etc.)</li>
+</ul>
+<p><strong>When UNC must be kept:</strong></p>
+<ul>
+<li>Network paths (<code>\\?\UNC\server\share</code>)</li>
+<li>Paths exceeding MAX_PATH</li>
+<li>Paths with reserved device names</li>
+</ul>
+<p>Virtual backends have no platform differences - paths are just strings.</p>
+<hr>
+<h2 id="filesystem-semantics-linux-like-by-default"><a class="header" href="#filesystem-semantics-linux-like-by-default">Filesystem Semantics: Linux-like by Default</a></h2>
+<p><strong>Design principle:</strong> Simple, secure defaults. Don’t close doors for alternative semantics.</p>
+<p>See ADR-028 for the decision rationale.</p>
+<h3 id="default-behavior-built-in-backends"><a class="header" href="#default-behavior-built-in-backends">Default Behavior (Built-in Backends)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Aspect</th><th>Behavior</th><th>Rationale</th></tr>
+</thead>
+<tbody>
+<tr><td>Case sensitivity</td><td><strong>Case-sensitive</strong></td><td>Simpler, more secure, Unix standard</td></tr>
+<tr><td>Path separator</td><td><strong><code>/</code> internally</strong></td><td>Cross-platform consistency</td></tr>
+<tr><td>Reserved names</td><td><strong>None</strong></td><td>No artificial restrictions</td></tr>
+<tr><td>Max path length</td><td><strong>No limit</strong></td><td>Virtual, no OS constraints</td></tr>
+<tr><td>ADS (<code>:stream</code>)</td><td><strong>Not supported</strong></td><td>Security risk, complexity</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="trait-is-agnostic"><a class="header" href="#trait-is-agnostic">Trait is Agnostic</a></h3>
+<p>The <code>Fs</code> trait doesn’t enforce filesystem semantics - backends decide their behavior:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, MemoryBackend};
 use std::path::Path;
@@ -1989,10 +1585,9 @@ impl Fs for NtfsEmulatingBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fuse-mount-report-what-you-support"><a class="header"
-                                href="#fuse-mount-report-what-you-support">FUSE Mount: Report What You Support</a></h3>
-                        <p>When mounting, the FUSE layer reports backend capabilities to the OS:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fuse-mount-report-what-you-support"><a class="header" href="#fuse-mount-report-what-you-support">FUSE Mount: Report What You Support</a></h3>
+<p>When mounting, the FUSE layer reports backend capabilities to the OS:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FuseOps for AnyFsFuse&lt;B&gt; {
     fn get_volume_params(&amp;self) -&gt; VolumeParams {
@@ -2005,14 +1600,10 @@ impl Fs for NtfsEmulatingBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p>Windows respects these flags - a case-sensitive mounted filesystem works correctly (modern
-                            Windows/WSL handle this).</p>
-                        <h3 id="illustrative-custom-middleware-for-windows-compatibility"><a class="header"
-                                href="#illustrative-custom-middleware-for-windows-compatibility">Illustrative: Custom
-                                Middleware for Windows Compatibility</a></h3>
-                        <p>For users who need Windows-safe paths in virtual backends, here are example middleware
-                            patterns (not built-in - implement as needed):</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>Windows respects these flags - a case-sensitive mounted filesystem works correctly (modern Windows/WSL handle this).</p>
+<h3 id="illustrative-custom-middleware-for-windows-compatibility"><a class="header" href="#illustrative-custom-middleware-for-windows-compatibility">Illustrative: Custom Middleware for Windows Compatibility</a></h3>
+<p>For users who need Windows-safe paths in virtual backends, here are example middleware patterns (not built-in - implement as needed):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Example: Middleware that validates paths are Windows-compatible.
 /// Rejects: CON, PRN, NUL, COM1-9, LPT1-9, trailing dots/spaces, ADS.
@@ -2022,60 +1613,30 @@ pub struct NtfsValidation&lt;B&gt; { /* user-implemented */ }
 /// Stores canonical (lowercase) keys, preserves original case in metadata.
 pub struct CaseInsensitive&lt;B&gt; { /* user-implemented */ }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Not built-in</strong> - these are illustrative patterns for users who need NTFS-like
-                            behavior.</p>
-                        <hr>
-                        <h2 id="security-model"><a class="header" href="#security-model">Security Model</a></h2>
-                        <p>Security is achieved through composition:</p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Concern</th>
-                                        <th>Solution</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Path containment</td>
-                                        <td><code>PathFilter</code> + VRootFsBackend</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Resource exhaustion</td>
-                                        <td><code>Quota</code> enforces quotas</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Rate limiting</td>
-                                        <td><code>RateLimit</code> prevents abuse</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Feature restriction</td>
-                                        <td><code>Restrictions</code> disables dangerous features</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Read-only access</td>
-                                        <td><code>ReadOnly</code> prevents writes</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Audit trail</td>
-                                        <td><code>Tracing</code> instruments operations</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Tenant isolation</td>
-                                        <td>Separate backend instances</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Testing</td>
-                                        <td><code>DryRun</code> logs without executing</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Defense in depth:</strong> Compose multiple middleware layers for comprehensive
-                            security.</p>
-                        <h3 id="ai-agent-sandbox-example"><a class="header" href="#ai-agent-sandbox-example">AI Agent
-                                Sandbox Example</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Not built-in</strong> - these are illustrative patterns for users who need NTFS-like behavior.</p>
+<hr>
+<h2 id="security-model"><a class="header" href="#security-model">Security Model</a></h2>
+<p>Security is achieved through composition:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Solution</th></tr>
+</thead>
+<tbody>
+<tr><td>Path containment</td><td><code>PathFilter</code> + VRootFsBackend</td></tr>
+<tr><td>Resource exhaustion</td><td><code>Quota</code> enforces quotas</td></tr>
+<tr><td>Rate limiting</td><td><code>RateLimit</code> prevents abuse</td></tr>
+<tr><td>Feature restriction</td><td><code>Restrictions</code> disables dangerous features</td></tr>
+<tr><td>Read-only access</td><td><code>ReadOnly</code> prevents writes</td></tr>
+<tr><td>Audit trail</td><td><code>Tracing</code> instruments operations</td></tr>
+<tr><td>Tenant isolation</td><td>Separate backend instances</td></tr>
+<tr><td>Testing</td><td><code>DryRun</code> logs without executing</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Defense in depth:</strong> Compose multiple middleware layers for comprehensive security.</p>
+<h3 id="ai-agent-sandbox-example"><a class="header" href="#ai-agent-sandbox-example">AI Agent Sandbox Example</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{MemoryBackend, Quota, PathFilter, RateLimit, Tracing};
 
@@ -2096,13 +1657,10 @@ let sandbox = MemoryBackend::new()
         .build())
     .layer(TracingLayer::new());
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="extension-traits-in-anyfs-backend"><a class="header"
-                                href="#extension-traits-in-anyfs-backend">Extension Traits (in
-                                <code>anyfs-backend</code>)</a></h2>
-                        <p>The <code>FsExt</code> trait provides convenience methods for any <code>Fs</code> backend:
-                        </p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="extension-traits-in-anyfs-backend"><a class="header" href="#extension-traits-in-anyfs-backend">Extension Traits (in <code>anyfs-backend</code>)</a></h2>
+<p>The <code>FsExt</code> trait provides convenience methods for any <code>Fs</code> backend:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Extension methods for Fs (auto-implemented for all backends).
 pub trait FsExt: Fs {
@@ -2126,13 +1684,11 @@ pub trait FsExt: Fs {
 // Blanket implementation for all Fs backends
 impl&lt;B: Fs&gt; FsExt for B {}
 <span class="boring">}</span></code></pre>
-                        <h3 id="json-methods-feature-serde"><a class="header" href="#json-methods-feature-serde">JSON
-                                Methods (feature: <code>serde</code>)</a></h3>
-                        <p>The <code>read_json</code> and <code>write_json</code> methods require the <code>serde</code>
-                            feature:</p>
-                        <pre><code class="language-toml">anyfs-backend = { version = "0.1", features = ["serde"] }
+<h3 id="json-methods-feature-serde"><a class="header" href="#json-methods-feature-serde">JSON Methods (feature: <code>serde</code>)</a></h3>
+<p>The <code>read_json</code> and <code>write_json</code> methods require the <code>serde</code> feature:</p>
+<pre><code class="language-toml">anyfs-backend = { version = "0.1", features = ["serde"] }
 </code></pre>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use serde::{Serialize, de::DeserializeOwned};
 
@@ -2149,17 +1705,14 @@ impl&lt;B: Fs&gt; FsExt for B {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p>Users can define their own extension traits for domain-specific operations.</p>
-                        <hr>
-                        <h2 id="optional-features"><a class="header" href="#optional-features">Optional Features</a>
-                        </h2>
-                        <h3 id="bytes-support-feature-bytes"><a class="header" href="#bytes-support-feature-bytes">Bytes
-                                Support (feature: <code>bytes</code>)</a></h3>
-                        <p>For zero-copy efficiency, enable the <code>bytes</code> feature to get
-                            <code>Bytes</code>-returning convenience methods on <code>FileStorage</code>:</p>
-                        <pre><code class="language-toml">anyfs = { version = "0.1", features = ["bytes"] }
+<p>Users can define their own extension traits for domain-specific operations.</p>
+<hr>
+<h2 id="optional-features"><a class="header" href="#optional-features">Optional Features</a></h2>
+<h3 id="bytes-support-feature-bytes"><a class="header" href="#bytes-support-feature-bytes">Bytes Support (feature: <code>bytes</code>)</a></h3>
+<p>For zero-copy efficiency, enable the <code>bytes</code> feature to get <code>Bytes</code>-returning convenience methods on <code>FileStorage</code>:</p>
+<pre><code class="language-toml">anyfs = { version = "0.1", features = ["bytes"] }
 </code></pre>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, MemoryBackend};
 use bytes::Bytes;
@@ -2173,23 +1726,18 @@ let slice = data.slice(1000..2000);  // Zero-copy!
 // Core trait still uses Vec&lt;u8&gt; for object safety
 // read_bytes() wraps the Vec&lt;u8&gt; in Bytes::from()
 <span class="boring">}</span></code></pre>
-                        <p><strong>Note:</strong> Core traits (<code>FsRead</code>, etc.) always use
-                            <code>Vec&lt;u8&gt;</code> for object safety (<code>dyn Fs</code>). The <code>bytes</code>
-                            feature adds convenience methods to <code>FileStorage</code> that wrap results in
-                            <code>Bytes</code>.</p>
-                        <p><strong>When to use:</strong></p>
-                        <ul>
-                            <li>Large file handling with frequent slicing</li>
-                            <li>Network-backed storage</li>
-                            <li>Streaming scenarios</li>
-                        </ul>
-                        <p><strong>Default:</strong> <code>Vec&lt;u8&gt;</code> (no extra dependency)</p>
-                        <hr>
-                        <h2 id="error-types"><a class="header" href="#error-types">Error Types</a></h2>
-                        <p><code>FsError</code> includes context for better debugging. It implements
-                            <code>std::error::Error</code> via <code>thiserror</code> and uses
-                            <code>#[non_exhaustive]</code> for forward compatibility.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Note:</strong> Core traits (<code>FsRead</code>, etc.) always use <code>Vec&lt;u8&gt;</code> for object safety (<code>dyn Fs</code>). The <code>bytes</code> feature adds convenience methods to <code>FileStorage</code> that wrap results in <code>Bytes</code>.</p>
+<p><strong>When to use:</strong></p>
+<ul>
+<li>Large file handling with frequent slicing</li>
+<li>Network-backed storage</li>
+<li>Streaming scenarios</li>
+</ul>
+<p><strong>Default:</strong> <code>Vec&lt;u8&gt;</code> (no extra dependency)</p>
+<hr>
+<h2 id="error-types"><a class="header" href="#error-types">Error Types</a></h2>
+<p><code>FsError</code> includes context for better debugging. It implements <code>std::error::Error</code> via <code>thiserror</code> and uses <code>#[non_exhaustive]</code> for forward compatibility.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Filesystem error with context.
 ///
@@ -2350,270 +1898,124 @@ impl From&lt;std::io::Error&gt; for FsError {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Implementation notes:</strong></p>
-                        <ul>
-                            <li>All variants have <code>#[error("...")]</code> attributes (shown for first two, omitted
-                                for brevity)</li>
-                            <li><code>#[non_exhaustive]</code> allows adding variants in minor versions without breaking
-                                changes</li>
-                            <li><code>From&lt;std::io::Error&gt;</code> enables <code>?</code> operator with std::io
-                                functions</li>
-                            <li>Consider <code>#[must_use]</code> on functions returning
-                                <code>Result&lt;_, FsError&gt;</code></li>
-                        </ul>
-                        <hr>
-                        <h2 id="cross-platform-compatibility"><a class="header"
-                                href="#cross-platform-compatibility">Cross-Platform Compatibility</a></h2>
-                        <p>AnyFS is designed for cross-platform use. Virtual backends work everywhere; real filesystem
-                            backends have platform considerations.</p>
-                        <h3 id="backend-compatibility"><a class="header" href="#backend-compatibility">Backend
-                                Compatibility</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Backend</th>
-                                        <th style="text-align: center">Windows</th>
-                                        <th style="text-align: center">Linux</th>
-                                        <th style="text-align: center">macOS</th>
-                                        <th style="text-align: center">WASM</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>MemoryBackend</code></td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>SqliteBackend</code></td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅*</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>VRootFsBackend</code></td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>StdFsBackend</code></td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p>*SQLite on WASM requires <code>wasm32</code> build of rusqlite with bundled SQLite.</p>
-                        <h3 id="feature-compatibility"><a class="header" href="#feature-compatibility">Feature
-                                Compatibility</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Feature</th>
-                                        <th style="text-align: center">Virtual Backends</th>
-                                        <th style="text-align: center">VRootFsBackend</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Basic I/O (<code>Fs</code>)</td>
-                                        <td style="text-align: center">✅ All platforms</td>
-                                        <td style="text-align: center">✅ All platforms</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Symlinks</td>
-                                        <td style="text-align: center">✅ All platforms</td>
-                                        <td style="text-align: center">Platform-dependent (see below)</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Hard links</td>
-                                        <td style="text-align: center">✅ All platforms</td>
-                                        <td style="text-align: center">Platform-dependent</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Permissions</td>
-                                        <td style="text-align: center">✅ Stored as metadata</td>
-                                        <td style="text-align: center">Platform-dependent</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Extended attributes</td>
-                                        <td style="text-align: center">✅ Stored as metadata</td>
-                                        <td style="text-align: center">Platform-dependent</td>
-                                    </tr>
-                                    <tr>
-                                        <td>FUSE mounting</td>
-                                        <td style="text-align: center">N/A</td>
-                                        <td style="text-align: center">Platform-dependent</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="platform-specific-notes"><a class="header"
-                                href="#platform-specific-notes">Platform-Specific Notes</a></h3>
-                        <h4 id="virtual-backends-memorybackend-sqlitebackend"><a class="header"
-                                href="#virtual-backends-memorybackend-sqlitebackend">Virtual Backends (MemoryBackend,
-                                SqliteBackend)</a></h4>
-                        <p><strong>Fully cross-platform.</strong> All features work identically everywhere because:</p>
-                        <ul>
-                            <li>Paths are just strings/keys - no OS path resolution</li>
-                            <li>Symlinks are stored data, not OS constructs</li>
-                            <li>Permissions are metadata, not enforced by OS</li>
-                            <li>No filesystem syscalls involved</li>
-                        </ul>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Implementation notes:</strong></p>
+<ul>
+<li>All variants have <code>#[error("...")]</code> attributes (shown for first two, omitted for brevity)</li>
+<li><code>#[non_exhaustive]</code> allows adding variants in minor versions without breaking changes</li>
+<li><code>From&lt;std::io::Error&gt;</code> enables <code>?</code> operator with std::io functions</li>
+<li>Consider <code>#[must_use]</code> on functions returning <code>Result&lt;_, FsError&gt;</code></li>
+</ul>
+<hr>
+<h2 id="cross-platform-compatibility"><a class="header" href="#cross-platform-compatibility">Cross-Platform Compatibility</a></h2>
+<p>AnyFS is designed for cross-platform use. Virtual backends work everywhere; real filesystem backends have platform considerations.</p>
+<h3 id="backend-compatibility"><a class="header" href="#backend-compatibility">Backend Compatibility</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th style="text-align: center">Windows</th><th style="text-align: center">Linux</th><th style="text-align: center">macOS</th><th style="text-align: center">WASM</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MemoryBackend</code></td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td></tr>
+<tr><td><code>SqliteBackend</code></td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅*</td></tr>
+<tr><td><code>VRootFsBackend</code></td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
+<tr><td><code>StdFsBackend</code></td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
+</tbody>
+</table>
+</div>
+<p>*SQLite on WASM requires <code>wasm32</code> build of rusqlite with bundled SQLite.</p>
+<h3 id="feature-compatibility"><a class="header" href="#feature-compatibility">Feature Compatibility</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th style="text-align: center">Virtual Backends</th><th style="text-align: center">VRootFsBackend</th></tr>
+</thead>
+<tbody>
+<tr><td>Basic I/O (<code>Fs</code>)</td><td style="text-align: center">✅ All platforms</td><td style="text-align: center">✅ All platforms</td></tr>
+<tr><td>Symlinks</td><td style="text-align: center">✅ All platforms</td><td style="text-align: center">Platform-dependent (see below)</td></tr>
+<tr><td>Hard links</td><td style="text-align: center">✅ All platforms</td><td style="text-align: center">Platform-dependent</td></tr>
+<tr><td>Permissions</td><td style="text-align: center">✅ Stored as metadata</td><td style="text-align: center">Platform-dependent</td></tr>
+<tr><td>Extended attributes</td><td style="text-align: center">✅ Stored as metadata</td><td style="text-align: center">Platform-dependent</td></tr>
+<tr><td>FUSE mounting</td><td style="text-align: center">N/A</td><td style="text-align: center">Platform-dependent</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="platform-specific-notes"><a class="header" href="#platform-specific-notes">Platform-Specific Notes</a></h3>
+<h4 id="virtual-backends-memorybackend-sqlitebackend"><a class="header" href="#virtual-backends-memorybackend-sqlitebackend">Virtual Backends (MemoryBackend, SqliteBackend)</a></h4>
+<p><strong>Fully cross-platform.</strong> All features work identically everywhere because:</p>
+<ul>
+<li>Paths are just strings/keys - no OS path resolution</li>
+<li>Symlinks are stored data, not OS constructs</li>
+<li>Permissions are metadata, not enforced by OS</li>
+<li>No filesystem syscalls involved</li>
+</ul>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// This works identically on Windows, Linux, macOS, and WASM
 let fs = FileStorage::new(MemoryBackend::new());
 fs.symlink("/target", "/link")?;           // Just stores the link
 fs.set_permissions("/file", 0o755.into())?; // Just stores metadata
 <span class="boring">}</span></code></pre>
-                        <h4 id="vrootfsbackend-real-filesystem"><a class="header"
-                                href="#vrootfsbackend-real-filesystem">VRootFsBackend (Real Filesystem)</a></h4>
-                        <p>Wraps the host filesystem. Platform differences apply:</p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Feature</th>
-                                        <th>Linux</th>
-                                        <th>macOS</th>
-                                        <th>Windows</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Symlinks</td>
-                                        <td>✅</td>
-                                        <td>✅</td>
-                                        <td>⚠️ Requires privileges*</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Hard links</td>
-                                        <td>✅</td>
-                                        <td>✅</td>
-                                        <td>✅ (NTFS only)</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Permissions (mode bits)</td>
-                                        <td>✅</td>
-                                        <td>✅</td>
-                                        <td>⚠️ Limited mapping</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Extended attributes</td>
-                                        <td>✅ xattr</td>
-                                        <td>✅ xattr</td>
-                                        <td>⚠️ ADS (different API)</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Case sensitivity</td>
-                                        <td>✅</td>
-                                        <td>⚠️ Default insensitive</td>
-                                        <td>⚠️ Insensitive</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p>*Windows requires <code>SeCreateSymbolicLinkPrivilege</code> or Developer Mode for symlinks.
-                        </p>
-                        <h4 id="fuse-mounting"><a class="header" href="#fuse-mounting">FUSE Mounting</a></h4>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Platform</th>
-                                        <th>Support</th>
-                                        <th>Library</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Linux</td>
-                                        <td>✅ Native</td>
-                                        <td>libfuse</td>
-                                    </tr>
-                                    <tr>
-                                        <td>macOS</td>
-                                        <td>⚠️ Third-party</td>
-                                        <td>macFUSE</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Windows</td>
-                                        <td>⚠️ Third-party</td>
-                                        <td>WinFsp or Dokan</td>
-                                    </tr>
-                                    <tr>
-                                        <td>WASM</td>
-                                        <td>❌</td>
-                                        <td>N/A</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="path-handling-1"><a class="header" href="#path-handling-1">Path Handling</a></h3>
-                        <p>Virtual backends use <code>/</code> as separator internally, regardless of platform:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h4 id="vrootfsbackend-real-filesystem"><a class="header" href="#vrootfsbackend-real-filesystem">VRootFsBackend (Real Filesystem)</a></h4>
+<p>Wraps the host filesystem. Platform differences apply:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th>Linux</th><th>macOS</th><th>Windows</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlinks</td><td>✅</td><td>✅</td><td>⚠️ Requires privileges*</td></tr>
+<tr><td>Hard links</td><td>✅</td><td>✅</td><td>✅ (NTFS only)</td></tr>
+<tr><td>Permissions (mode bits)</td><td>✅</td><td>✅</td><td>⚠️ Limited mapping</td></tr>
+<tr><td>Extended attributes</td><td>✅ xattr</td><td>✅ xattr</td><td>⚠️ ADS (different API)</td></tr>
+<tr><td>Case sensitivity</td><td>✅</td><td>⚠️ Default insensitive</td><td>⚠️ Insensitive</td></tr>
+</tbody>
+</table>
+</div>
+<p>*Windows requires <code>SeCreateSymbolicLinkPrivilege</code> or Developer Mode for symlinks.</p>
+<h4 id="fuse-mounting"><a class="header" href="#fuse-mounting">FUSE Mounting</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Platform</th><th>Support</th><th>Library</th></tr>
+</thead>
+<tbody>
+<tr><td>Linux</td><td>✅ Native</td><td>libfuse</td></tr>
+<tr><td>macOS</td><td>⚠️ Third-party</td><td>macFUSE</td></tr>
+<tr><td>Windows</td><td>⚠️ Third-party</td><td>WinFsp or Dokan</td></tr>
+<tr><td>WASM</td><td>❌</td><td>N/A</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="path-handling-1"><a class="header" href="#path-handling-1">Path Handling</a></h3>
+<p>Virtual backends use <code>/</code> as separator internally, regardless of platform:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Always use forward slashes with virtual backends
 fs.write("/project/src/main.rs", code)?;  // Works everywhere
 <span class="boring">}</span></code></pre>
-                        <p><code>VRootFsBackend</code> translates to native paths internally:</p>
-                        <ul>
-                            <li>Linux/macOS: <code>/</code> stays <code>/</code></li>
-                            <li>Windows: <code>/project/file.txt</code> → <code>C:\root\project\file.txt</code></li>
-                        </ul>
-                        <h3 id="recommendations"><a class="header" href="#recommendations">Recommendations</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Use Case</th>
-                                        <th>Recommended Backend</th>
-                                        <th>Why</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Cross-platform app</td>
-                                        <td><code>MemoryBackend</code> or <code>SqliteBackend</code></td>
-                                        <td>No platform differences</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Portable storage</td>
-                                        <td><code>SqliteBackend</code></td>
-                                        <td>Single file, works everywhere</td>
-                                    </tr>
-                                    <tr>
-                                        <td>WASM/browser</td>
-                                        <td><code>MemoryBackend</code> or <code>SqliteBackend</code></td>
-                                        <td>No filesystem access needed</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Host filesystem access</td>
-                                        <td><code>VRootFsBackend</code></td>
-                                        <td>With awareness of platform limits</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Testing</td>
-                                        <td><code>MemoryBackend</code></td>
-                                        <td>Fast, no cleanup, deterministic</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="feature-detection"><a class="header" href="#feature-detection">Feature Detection</a>
-                        </h3>
-                        <p>Check platform capabilities at runtime if needed:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><code>VRootFsBackend</code> translates to native paths internally:</p>
+<ul>
+<li>Linux/macOS: <code>/</code> stays <code>/</code></li>
+<li>Windows: <code>/project/file.txt</code> → <code>C:\root\project\file.txt</code></li>
+</ul>
+<h3 id="recommendations"><a class="header" href="#recommendations">Recommendations</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommended Backend</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td>Cross-platform app</td><td><code>MemoryBackend</code> or <code>SqliteBackend</code></td><td>No platform differences</td></tr>
+<tr><td>Portable storage</td><td><code>SqliteBackend</code></td><td>Single file, works everywhere</td></tr>
+<tr><td>WASM/browser</td><td><code>MemoryBackend</code> or <code>SqliteBackend</code></td><td>No filesystem access needed</td></tr>
+<tr><td>Host filesystem access</td><td><code>VRootFsBackend</code></td><td>With awareness of platform limits</td></tr>
+<tr><td>Testing</td><td><code>MemoryBackend</code></td><td>Fast, no cleanup, deterministic</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="feature-detection"><a class="header" href="#feature-detection">Feature Detection</a></h3>
+<p>Check platform capabilities at runtime if needed:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Check if symlinks are supported on the current platform.
 pub fn symlinks_available() -&gt; bool {
@@ -2627,32 +2029,19 @@ pub fn symlinks_available() -&gt; bool {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p>On platforms without symlink support, use a backend that doesn’t implement
-                            <code>FsLink</code>, or check <code>symlinks_available()</code> before calling symlink
-                            operations.</p>
+<p>On platforms without symlink support, use a backend that doesn’t implement <code>FsLink</code>, or check <code>symlinks_available()</code> before calling symlink operations.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                        <a rel="prev" href="../getting-started/api-reference.html" class="mobile-nav-chapters previous"
-                            title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="prev" href="../getting-started/api-reference.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                        <a rel="next prefetch" href="../architecture/two-layer-design.html"
-                            class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter"
-                            aria-keyshortcuts="Right">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="next prefetch" href="../architecture/two-layer-design.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -2660,52 +2049,22 @@ pub fn symlinks_available() -&gt; bool {
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                <a rel="prev" href="../getting-started/api-reference.html" class="nav-chapters previous"
-                    title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="prev" href="../getting-started/api-reference.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                <a rel="next prefetch" href="../architecture/two-layer-design.html" class="nav-chapters next"
-                    title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="next prefetch" href="../architecture/two-layer-design.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
 
-        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z" />
-                </svg></span></template>
-        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z" />
-                </svg></span></template>
-        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z" />
-                </svg></span></template>
-        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-                </svg></span></template>
-        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z" />
-                </svg></span></template>
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
 
         <script>
@@ -2735,6 +2094,5 @@ pub fn symlinks_available() -&gt; bool {
 
 
     </div>
-</body>
-
+    </body>
 </html>

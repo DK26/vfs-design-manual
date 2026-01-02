@@ -1,0 +1,950 @@
+<!DOCTYPE HTML>
+<html lang="en" class="rust sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Built-in Backends Guide - AnyFS Ecosystem Manual</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "rust";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex-0cc552b6.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-f2dc2851.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('rust')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">AnyFS Ecosystem Manual</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/guides/backends-guide.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="built-in-backends-guide"><a class="header" href="#built-in-backends-guide">Built-in Backends Guide</a></h1>
+<p>This guide explains each built-in backend in AnyFS, how it works internally, when to use it, and the trade-offs involved.</p>
+<hr>
+<h2 id="quick-reference-which-backend-should-you-use"><a class="header" href="#quick-reference-which-backend-should-you-use">Quick Reference: Which Backend Should You Use?</a></h2>
+<blockquote>
+<p><strong>TL;DR</strong> — Pick the first match from top to bottom:</p>
+</blockquote>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Your Situation</th><th>Best Choice</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td>Writing tests</td><td><strong>MemoryBackend</strong></td><td>Fast, isolated, no cleanup</td></tr>
+<tr><td>Running in WASM/browser</td><td><strong>MemoryBackend</strong></td><td>Simplest; SqliteBackend also works</td></tr>
+<tr><td>Need encrypted single-file storage</td><td><strong>SqliteCipherBackend</strong></td><td>AES-256, portable</td></tr>
+<tr><td>Need portable single-file database</td><td><strong>SqliteBackend</strong></td><td>Cross-platform, ACID</td></tr>
+<tr><td>Large files (&gt;100MB) with path isolation</td><td><strong>IndexedBackend</strong></td><td>Virtual paths + native disk I/O</td></tr>
+<tr><td>Containing untrusted code to a directory</td><td><strong>VRootFsBackend</strong></td><td>Prevents path traversal attacks</td></tr>
+<tr><td>Working with real files in trusted environment</td><td><strong>StdFsBackend</strong></td><td>Direct OS operations</td></tr>
+<tr><td>Need layered filesystem (container-like)</td><td><strong>Overlay</strong> (middleware)</td><td>Base + writable upper layer</td></tr>
+</tbody>
+</table>
+</div>
+<p>⚠️ <strong>Security Warning:</strong> <code>StdFsBackend</code> provides <strong>NO isolation</strong>. Never use with untrusted input.</p>
+<hr>
+<h2 id="backend-categories"><a class="header" href="#backend-categories">Backend Categories</a></h2>
+<p>AnyFS backends fall into two fundamental categories based on <strong>who resolves paths</strong>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Category</th><th>Path Resolution</th><th>Symlink Handling</th><th>Isolation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Type 1: Virtual Filesystem</strong></td><td>Framework (logical)</td><td>Simulated by AnyFS</td><td>Complete</td></tr>
+<tr><td><strong>Type 2: Real Filesystem</strong></td><td>Operating System</td><td>Delegated to OS</td><td>Partial/None</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="type-1-virtual-filesystem-backends"><a class="header" href="#type-1-virtual-filesystem-backends">Type 1: Virtual Filesystem Backends</a></h3>
+<p>These backends store filesystem data in an abstract format (memory, database, etc.). <strong>AnyFS handles all path resolution</strong>, including:</p>
+<ul>
+<li>Path traversal (<code>..</code>, <code>.</code>)</li>
+<li>Symlink following (simulated)</li>
+<li>Hard link tracking (simulated)</li>
+<li>Path normalization</li>
+</ul>
+<p><strong>Key benefit:</strong> Complete isolation from the host OS. Identical behavior across all platforms.</p>
+<h3 id="type-2-real-filesystem-backends"><a class="header" href="#type-2-real-filesystem-backends">Type 2: Real Filesystem Backends</a></h3>
+<p>These backends delegate operations to the actual operating system. <strong>The OS handles path resolution</strong>, which means:</p>
+<ul>
+<li>Native symlink behavior</li>
+<li>Native permission enforcement</li>
+<li>Platform-specific edge cases</li>
+<li>Potential security considerations (path escapes)</li>
+</ul>
+<p><strong>Key benefit:</strong> Native performance and compatibility with existing files.</p>
+<hr>
+<h2 id="type-1-virtual-filesystem-backends-1"><a class="header" href="#type-1-virtual-filesystem-backends-1">Type 1: Virtual Filesystem Backends</a></h2>
+<h3 id="memorybackend"><a class="header" href="#memorybackend">MemoryBackend</a></h3>
+<p>An in-memory filesystem. All data lives in RAM and is lost when the process exits.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, FileStorage};
+
+let fs = FileStorage::new(MemoryBackend::new());
+fs.write("/data.txt", b"Hello, World!")?;
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h4>
+<ul>
+<li>Files and directories stored in a tree structure (<code>HashMap</code> or similar)</li>
+<li>Symlinks stored as data pointing to target paths</li>
+<li>Hard links share the same underlying data node</li>
+<li>All operations are memory-only (no disk I/O)</li>
+<li>Supports snapshots via <code>Clone</code> and persistence via <code>save_to()</code>/<code>load_from()</code></li>
+</ul>
+<h4 id="performance"><a class="header" href="#performance">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read/Write</td><td>⚡ <strong>Very Fast</strong></td><td>No I/O, pure memory operations</td></tr>
+<tr><td>Path Resolution</td><td>⚡ <strong>Very Fast</strong></td><td>In-memory tree traversal</td></tr>
+<tr><td>Large Files</td><td>⚠️ <strong>Memory-bound</strong></td><td>Limited by available RAM</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages"><a class="header" href="#advantages">Advantages</a></h4>
+<ul>
+<li><strong>Fastest backend</strong> - no disk I/O overhead</li>
+<li><strong>Deterministic</strong> - perfect for testing</li>
+<li><strong>Portable</strong> - works on all platforms including WASM</li>
+<li><strong>Snapshots</strong> - <code>Clone</code> creates instant backups</li>
+<li><strong>No cleanup</strong> - no temp files to delete</li>
+</ul>
+<h4 id="disadvantages"><a class="header" href="#disadvantages">Disadvantages</a></h4>
+<ul>
+<li><strong>Volatile</strong> - data lost on process exit (unless serialized)</li>
+<li><strong>Memory-limited</strong> - large filesystems consume RAM</li>
+<li><strong>No persistence</strong> - must explicitly save/load state</li>
+</ul>
+<h4 id="when-to-use"><a class="header" href="#when-to-use">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>Unit tests</td><td>✅ <strong>Ideal</strong> - fast, isolated, deterministic</td></tr>
+<tr><td>Integration tests</td><td>✅ <strong>Ideal</strong> - no filesystem pollution</td></tr>
+<tr><td>Temporary workspaces</td><td>✅ <strong>Good</strong> - fast scratch space</td></tr>
+<tr><td>Build caches</td><td>✅ <strong>Good</strong> - if fits in memory</td></tr>
+<tr><td>WASM/Browser</td><td>✅ <strong>Ideal</strong> - simplest option (SqliteBackend also works)</td></tr>
+<tr><td>Large file storage</td><td>❌ <strong>Avoid</strong> - use SqliteBackend or disk</td></tr>
+<tr><td>Persistent data</td><td>❌ <strong>Avoid</strong> - unless you handle serialization</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE MemoryBackend when:</strong></p>
+<ul>
+<li>Writing unit tests (fast, isolated, deterministic)</li>
+<li>Writing integration tests (no filesystem pollution)</li>
+<li>Building temporary workspaces or scratch space</li>
+<li>Caching data that fits in memory</li>
+<li>Running in WASM/browser environments (simplest option)</li>
+<li>Need instant snapshots via <code>Clone</code></li>
+</ul>
+<p><strong>❌ DON’T USE MemoryBackend when:</strong></p>
+<ul>
+<li>Storing files larger than available RAM</li>
+<li>Data must survive process restart (use SqliteBackend)</li>
+<li>Working with existing files on disk (use VRootFsBackend)</li>
+</ul>
+<hr>
+<h3 id="sqlitebackend"><a class="header" href="#sqlitebackend">SqliteBackend</a></h3>
+<p>Stores the entire filesystem in a single SQLite database file.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{SqliteBackend, FileStorage};
+
+let fs = FileStorage::new(SqliteBackend::open("myfs.db")?);
+fs.write("/documents/report.txt", b"Annual Report")?;
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works-1"><a class="header" href="#how-it-works-1">How It Works</a></h4>
+<ul>
+<li>Single <code>.db</code> file contains all files, directories, and metadata</li>
+<li>Schema: <code>nodes</code> table (path, type, content, permissions, timestamps)</li>
+<li>Symlinks stored as rows with target path in content</li>
+<li>Hard links share the same <code>inode</code> (row ID)</li>
+<li>Uses WAL mode for concurrent read access</li>
+<li>Transactions ensure atomic operations</li>
+</ul>
+<h4 id="performance-1"><a class="header" href="#performance-1">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read/Write</td><td>🐢 <strong>Slower</strong></td><td>SQLite query overhead</td></tr>
+<tr><td>Path Resolution</td><td>🐢 <strong>Slower</strong></td><td>Database lookups per component</td></tr>
+<tr><td>Transactions</td><td>✅ <strong>Atomic</strong></td><td>ACID guarantees</td></tr>
+<tr><td>Large Files</td><td>✅ <strong>Good</strong></td><td>Streams to disk, not RAM</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages-1"><a class="header" href="#advantages-1">Advantages</a></h4>
+<ul>
+<li><strong>Single-file portability</strong> - entire filesystem in one <code>.db</code> file</li>
+<li><strong>ACID transactions</strong> - atomic operations, crash recovery</li>
+<li><strong>Cross-platform</strong> - works on all platforms including WASM</li>
+<li><strong>Complete isolation</strong> - no interaction with host filesystem</li>
+<li><strong>Queryable</strong> - can inspect with SQLite tools</li>
+<li><strong>Encryption available</strong> - via <code>SqliteCipherBackend</code></li>
+</ul>
+<h4 id="disadvantages-1"><a class="header" href="#disadvantages-1">Disadvantages</a></h4>
+<ul>
+<li><strong>Slower than memory</strong> - database overhead on every operation</li>
+<li><strong>Single-writer</strong> - SQLite’s write lock limits concurrency</li>
+<li><strong>Large file tradeoffs</strong> - files &gt;100MB stored as BLOBs have higher memory pressure during operations</li>
+</ul>
+<h4 id="when-to-use-1"><a class="header" href="#when-to-use-1">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>Portable storage</td><td>✅ <strong>Ideal</strong> - single file, works everywhere</td></tr>
+<tr><td>Embedded databases</td><td>✅ <strong>Ideal</strong> - self-contained</td></tr>
+<tr><td>Sandboxed environments</td><td>✅ <strong>Good</strong> - complete isolation</td></tr>
+<tr><td>Encrypted storage</td><td>✅ <strong>Good</strong> - use SqliteCipherBackend</td></tr>
+<tr><td>Archive/backup</td><td>✅ <strong>Good</strong> - atomic, portable</td></tr>
+<tr><td>Large media files</td><td>✅ <strong>Works</strong> - higher memory pressure during I/O</td></tr>
+<tr><td>High-throughput I/O</td><td>⚠️ <strong>Tradeoff</strong> - database overhead vs MemoryBackend</td></tr>
+<tr><td>External tool access</td><td>❌ <strong>Avoid</strong> - files not on real filesystem</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE SqliteBackend when:</strong></p>
+<ul>
+<li>Need portable, single-file storage (easy to copy, backup, share)</li>
+<li>Building embedded/self-contained applications</li>
+<li>Complete isolation from host filesystem is required</li>
+<li>Want encryption (use SqliteCipherBackend)</li>
+<li>Need ACID transactions and crash recovery</li>
+<li>Cross-platform consistency is critical</li>
+</ul>
+<p><strong>❌ DON’T USE SqliteBackend when:</strong></p>
+<ul>
+<li>Files must be accessible to external tools (use VRootFsBackend)</li>
+<li>Minimizing memory pressure for very large files is critical (use IndexedBackend)</li>
+</ul>
+<hr>
+<h3 id="indexedbackend"><a class="header" href="#indexedbackend">IndexedBackend</a></h3>
+<p>A hybrid backend: <strong>virtual paths</strong> with <strong>disk-based content storage</strong>. Paths, directories, symlinks, and metadata are stored in an index database. File content is stored on the real filesystem as opaque blobs.</p>
+<blockquote>
+<p><strong>Feature:</strong> <code>indexed</code></p>
+<p><strong>Key insight:</strong> Same isolation model as SqliteBackend, but file content stored externally for native I/O performance with large files.</p>
+</blockquote>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{IndexedBackend, FileStorage};
+
+// Files stored in ./storage/, index in ./storage/index.db
+let fs = FileStorage::new(IndexedBackend::open("./storage")?);
+fs.write("/documents/report.pdf", &amp;pdf_bytes)?;
+// Actually stored as: ./storage/a1b2c3d4-5678-...-1704067200.bin
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works-2"><a class="header" href="#how-it-works-2">How It Works</a></h4>
+<pre><code>Virtual Path                    Real Storage
+─────────────────────────────────────────────────────
+/documents/report.pdf    →    ./storage/blobs/a1b2c3d4-...-1704067200.bin
+/images/photo.jpg        →    ./storage/blobs/b2c3d4e5-...-1704067201.bin
+/config.json             →    ./storage/blobs/c3d4e5f6-...-1704067202.bin
+
+index.db contains:
+┌─────────────────────────┬──────────────────────────────┬──────────┐
+│ virtual_path            │ blob_name                    │ metadata │
+├─────────────────────────┼──────────────────────────────┼──────────┤
+│ /documents/report.pdf   │ a1b2c3d4-...-1704067200.bin  │ {...}    │
+│ /images/photo.jpg       │ b2c3d4e5-...-1704067201.bin  │ {...}    │
+└─────────────────────────┴──────────────────────────────┴──────────┘
+</code></pre>
+<ul>
+<li><strong>Virtual filesystem, real content:</strong> Directory structure, paths, symlinks, and metadata are virtual (stored in <code>index.db</code>). Only raw file content lives on disk as opaque blobs.</li>
+<li>Files stored with UUID + timestamp names (flat, meaningless filenames)</li>
+<li><code>index.db</code> SQLite database maps virtual paths to blob names</li>
+<li>Symlinks and hard links are simulated in the index (not OS symlinks)</li>
+<li>Path resolution handled by AnyFS framework (Type 1 backend)</li>
+<li>File content streamed directly from disk (native I/O performance)</li>
+</ul>
+<h4 id="performance-2"><a class="header" href="#performance-2">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read/Write</td><td>🟢 <strong>Fast</strong></td><td>Native disk I/O for content</td></tr>
+<tr><td>Path Resolution</td><td>🟡 <strong>Moderate</strong></td><td>Index lookup + disk access</td></tr>
+<tr><td>Large Files</td><td>✅ <strong>Excellent</strong></td><td>Streamed directly from disk</td></tr>
+<tr><td>Metadata Ops</td><td>🟢 <strong>Fast</strong></td><td>Index-only, no disk I/O</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages-2"><a class="header" href="#advantages-2">Advantages</a></h4>
+<ul>
+<li><strong>Native file I/O</strong> - content stored as raw files, fast streaming</li>
+<li><strong>Large file support</strong> - no memory constraints, unlike SqliteBackend BLOBs</li>
+<li><strong>Complete path isolation</strong> - virtual paths, same as SqliteBackend</li>
+<li><strong>Inspectable</strong> - can see blob files on disk (though with opaque names)</li>
+<li><strong>Cross-platform</strong> - works identically on all platforms</li>
+</ul>
+<h4 id="disadvantages-2"><a class="header" href="#disadvantages-2">Disadvantages</a></h4>
+<ul>
+<li><strong>Index dependency</strong> - losing <code>index.db</code> = losing virtual structure (blobs become orphaned)</li>
+<li><strong>Two-component backup</strong> - must copy directory + index.db together</li>
+<li><strong>Content exposure</strong> - blob files are readable on disk (paths are hidden, content is not)</li>
+<li><strong>Not single-file portable</strong> - unlike SqliteBackend</li>
+</ul>
+<h4 id="when-to-use-2"><a class="header" href="#when-to-use-2">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>Large file storage</td><td>✅ <strong>Ideal</strong> - native I/O performance</td></tr>
+<tr><td>Media libraries</td><td>✅ <strong>Ideal</strong> - stream large videos/images</td></tr>
+<tr><td>Document management</td><td>✅ <strong>Good</strong> - virtual paths + fast I/O</td></tr>
+<tr><td>Sandboxed + large files</td><td>✅ <strong>Ideal</strong> - virtual paths, real I/O</td></tr>
+<tr><td>Single-file portability</td><td>❌ <strong>Avoid</strong> - use SqliteBackend</td></tr>
+<tr><td>Content confidentiality</td><td>⚠️ <strong>Wrap</strong> - use Encryption middleware for protection</td></tr>
+<tr><td>WASM/Browser</td><td>❌ <strong>Avoid</strong> - requires real filesystem</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE IndexedBackend when:</strong></p>
+<ul>
+<li>Storing large files (videos, images, documents &gt;100MB)</li>
+<li>Need native I/O performance for streaming content</li>
+<li>Building media libraries or document management systems</li>
+<li>Want virtual path isolation but with real disk performance</li>
+<li>Files are large but path structure should be sandboxed</li>
+</ul>
+<p><strong>❌ DON’T USE IndexedBackend when:</strong></p>
+<ul>
+<li>Need single-file portability (use SqliteBackend)</li>
+<li>Content must be hidden from host filesystem (use SqliteBackend or SqliteCipherBackend)</li>
+<li>Need WASM/browser support (use MemoryBackend or SqliteBackend)</li>
+</ul>
+<blockquote>
+<p>🔒 <strong>Encryption Tip:</strong> If you need large file performance but content confidentiality matters, wrap IndexedBackend with <code>Encryption&lt;B&gt;</code> middleware to encrypt blob contents at rest. This protects data while preserving native I/O streaming.</p>
+</blockquote>
+<hr>
+<h2 id="type-2-real-filesystem-backends-1"><a class="header" href="#type-2-real-filesystem-backends-1">Type 2: Real Filesystem Backends</a></h2>
+<h3 id="stdfsbackend"><a class="header" href="#stdfsbackend">StdFsBackend</a></h3>
+<p>Direct delegation to <code>std::fs</code>. Every call maps 1:1 to the standard library.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{StdFsBackend, FileStorage};
+
+let fs = FileStorage::new(StdFsBackend::new());
+fs.write("/tmp/data.txt", b"Hello")?; // Actually writes to /tmp/data.txt
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works-3"><a class="header" href="#how-it-works-3">How It Works</a></h4>
+<ul>
+<li>Every method directly calls the equivalent <code>std::fs</code> function</li>
+<li>Paths passed through unchanged</li>
+<li>OS handles all resolution, symlinks, permissions</li>
+<li>Implements <code>SelfResolving</code> marker (FileStorage skips virtual resolution)</li>
+</ul>
+<h4 id="performance-3"><a class="header" href="#performance-3">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read/Write</td><td>🟢 <strong>Normal</strong></td><td>Native OS speed</td></tr>
+<tr><td>Path Resolution</td><td>⚡ <strong>Fast</strong></td><td>OS kernel handles it</td></tr>
+<tr><td>Symlinks</td><td>✅ <strong>Native</strong></td><td>OS behavior</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages-3"><a class="header" href="#advantages-3">Advantages</a></h4>
+<ul>
+<li><strong>Zero overhead</strong> - direct OS calls</li>
+<li><strong>Full compatibility</strong> - works with all existing files</li>
+<li><strong>Native features</strong> - OS permissions, ACLs, xattrs</li>
+<li><strong>Middleware-ready</strong> - add Quota, Tracing, etc. to real filesystem</li>
+</ul>
+<h4 id="disadvantages-3"><a class="header" href="#disadvantages-3">Disadvantages</a></h4>
+<ul>
+<li><strong>No isolation</strong> - full filesystem access</li>
+<li><strong>No containment</strong> - paths can escape anywhere</li>
+<li><strong>Platform differences</strong> - Windows vs Unix behavior</li>
+<li><strong>Security risk</strong> - must trust path inputs</li>
+</ul>
+<h4 id="when-to-use-3"><a class="header" href="#when-to-use-3">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>Adding middleware to real FS</td><td>✅ <strong>Ideal</strong> - wrap with Quota, Tracing</td></tr>
+<tr><td>Trusted environments</td><td>✅ <strong>Good</strong> - when isolation not needed</td></tr>
+<tr><td>Migration path</td><td>✅ <strong>Good</strong> - gradually add AnyFS features</td></tr>
+<tr><td>Full host FS features</td><td>✅ <strong>Good</strong> - ACLs, xattrs, etc.</td></tr>
+<tr><td>Untrusted input</td><td>❌ <strong>Never</strong> - use VRootFsBackend</td></tr>
+<tr><td>Sandboxing</td><td>❌ <strong>Never</strong> - no containment whatsoever</td></tr>
+<tr><td>Multi-tenant systems</td><td>❌ <strong>Avoid</strong> - use virtual backends</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE StdFsBackend when:</strong></p>
+<ul>
+<li>Adding middleware (Quota, Tracing, etc.) to real filesystem operations</li>
+<li>Operating in a fully trusted environment with controlled inputs</li>
+<li>Migrating existing code to AnyFS incrementally</li>
+<li>Need full access to host filesystem features (ACLs, xattrs)</li>
+<li>Building tools that work with user’s actual files</li>
+</ul>
+<p><strong>❌ DON’T USE StdFsBackend when:</strong></p>
+<ul>
+<li>Handling untrusted path inputs (use VRootFsBackend)</li>
+<li>Any form of sandboxing is required (no containment!)</li>
+<li>Building multi-tenant systems (use virtual backends)</li>
+<li>Security isolation matters at all</li>
+</ul>
+<blockquote>
+<p>⚠️ <strong>Security Warning:</strong> StdFsBackend provides <strong>ZERO isolation</strong>. Paths like <code>../../etc/passwd</code> will work. Only use with fully trusted, controlled inputs.</p>
+</blockquote>
+<hr>
+<h3 id="vrootfsbackend"><a class="header" href="#vrootfsbackend">VRootFsBackend</a></h3>
+<p>Sets a directory as a virtual root. All operations are contained within it.</p>
+<blockquote>
+<p><strong>Feature:</strong> <code>vrootfs</code></p>
+</blockquote>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{VRootFsBackend, FileStorage};
+
+// /home/user/sandbox becomes the virtual "/"
+let fs = FileStorage::new(VRootFsBackend::new("/home/user/sandbox")?);
+
+fs.write("/data.txt", b"Hello")?; 
+// Actually writes to: /home/user/sandbox/data.txt
+
+fs.read("/../../../etc/passwd")?;
+// Resolves to: /home/user/sandbox/etc/passwd (clamped!)
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works-4"><a class="header" href="#how-it-works-4">How It Works</a></h4>
+<ul>
+<li>Configured with a real directory as the “virtual root”</li>
+<li>All paths are validated and clamped to stay within root</li>
+<li>Uses <code>strict-path</code> crate for escape prevention</li>
+<li>Symlinks are followed but targets validated</li>
+<li>Implements <code>SelfResolving</code> marker (OS handles resolution after validation)</li>
+</ul>
+<pre><code>Virtual Path          Validation              Real Path
+───────────────────────────────────────────────────────────────
+/data.txt        →   validate &amp; join    →   /home/user/sandbox/data.txt
+/../../../etc    →   clamp to root      →   /home/user/sandbox/etc
+/link → /tmp     →   validate target    →   ERROR or clamped
+</code></pre>
+<h4 id="performance-4"><a class="header" href="#performance-4">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read/Write</td><td>🟡 <strong>Moderate</strong></td><td>Validation overhead</td></tr>
+<tr><td>Path Resolution</td><td>🐢 <strong>Slower</strong></td><td>Extra I/O for symlink checks</td></tr>
+<tr><td>Symlink Following</td><td>🐢 <strong>Slower</strong></td><td>Must validate each hop</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages-4"><a class="header" href="#advantages-4">Advantages</a></h4>
+<ul>
+<li><strong>Path containment</strong> - cannot escape virtual root</li>
+<li><strong>Real file access</strong> - native OS performance for content</li>
+<li><strong>Symlink safety</strong> - targets validated against root</li>
+<li><strong>Drop-in sandboxing</strong> - wrap existing directories</li>
+</ul>
+<h4 id="disadvantages-4"><a class="header" href="#disadvantages-4">Disadvantages</a></h4>
+<ul>
+<li><strong>Performance overhead</strong> - validation on every operation</li>
+<li><strong>Extra I/O</strong> - symlink following requires <code>lstat</code> calls</li>
+<li><strong>Platform quirks</strong> - symlink behavior varies (especially Windows)</li>
+<li><strong>Theoretical edge cases</strong> - TOCTOU races exist but are difficult to exploit</li>
+</ul>
+<h4 id="when-to-use-4"><a class="header" href="#when-to-use-4">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>User uploads directory</td><td>✅ <strong>Ideal</strong> - contain user content</td></tr>
+<tr><td>Plugin sandboxing</td><td>✅ <strong>Good</strong> - limit plugin file access</td></tr>
+<tr><td>Chroot-like isolation</td><td>✅ <strong>Good</strong> - without actual chroot</td></tr>
+<tr><td>AI agent workspaces</td><td>✅ <strong>Good</strong> - bound agent to directory</td></tr>
+<tr><td>Real FS + path containment</td><td>✅ <strong>Ideal</strong> - native I/O with boundaries</td></tr>
+<tr><td>Maximum security</td><td>⚠️ <strong>Careful</strong> - theoretical TOCTOU exists</td></tr>
+<tr><td>Cross-platform symlinks</td><td>⚠️ <strong>Careful</strong> - Windows behavior differs</td></tr>
+<tr><td>Complete host isolation</td><td>❌ <strong>Avoid</strong> - use SqliteBackend instead</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE VRootFsBackend when:</strong></p>
+<ul>
+<li>Containing user-uploaded content to a specific directory</li>
+<li>Sandboxing plugins, extensions, or untrusted code</li>
+<li>Need chroot-like isolation without actual chroot privileges</li>
+<li>Building AI agent workspaces with filesystem boundaries</li>
+<li>Want real filesystem performance with path containment</li>
+</ul>
+<p><strong>❌ DON’T USE VRootFsBackend when:</strong></p>
+<ul>
+<li>Maximum security required (theoretical TOCTOU edge cases exist - use MemoryBackend)</li>
+<li>Need highest I/O performance (validation adds overhead)</li>
+<li>Cross-platform symlink consistency is critical (Windows differs)</li>
+<li>Want complete isolation from host (use SqliteBackend)</li>
+</ul>
+<blockquote>
+<p>🔒 <strong>Encryption Tip:</strong> For sensitive data in sandboxed directories (user uploads, plugin workspaces, AI agent data), wrap VRootFsBackend with <code>Encryption&lt;B&gt;</code> middleware. This ensures files written to the host filesystem are encrypted at rest, protecting against host-level access.</p>
+</blockquote>
+<hr>
+<h2 id="composition-middleware"><a class="header" href="#composition-middleware">Composition Middleware</a></h2>
+<h3 id="overlaybase-upper"><a class="header" href="#overlaybase-upper">Overlay&lt;Base, Upper&gt;</a></h3>
+<p>Union filesystem middleware combining a read-only base with a writable upper layer.</p>
+<blockquote>
+<p><strong>Note:</strong> Overlay is middleware (in <code>anyfs/middleware/overlay.rs</code>), not a standalone backend. It composes two backends into a layered view.</p>
+</blockquote>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{SqliteBackend, MemoryBackend, Overlay, FileStorage};
+
+// Base: read-only template
+let base = SqliteBackend::open("template.db")?;
+
+// Upper: writable scratch layer  
+let upper = MemoryBackend::new();
+
+let fs = FileStorage::new(Overlay::new(base, upper));
+
+// Read: checks upper first, falls back to base
+let data = fs.read("/config.txt")?;
+
+// Write: always goes to upper
+fs.write("/config.txt", b"modified")?;
+
+// Delete: creates "whiteout" in upper, shadows base
+fs.remove_file("/unwanted.txt")?;
+<span class="boring">}</span></code></pre>
+<h4 id="how-it-works-5"><a class="header" href="#how-it-works-5">How It Works</a></h4>
+<pre><code>┌─────────────────────────────────────────────────┐
+│                  Overlay&lt;B, U&gt;                  │
+├─────────────────────────────────────────────────┤
+│  Read:   upper.exists(path)?                    │
+│            → upper.read(path)                   │
+│            : base.read(path)                    │
+│                                                 │
+│  Write:  upper.write(path, data)                │
+│          (base unchanged)                       │
+│                                                 │
+│  Delete: upper.mark_whiteout(path)              │
+│          (shadows base, doesn't delete it)      │
+│                                                 │
+│  List:   merge(base.read_dir(), upper.read_dir())│
+│          - exclude whiteouts                    │
+└─────────────────────────────────────────────────┘
+
+         ┌──────────────┐
+         │    Upper     │  ← Writes go here
+         │ (MemoryFs)   │  ← Modifications stored here
+         │              │  ← Whiteouts (deletions) here
+         └──────┬───────┘
+                │ if not found
+                ▼
+         ┌──────────────┐
+         │     Base     │  ← Read-only layer
+         │ (SqliteFs)   │  ← Original/template data
+         │              │  ← Never modified
+         └──────────────┘
+</code></pre>
+<ul>
+<li><strong>Reads:</strong> Check upper layer first, fall back to base</li>
+<li><strong>Writes:</strong> Always go to upper layer (base is read-only)</li>
+<li><strong>Deletes:</strong> Create “whiteout” marker in upper (shadows base file)</li>
+<li><strong>Directory listing:</strong> Merge both layers, exclude whiteouts</li>
+</ul>
+<h4 id="performance-5"><a class="header" href="#performance-5">Performance</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Speed</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>Read (upper hit)</td><td>⚡ <strong>Fast</strong></td><td>Single layer lookup</td></tr>
+<tr><td>Read (base fallback)</td><td>🟡 <strong>Moderate</strong></td><td>Two-layer lookup</td></tr>
+<tr><td>Write</td><td>Depends on upper</td><td>Upper layer speed</td></tr>
+<tr><td>Directory listing</td><td>🐢 <strong>Slower</strong></td><td>Must merge both layers</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="advantages-5"><a class="header" href="#advantages-5">Advantages</a></h4>
+<ul>
+<li><strong>Copy-on-write semantics</strong> - modifications don’t affect base</li>
+<li><strong>Instant rollback</strong> - discard upper layer to reset</li>
+<li><strong>Space efficient</strong> - only changes stored in upper</li>
+<li><strong>Template pattern</strong> - share base across multiple instances</li>
+<li><strong>Testing isolation</strong> - test against real data without modifying it</li>
+</ul>
+<h4 id="disadvantages-5"><a class="header" href="#disadvantages-5">Disadvantages</a></h4>
+<ul>
+<li><strong>Complexity</strong> - whiteout handling, merge logic</li>
+<li><strong>Directory listing overhead</strong> - must combine and filter</li>
+<li><strong>Two backends to manage</strong> - lifecycle of both layers</li>
+<li><strong>Not true CoW</strong> - doesn’t deduplicate at block level</li>
+</ul>
+<h4 id="when-to-use-5"><a class="header" href="#when-to-use-5">When to Use</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommendation</th></tr>
+</thead>
+<tbody>
+<tr><td>Container images</td><td>✅ <strong>Ideal</strong> - base image + writable layer</td></tr>
+<tr><td>Template filesystems</td><td>✅ <strong>Ideal</strong> - shared base, per-user upper</td></tr>
+<tr><td>Testing with real data</td><td>✅ <strong>Ideal</strong> - modify without consequences</td></tr>
+<tr><td>Rollback capability</td><td>✅ <strong>Good</strong> - discard upper to reset</td></tr>
+<tr><td>Git-like branching</td><td>✅ <strong>Good</strong> - branch = new upper layer</td></tr>
+<tr><td>Simple use cases</td><td>❌ <strong>Overkill</strong> - use single backend</td></tr>
+<tr><td>Block-level CoW</td><td>❌ <strong>Avoid</strong> - Overlay is file-level</td></tr>
+<tr><td>Dir listing perf</td><td>❌ <strong>Avoid</strong> - merge overhead on listings</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>✅ USE Overlay when:</strong></p>
+<ul>
+<li>Building container-like systems (base image + writable layer)</li>
+<li>Sharing a template filesystem across multiple instances</li>
+<li>Testing against production data without modifying it</li>
+<li>Need instant rollback capability (discard upper layer)</li>
+<li>Implementing git-like branching at filesystem level</li>
+</ul>
+<p><strong>❌ DON’T USE Overlay when:</strong></p>
+<ul>
+<li>Simple, single-purpose filesystem (unnecessary complexity)</li>
+<li>Need block-level copy-on-write (Overlay is file-level)</li>
+<li>Directory listing performance is critical (merge overhead)</li>
+<li>Don’t need layered semantics (use single backend)</li>
+</ul>
+<hr>
+<h2 id="backend-selection-guide"><a class="header" href="#backend-selection-guide">Backend Selection Guide</a></h2>
+<h3 id="quick-decision-tree"><a class="header" href="#quick-decision-tree">Quick Decision Tree</a></h3>
+<pre><code>Do you need persistence?
+├─ No → MemoryBackend
+└─ Yes
+   ├─ Single portable file? → SqliteBackend
+   ├─ Large files + path isolation? → IndexedBackend
+   └─ Access existing files on disk?
+      ├─ Need containment? → VRootFsBackend  
+      └─ Trusted environment? → StdFsBackend
+</code></pre>
+<h3 id="comparison-matrix"><a class="header" href="#comparison-matrix">Comparison Matrix</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th>Speed</th><th>Isolation</th><th>Persistence</th><th>Large Files</th><th>WASM</th></tr>
+</thead>
+<tbody>
+<tr><td>MemoryBackend</td><td>⚡ Very Fast</td><td>✅ Complete</td><td>❌ None</td><td>⚠️ RAM-limited</td><td>✅</td></tr>
+<tr><td>SqliteBackend</td><td>🐢 Slower</td><td>✅ Complete</td><td>✅ Single file</td><td>✅ Supported</td><td>✅</td></tr>
+<tr><td>IndexedBackend</td><td>🟢 Fast</td><td>✅ Complete</td><td>✅ Directory</td><td>✅ Native I/O</td><td>❌</td></tr>
+<tr><td>StdFsBackend</td><td>🟢 Normal</td><td>❌ None</td><td>✅ Native</td><td>✅ Native</td><td>❌</td></tr>
+<tr><td>VRootFsBackend</td><td>🟡 Moderate</td><td>✅ Strong</td><td>✅ Native</td><td>✅ Native</td><td>❌</td></tr>
+<tr><td>Overlay</td><td>Varies</td><td>Varies</td><td>Varies</td><td>Varies</td><td>Varies</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="by-use-case"><a class="header" href="#by-use-case">By Use Case</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>Recommended</th></tr>
+</thead>
+<tbody>
+<tr><td>Unit testing</td><td>MemoryBackend</td></tr>
+<tr><td>Integration testing</td><td>MemoryBackend or SqliteBackend</td></tr>
+<tr><td>Portable application data</td><td>SqliteBackend</td></tr>
+<tr><td>Encrypted storage</td><td>SqliteCipherBackend</td></tr>
+<tr><td>Large file + isolation</td><td>IndexedBackend</td></tr>
+<tr><td>Media libraries</td><td>IndexedBackend</td></tr>
+<tr><td>Plugin/agent sandboxing</td><td>VRootFsBackend</td></tr>
+<tr><td>Adding middleware to real FS</td><td>StdFsBackend</td></tr>
+<tr><td>Container-like isolation</td><td>Overlay&lt;SqliteBackend, MemoryBackend&gt;</td></tr>
+<tr><td>Template with modifications</td><td>Overlay&lt;Base, Upper&gt;</td></tr>
+<tr><td>WASM/Browser</td><td>MemoryBackend or SqliteBackend</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="platform-compatibility"><a class="header" href="#platform-compatibility">Platform Compatibility</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend</th><th style="text-align: center">Windows</th><th style="text-align: center">Linux</th><th style="text-align: center">macOS</th><th style="text-align: center">WASM</th></tr>
+</thead>
+<tbody>
+<tr><td>MemoryBackend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td></tr>
+<tr><td>SqliteBackend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅*</td></tr>
+<tr><td>IndexedBackend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
+<tr><td>StdFsBackend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
+<tr><td>VRootFsBackend</td><td style="text-align: center">✅**</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
+<tr><td>Overlay</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">Varies</td></tr>
+</tbody>
+</table>
+</div>
+<p>* Requires wasm32-compatible SQLite build<br>** Windows symlinks require elevated privileges or Developer Mode</p>
+<hr>
+<h2 id="common-mistakes-to-avoid"><a class="header" href="#common-mistakes-to-avoid">Common Mistakes to Avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>❌ Mistake</th><th>✅ Instead</th></tr>
+</thead>
+<tbody>
+<tr><td>Using <code>StdFsBackend</code> with user-provided paths</td><td>Use <code>VRootFsBackend</code> - it prevents <code>../../etc/passwd</code> attacks</td></tr>
+<tr><td>Using <code>MemoryBackend</code> for data that must survive restart</td><td>Use <code>SqliteBackend</code> for persistence, or call <code>save_to()</code> to serialize</td></tr>
+<tr><td>Expecting identical symlink behavior across platforms with <code>VRootFsBackend</code></td><td>Use <code>MemoryBackend</code> or <code>SqliteBackend</code> for consistent cross-platform symlinks</td></tr>
+<tr><td>Using <code>Overlay</code> when a simple backend would suffice</td><td>Keep it simple - use <code>Overlay</code> only when you need true layered semantics</td></tr>
+</tbody>
+</table>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../traits/files-container.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../guides/which-layer.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../traits/files-container.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../guides/which-layer.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

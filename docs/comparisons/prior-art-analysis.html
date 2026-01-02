@@ -1,49 +1,46 @@
 <!DOCTYPE HTML>
 <html lang="en" class="rust sidebar-visible" dir="ltr">
-
-<head>
-    <!-- Book generated using mdBook -->
-    <meta charset="UTF-8">
-    <title>Prior Art Analysis - AnyFS Ecosystem Manual</title>
-
-
-    <!-- Custom HTML head -->
-
-    <meta name="description"
-        content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
-
-    <link rel="icon" href="../favicon-de23e50b.svg">
-    <link rel="shortcut icon" href="../favicon-8114d1fc.png">
-    <link rel="stylesheet" href="../css/variables-8adf115d.css">
-    <link rel="stylesheet" href="../css/general-2459343d.css">
-    <link rel="stylesheet" href="../css/chrome-ae938929.css">
-    <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
-
-    <!-- Fonts -->
-    <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
-
-    <!-- Highlight.js Stylesheets -->
-    <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
-    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
-    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
-
-    <!-- Custom theme stylesheets -->
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Prior Art Analysis - AnyFS Ecosystem Manual</title>
 
 
-    <!-- Provide site root and default themes to javascript -->
-    <script>
-        const path_to_root = "../";
-        const default_light_theme = "rust";
-        const default_dark_theme = "coal";
-        window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
-    </script>
-    <!-- Start loading toc.js asap -->
-    <script src="../toc-30b1f61e.js"></script>
-</head>
+        <!-- Custom HTML head -->
 
-<body>
+        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "rust";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex-0cc552b6.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-f2dc2851.js"></script>
+    </head>
+    <body>
     <div id="mdbook-help-container">
         <div id="mdbook-help-popup">
             <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
@@ -76,7 +73,7 @@
         <script>
             const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
             let theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
             html.classList.remove('rust')
@@ -91,7 +88,7 @@
             let sidebar = null;
             const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
@@ -121,46 +118,22 @@
                 <div id="mdbook-menu-bar-hover-placeholder"></div>
                 <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor"
-                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
-                            aria-controls="mdbook-sidebar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z" />
-                                </svg></span>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
                         </label>
-                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme"
-                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
-                            aria-controls="mdbook-theme-list">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z" />
-                                </svg></span>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme"
-                                    id="mdbook-theme-default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button>
-                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
                         </ul>
-                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)"
-                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s"
-                            aria-controls="mdbook-searchbar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z" />
-                                </svg></span>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
                         </button>
                     </div>
 
@@ -168,27 +141,13 @@
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
-                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z" />
-                                </svg></span>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository"
-                            aria-label="Git repository">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/comparisons/prior-art-analysis.md"
-                            title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
-                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/comparisons/prior-art-analysis.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
                     </div>
@@ -197,15 +156,9 @@
                 <div id="mdbook-search-wrapper" class="hidden">
                     <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="mdbook-searchbar" name="searchbar"
-                                placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer"
-                                aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                        <path
-                                            d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z" />
-                                    </svg></span>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
                             </div>
                         </div>
                     </form>
@@ -220,114 +173,50 @@
                 <script>
                     document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function (link) {
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="prior-art-analysis-filesystem-abstraction-libraries"><a class="header"
-                                href="#prior-art-analysis-filesystem-abstraction-libraries">Prior Art Analysis:
-                                Filesystem Abstraction Libraries</a></h1>
-                        <p>This document analyzes filesystem abstraction libraries in other languages to learn from
-                            their successes, identify features we should adopt, and avoid known vulnerabilities.</p>
-                        <hr>
-                        <h2 id="executive-summary"><a class="header" href="#executive-summary">Executive Summary</a>
-                        </h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Library</th>
-                                        <th>Language</th>
-                                        <th>Key Strength</th>
-                                        <th>Key Weakness</th>
-                                        <th>What We Can Learn</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><a href="https://filesystem-spec.readthedocs.io/">fsspec</a></td>
-                                        <td>Python</td>
-                                        <td>Async + caching + data science integration</td>
-                                        <td>No middleware composition</td>
-                                        <td>Caching strategies, async design</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem2</a>
-                                        </td>
-                                        <td>Python</td>
-                                        <td>Clean URL-based API</td>
-                                        <td>Symlink handling issues</td>
-                                        <td>Path normalization</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/spf13/afero">Afero</a></td>
-                                        <td>Go</td>
-                                        <td>Composition (CopyOnWrite, Cache, BasePathFs)</td>
-                                        <td>Symlink escape in BasePathFs</td>
-                                        <td>Composition patterns</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://commons.apache.org/vfs/">Apache Commons VFS</a></td>
-                                        <td>Java</td>
-                                        <td>Enterprise-grade, many backends</td>
-                                        <td><strong>CVE: Path traversal with encoded <code>..</code></strong></td>
-                                        <td>URL encoding attacks</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a
-                                                href="https://github.com/TestableIO/System.IO.Abstractions">System.IO.Abstractions</a>
-                                        </td>
-                                        <td>.NET</td>
-                                        <td>Perfect for testing, mirrors System.IO</td>
-                                        <td>No middleware/composition</td>
-                                        <td>MockFileSystem patterns</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/streamich/memfs">memfs</a></td>
-                                        <td>Node.js</td>
-                                        <td>Browser + Node unified API</td>
-                                        <td>Fork exists due to “longstanding bugs”</td>
-                                        <td>In-memory implementation</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/DK26/soft-canonicalize-rs">soft-canonicalize</a>
-                                        </td>
-                                        <td>Rust</td>
-                                        <td>Non-existing path resolution, TOCTOU-safe</td>
-                                        <td>Real FS only (not virtual)</td>
-                                        <td>Attack patterns to defend</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/DK26/strict-path-rs">strict-path</a></td>
-                                        <td>Rust</td>
-                                        <td>19+ attack types blocked, type-safe markers</td>
-                                        <td>Real FS only (not virtual)</td>
-                                        <td>Attack catalog for testing</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="detailed-analysis"><a class="header" href="#detailed-analysis">Detailed Analysis</a>
-                        </h2>
-                        <h3 id="1-python-fsspec"><a class="header" href="#1-python-fsspec">1. Python: fsspec</a></h3>
-                        <p><strong>Repository:</strong> <a
-                                href="https://github.com/fsspec/filesystem_spec">fsspec/filesystem_spec</a></p>
-                        <p><strong>What they do well:</strong></p>
-                        <ol>
-                            <li>
-                                <p><strong>Unified Interface Across 20+ Backends</strong></p>
-                                <ul>
-                                    <li>Local, S3, GCS, Azure, HDFS, HTTP, FTP, SFTP, ZIP, TAR, Git, etc.</li>
-                                    <li>Same API regardless of backend</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>Sophisticated Caching</strong></p>
-                                <pre><code class="language-python"># Block-wise caching - only download accessed parts
+                        <h1 id="prior-art-analysis-filesystem-abstraction-libraries"><a class="header" href="#prior-art-analysis-filesystem-abstraction-libraries">Prior Art Analysis: Filesystem Abstraction Libraries</a></h1>
+<p>This document analyzes filesystem abstraction libraries in other languages to learn from their successes, identify features we should adopt, and avoid known vulnerabilities.</p>
+<hr>
+<h2 id="executive-summary"><a class="header" href="#executive-summary">Executive Summary</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Library</th><th>Language</th><th>Key Strength</th><th>Key Weakness</th><th>What We Can Learn</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="https://filesystem-spec.readthedocs.io/">fsspec</a></td><td>Python</td><td>Async + caching + data science integration</td><td>No middleware composition</td><td>Caching strategies, async design</td></tr>
+<tr><td><a href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem2</a></td><td>Python</td><td>Clean URL-based API</td><td>Symlink handling issues</td><td>Path normalization</td></tr>
+<tr><td><a href="https://github.com/spf13/afero">Afero</a></td><td>Go</td><td>Composition (CopyOnWrite, Cache, BasePathFs)</td><td>Symlink escape in BasePathFs</td><td>Composition patterns</td></tr>
+<tr><td><a href="https://commons.apache.org/vfs/">Apache Commons VFS</a></td><td>Java</td><td>Enterprise-grade, many backends</td><td><strong>CVE: Path traversal with encoded <code>..</code></strong></td><td>URL encoding attacks</td></tr>
+<tr><td><a href="https://github.com/TestableIO/System.IO.Abstractions">System.IO.Abstractions</a></td><td>.NET</td><td>Perfect for testing, mirrors System.IO</td><td>No middleware/composition</td><td>MockFileSystem patterns</td></tr>
+<tr><td><a href="https://github.com/streamich/memfs">memfs</a></td><td>Node.js</td><td>Browser + Node unified API</td><td>Fork exists due to “longstanding bugs”</td><td>In-memory implementation</td></tr>
+<tr><td><a href="https://github.com/DK26/soft-canonicalize-rs">soft-canonicalize</a></td><td>Rust</td><td>Non-existing path resolution, TOCTOU-safe</td><td>Real FS only (not virtual)</td><td>Attack patterns to defend</td></tr>
+<tr><td><a href="https://github.com/DK26/strict-path-rs">strict-path</a></td><td>Rust</td><td>19+ attack types blocked, type-safe markers</td><td>Real FS only (not virtual)</td><td>Attack catalog for testing</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="detailed-analysis"><a class="header" href="#detailed-analysis">Detailed Analysis</a></h2>
+<h3 id="1-python-fsspec"><a class="header" href="#1-python-fsspec">1. Python: fsspec</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/fsspec/filesystem_spec">fsspec/filesystem_spec</a></p>
+<p><strong>What they do well:</strong></p>
+<ol>
+<li>
+<p><strong>Unified Interface Across 20+ Backends</strong></p>
+<ul>
+<li>Local, S3, GCS, Azure, HDFS, HTTP, FTP, SFTP, ZIP, TAR, Git, etc.</li>
+<li>Same API regardless of backend</li>
+</ul>
+</li>
+<li>
+<p><strong>Sophisticated Caching</strong></p>
+<pre><code class="language-python"># Block-wise caching - only download accessed parts
 fs = fsspec.filesystem('blockcache', target_protocol='s3',
                        cache_storage='/tmp/cache')
 
@@ -335,123 +224,92 @@ fs = fsspec.filesystem('blockcache', target_protocol='s3',
 fs = fsspec.filesystem('filecache', target_protocol='s3',
                        cache_storage='/tmp/cache')
 </code></pre>
-                            </li>
-                            <li>
-                                <p><strong>Async Support</strong></p>
-                                <ul>
-                                    <li><code>AsyncFileSystem</code> base class for async implementations</li>
-                                    <li>Concurrent bulk operations (<code>cat</code> fetches many files at once)</li>
-                                    <li>Used by Dask for parallel data processing</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>Data Science Integration</strong></p>
-                                <ul>
-                                    <li>Native integration with Pandas, Dask, Intake</li>
-                                    <li>Parquet optimization with parallel chunk fetching</li>
-                                </ul>
-                            </li>
-                        </ol>
-                        <p><strong>What we should adopt:</strong></p>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Block-wise caching strategy (not just whole-file
-                                LRU)</li>
-                            <li><input disabled="" type="checkbox"> Async design from the start (our ADR-024 async plan)
-                            </li>
-                            <li><input disabled="" type="checkbox"> Consider “parts caching” for large file access
-                                patterns</li>
-                        </ul>
-                        <p><strong>What they lack that we have:</strong></p>
-                        <ul>
-                            <li>No middleware composition pattern</li>
-                            <li>No quota/rate limiting built-in</li>
-                            <li>No path filtering/sandboxing</li>
-                        </ul>
-                        <hr>
-                        <h3 id="2-python-pyfilesystem2"><a class="header" href="#2-python-pyfilesystem2">2. Python:
-                                PyFilesystem2</a></h3>
-                        <p><strong>Repository:</strong> <a
-                                href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem/pyfilesystem2</a></p>
-                        <p><strong>What they do well:</strong></p>
-                        <ol>
-                            <li>
-                                <p><strong>URL-based Filesystem Specification</strong></p>
-                                <pre><code class="language-python">from fs import open_fs
+</li>
+<li>
+<p><strong>Async Support</strong></p>
+<ul>
+<li><code>AsyncFileSystem</code> base class for async implementations</li>
+<li>Concurrent bulk operations (<code>cat</code> fetches many files at once)</li>
+<li>Used by Dask for parallel data processing</li>
+</ul>
+</li>
+<li>
+<p><strong>Data Science Integration</strong></p>
+<ul>
+<li>Native integration with Pandas, Dask, Intake</li>
+<li>Parquet optimization with parallel chunk fetching</li>
+</ul>
+</li>
+</ol>
+<p><strong>What we should adopt:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Block-wise caching strategy (not just whole-file LRU)</li>
+<li><input disabled="" type="checkbox"> Async design from the start (our ADR-024 async plan)</li>
+<li><input disabled="" type="checkbox"> Consider “parts caching” for large file access patterns</li>
+</ul>
+<p><strong>What they lack that we have:</strong></p>
+<ul>
+<li>No middleware composition pattern</li>
+<li>No quota/rate limiting built-in</li>
+<li>No path filtering/sandboxing</li>
+</ul>
+<hr>
+<h3 id="2-python-pyfilesystem2"><a class="header" href="#2-python-pyfilesystem2">2. Python: PyFilesystem2</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem/pyfilesystem2</a></p>
+<p><strong>What they do well:</strong></p>
+<ol>
+<li>
+<p><strong>URL-based Filesystem Specification</strong></p>
+<pre><code class="language-python">from fs import open_fs
 
 home_fs = open_fs('osfs://~/')
 zip_fs = open_fs('zip://foo.zip')
 ftp_fs = open_fs('ftp://ftp.example.com')
 mem_fs = open_fs('mem://')
 </code></pre>
-                            </li>
-                            <li>
-                                <p><strong>Consistent Path Handling</strong></p>
-                                <ul>
-                                    <li>Forward slashes everywhere (even on Windows)</li>
-                                    <li>Paths normalized automatically</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>Glob Support Built-in</strong></p>
-                                <pre><code class="language-python">for match in fs.glob('**/*.py'):
+</li>
+<li>
+<p><strong>Consistent Path Handling</strong></p>
+<ul>
+<li>Forward slashes everywhere (even on Windows)</li>
+<li>Paths normalized automatically</li>
+</ul>
+</li>
+<li>
+<p><strong>Glob Support Built-in</strong></p>
+<pre><code class="language-python">for match in fs.glob('**/*.py'):
     print(match.path)
 </code></pre>
-                            </li>
-                        </ol>
-                        <p><strong>Known Issues (from GitHub):</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Issue</th>
-                                        <th>Description</th>
-                                        <th>Impact</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">#171</a>
-                                        </td>
-                                        <td>Symlink loops cause infinite recursion</td>
-                                        <td>DoS potential</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/417">#417</a>
-                                        </td>
-                                        <td>No symlink creation support</td>
-                                        <td>Missing feature</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/411">#411</a>
-                                        </td>
-                                        <td>Incorrect handling of symlinks with non-existing targets</td>
-                                        <td>Broken functionality</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/61">#61</a>
-                                        </td>
-                                        <td>Symlinks not detected properly</td>
-                                        <td>Security concern</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Lessons for AnyFS:</strong></p>
-                        <ul>
-                            <li>⚠️ <strong>Symlink handling is complex</strong> - we must handle loops, non-existent
-                                targets, and escaping</li>
-                            <li>✅ <strong>URL-based opening is convenient</strong> - consider for future</li>
-                            <li>✅ <strong>Consistent path format</strong> - we already do this (forward slashes always)
-                            </li>
-                        </ul>
-                        <hr>
-                        <h3 id="3-go-afero"><a class="header" href="#3-go-afero">3. Go: Afero</a></h3>
-                        <p><strong>Repository:</strong> <a href="https://github.com/spf13/afero">spf13/afero</a></p>
-                        <p><strong>What they do well:</strong></p>
-                        <ol>
-                            <li>
-                                <p><strong>Composition Pattern (Similar to Ours!)</strong></p>
-                                <pre><code class="language-go">// Sandboxing
+</li>
+</ol>
+<p><strong>Known Issues (from GitHub):</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Issue</th><th>Description</th><th>Impact</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">#171</a></td><td>Symlink loops cause infinite recursion</td><td>DoS potential</td></tr>
+<tr><td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/417">#417</a></td><td>No symlink creation support</td><td>Missing feature</td></tr>
+<tr><td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/411">#411</a></td><td>Incorrect handling of symlinks with non-existing targets</td><td>Broken functionality</td></tr>
+<tr><td><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/61">#61</a></td><td>Symlinks not detected properly</td><td>Security concern</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Lessons for AnyFS:</strong></p>
+<ul>
+<li>⚠️ <strong>Symlink handling is complex</strong> - we must handle loops, non-existent targets, and escaping</li>
+<li>✅ <strong>URL-based opening is convenient</strong> - consider for future</li>
+<li>✅ <strong>Consistent path format</strong> - we already do this (forward slashes always)</li>
+</ul>
+<hr>
+<h3 id="3-go-afero"><a class="header" href="#3-go-afero">3. Go: Afero</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/spf13/afero">spf13/afero</a></p>
+<p><strong>What they do well:</strong></p>
+<ol>
+<li>
+<p><strong>Composition Pattern (Similar to Ours!)</strong></p>
+<pre><code class="language-go">// Sandboxing
 baseFs := afero.NewOsFs()
 restrictedFs := afero.NewBasePathFs(baseFs, "/var/data")
 
@@ -461,81 +319,58 @@ cachedFs := afero.NewCacheOnReadFs(baseFs, afero.NewMemMapFs(), time.Hour)
 // Copy-on-write
 cowFs := afero.NewCopyOnWriteFs(baseFs, afero.NewMemMapFs())
 </code></pre>
-                            </li>
-                            <li>
-                                <p><strong>io/fs Compatibility</strong></p>
-                                <ul>
-                                    <li>Works with Go 1.16+ standard library interfaces</li>
-                                    <li><code>ReadDirFS</code>, <code>ReadFileFS</code>, etc.</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>Extensive Backend Support</strong></p>
-                                <ul>
-                                    <li>OS, Memory, SFTP, GCS</li>
-                                    <li>Community: S3, MinIO, Dropbox, Google Drive, Git</li>
-                                </ul>
-                            </li>
-                        </ol>
-                        <p><strong>Known Issues:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Issue</th>
-                                        <th>Description</th>
-                                        <th>Our Mitigation</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><a href="https://github.com/spf13/afero/issues/282">#282</a></td>
-                                        <td>Symlinks in BasePathFs can escape jail</td>
-                                        <td>Use <code>strict-path</code> crate for VRootFsBackend</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/spf13/afero/issues/88">#88</a></td>
-                                        <td>Symlink handling inconsistent</td>
-                                        <td>Document behavior clearly</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="https://github.com/spf13/afero/issues/344">#344</a></td>
-                                        <td>BasePathFs fails when basepath is <code>.</code></td>
-                                        <td>Test edge cases</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>BasePathFs Symlink Escape Issue:</strong></p>
-                        <blockquote>
-                            <p>“SymlinkIfPossible will resolve the RealPath of underlayer filesystem before make a
-                                symlink. For example, creating a link like ‘/foo/bar’ -&gt; ‘/foo/file’ will be
-                                transform into a link point to ‘/{basepath}/foo/file.’”</p>
-                        </blockquote>
-                        <p>This means symlinks can potentially point outside the base path!</p>
-                        <p><strong>Our Solution:</strong></p>
-                        <ul>
-                            <li><code>VRootFsBackend</code> uses <a
-                                    href="https://github.com/DK26/strict-path-rs"><code>strict-path</code></a> for real
-                                filesystem containment</li>
-                            <li>Virtual backends (Memory, SQLite) are inherently safe - paths are just keys</li>
-                            <li><code>PathFilter</code> middleware provides additional sandboxing layer</li>
-                        </ul>
-                        <p><strong>What we should verify:</strong></p>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Test symlink creation pointing outside
-                                VRootFsBackend</li>
-                            <li><input disabled="" type="checkbox"> Test <code>..</code> in symlink targets</li>
-                            <li><input disabled="" type="checkbox"> Test symlink loops with max depth</li>
-                        </ul>
-                        <hr>
-                        <h3 id="4-java-apache-commons-vfs"><a class="header" href="#4-java-apache-commons-vfs">4. Java:
-                                Apache Commons VFS</a></h3>
-                        <p><strong>Repository:</strong> <a href="https://commons.apache.org/vfs/">Apache Commons VFS</a>
-                        </p>
-                        <p><strong>🔴 CRITICAL VULNERABILITY: CVE in versions &lt; 2.10.0</strong></p>
-                        <p><strong>The Bug:</strong></p>
-                        <pre><code class="language-java">// FileObject API has resolveFile with scope parameter
+</li>
+<li>
+<p><strong>io/fs Compatibility</strong></p>
+<ul>
+<li>Works with Go 1.16+ standard library interfaces</li>
+<li><code>ReadDirFS</code>, <code>ReadFileFS</code>, etc.</li>
+</ul>
+</li>
+<li>
+<p><strong>Extensive Backend Support</strong></p>
+<ul>
+<li>OS, Memory, SFTP, GCS</li>
+<li>Community: S3, MinIO, Dropbox, Google Drive, Git</li>
+</ul>
+</li>
+</ol>
+<p><strong>Known Issues:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Issue</th><th>Description</th><th>Our Mitigation</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="https://github.com/spf13/afero/issues/282">#282</a></td><td>Symlinks in BasePathFs can escape jail</td><td>Use <code>strict-path</code> crate for VRootFsBackend</td></tr>
+<tr><td><a href="https://github.com/spf13/afero/issues/88">#88</a></td><td>Symlink handling inconsistent</td><td>Document behavior clearly</td></tr>
+<tr><td><a href="https://github.com/spf13/afero/issues/344">#344</a></td><td>BasePathFs fails when basepath is <code>.</code></td><td>Test edge cases</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>BasePathFs Symlink Escape Issue:</strong></p>
+<blockquote>
+<p>“SymlinkIfPossible will resolve the RealPath of underlayer filesystem before make a symlink. For example, creating a link like ‘/foo/bar’ -&gt; ‘/foo/file’ will be transform into a link point to ‘/{basepath}/foo/file.’”</p>
+</blockquote>
+<p>This means symlinks can potentially point outside the base path!</p>
+<p><strong>Our Solution:</strong></p>
+<ul>
+<li><code>VRootFsBackend</code> uses <a href="https://github.com/DK26/strict-path-rs"><code>strict-path</code></a> for real filesystem containment</li>
+<li>Virtual backends (Memory, SQLite) are inherently safe - paths are just keys</li>
+<li><code>PathFilter</code> middleware provides additional sandboxing layer</li>
+</ul>
+<p><strong>What we should verify:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Test symlink creation pointing outside VRootFsBackend</li>
+<li><input disabled="" type="checkbox"> Test <code>..</code> in symlink targets</li>
+<li><input disabled="" type="checkbox"> Test symlink loops with max depth</li>
+</ul>
+<hr>
+<h3 id="4-java-apache-commons-vfs"><a class="header" href="#4-java-apache-commons-vfs">4. Java: Apache Commons VFS</a></h3>
+<p><strong>Repository:</strong> <a href="https://commons.apache.org/vfs/">Apache Commons VFS</a></p>
+<p><strong>🔴 CRITICAL VULNERABILITY: CVE in versions &lt; 2.10.0</strong></p>
+<p><strong>The Bug:</strong></p>
+<pre><code class="language-java">// FileObject API has resolveFile with scope parameter
 FileObject file = baseFile.resolveFile("../secret.txt", NameScope.DESCENDENT);
 // SHOULD throw exception - "../secret.txt" is not a descendent
 
@@ -543,9 +378,9 @@ FileObject file = baseFile.resolveFile("../secret.txt", NameScope.DESCENDENT);
 FileObject file = baseFile.resolveFile("%2e%2e/secret.txt", NameScope.DESCENDENT);
 // DOES NOT throw exception! Returns file outside base directory.
 </code></pre>
-                        <p><strong>Root Cause:</strong> Path validation happened BEFORE URL decoding.</p>
-                        <p><strong>Lesson for AnyFS:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Root Cause:</strong> Path validation happened BEFORE URL decoding.</p>
+<p><strong>Lesson for AnyFS:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// WRONG - validate then decode
 fn resolve(path: &amp;str) -&gt; Result&lt;PathBuf, FsError&gt; {
@@ -562,34 +397,28 @@ fn resolve(path: &amp;str) -&gt; Result&lt;PathBuf, FsError&gt; {
     Ok(normalized)
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Action Items:</strong></p>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Add test: URL-encoded <code>%2e%2e</code> path
-                                traversal attempt</li>
-                            <li><input disabled="" type="checkbox"> Add test: Double-encoding <code>%252e%252e</code>
-                            </li>
-                            <li><input disabled="" type="checkbox"> Ensure path normalization happens BEFORE validation
-                            </li>
-                            <li><input disabled="" type="checkbox"> Document in security model</li>
-                        </ul>
-                        <hr>
-                        <h3 id="5-net-systemioabstractions"><a class="header" href="#5-net-systemioabstractions">5.
-                                .NET: System.IO.Abstractions</a></h3>
-                        <p><strong>Repository:</strong> <a
-                                href="https://github.com/TestableIO/System.IO.Abstractions">TestableIO/System.IO.Abstractions</a>
-                        </p>
-                        <p><strong>What they do well:</strong></p>
-                        <ol>
-                            <li>
-                                <p><strong>Perfect API Compatibility</strong></p>
-                                <ul>
-                                    <li>Mirrors <code>System.IO</code> exactly</li>
-                                    <li>Drop-in replacement for testing</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>MockFileSystem for Testing</strong></p>
-                                <pre><code class="language-csharp">var fileSystem = new MockFileSystem(new Dictionary&lt;string, MockFileData&gt;
+<p><strong>Action Items:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Add test: URL-encoded <code>%2e%2e</code> path traversal attempt</li>
+<li><input disabled="" type="checkbox"> Add test: Double-encoding <code>%252e%252e</code></li>
+<li><input disabled="" type="checkbox"> Ensure path normalization happens BEFORE validation</li>
+<li><input disabled="" type="checkbox"> Document in security model</li>
+</ul>
+<hr>
+<h3 id="5-net-systemioabstractions"><a class="header" href="#5-net-systemioabstractions">5. .NET: System.IO.Abstractions</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/TestableIO/System.IO.Abstractions">TestableIO/System.IO.Abstractions</a></p>
+<p><strong>What they do well:</strong></p>
+<ol>
+<li>
+<p><strong>Perfect API Compatibility</strong></p>
+<ul>
+<li>Mirrors <code>System.IO</code> exactly</li>
+<li>Drop-in replacement for testing</li>
+</ul>
+</li>
+<li>
+<p><strong>MockFileSystem for Testing</strong></p>
+<pre><code class="language-csharp">var fileSystem = new MockFileSystem(new Dictionary&lt;string, MockFileData&gt;
 {
     { @"c:\myfile.txt", new MockFileData("Testing") },
     { @"c:\demo\jQuery.js", new MockFileData("jQuery content") },
@@ -598,46 +427,42 @@ fn resolve(path: &amp;str) -&gt; Result&lt;PathBuf, FsError&gt; {
 // Use in tests
 var sut = new MyComponent(fileSystem);
 </code></pre>
-                            </li>
-                            <li>
-                                <p><strong>Analyzers Package</strong></p>
-                                <ul>
-                                    <li>Roslyn analyzers warn when using <code>System.IO</code> directly</li>
-                                    <li>Guides developers to use abstractions</li>
-                                </ul>
-                            </li>
-                        </ol>
-                        <p><strong>What they lack:</strong></p>
-                        <ul>
-                            <li>No middleware/composition</li>
-                            <li>No caching layer</li>
-                            <li>No sandboxing/path filtering</li>
-                            <li>Testing-focused, not production backends</li>
-                        </ul>
-                        <p><strong>What we should adopt:</strong></p>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Consider Rust analyzer/clippy lint for
-                                <code>std::fs</code> usage</li>
-                            <li><input disabled="" type="checkbox"> MockFileSystem pattern is similar to our
-                                <code>MemoryBackend</code></li>
-                        </ul>
-                        <hr>
-                        <h3 id="6-nodejs-memfs--unionfs"><a class="header" href="#6-nodejs-memfs--unionfs">6. Node.js:
-                                memfs + unionfs</a></h3>
-                        <p><strong>Repository:</strong> <a href="https://github.com/streamich/memfs">streamich/memfs</a>
-                        </p>
-                        <p><strong>What they do well:</strong></p>
-                        <ol>
-                            <li>
-                                <p><strong>Browser + Node Unified</strong></p>
-                                <ul>
-                                    <li>Works in browser via File System API</li>
-                                    <li>Same API as Node’s <code>fs</code></li>
-                                </ul>
-                            </li>
-                            <li>
-                                <p><strong>Union Filesystem Composition</strong></p>
-                                <pre><code class="language-javascript">import { Union } from 'unionfs';
+</li>
+<li>
+<p><strong>Analyzers Package</strong></p>
+<ul>
+<li>Roslyn analyzers warn when using <code>System.IO</code> directly</li>
+<li>Guides developers to use abstractions</li>
+</ul>
+</li>
+</ol>
+<p><strong>What they lack:</strong></p>
+<ul>
+<li>No middleware/composition</li>
+<li>No caching layer</li>
+<li>No sandboxing/path filtering</li>
+<li>Testing-focused, not production backends</li>
+</ul>
+<p><strong>What we should adopt:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Consider Rust analyzer/clippy lint for <code>std::fs</code> usage</li>
+<li><input disabled="" type="checkbox"> MockFileSystem pattern is similar to our <code>MemoryBackend</code></li>
+</ul>
+<hr>
+<h3 id="6-nodejs-memfs--unionfs"><a class="header" href="#6-nodejs-memfs--unionfs">6. Node.js: memfs + unionfs</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/streamich/memfs">streamich/memfs</a></p>
+<p><strong>What they do well:</strong></p>
+<ol>
+<li>
+<p><strong>Browser + Node Unified</strong></p>
+<ul>
+<li>Works in browser via File System API</li>
+<li>Same API as Node’s <code>fs</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Union Filesystem Composition</strong></p>
+<pre><code class="language-javascript">import { Union } from 'unionfs';
 import { fs as memfs } from 'memfs';
 import * as fs from 'fs';
 
@@ -645,241 +470,80 @@ const ufs = new Union();
 ufs.use(fs);        // Real filesystem as base
 ufs.use(memfs);     // Memory overlay
 </code></pre>
-                            </li>
-                        </ol>
-                        <p><strong>Known Issues:</strong></p>
-                        <blockquote>
-                            <p>“There is a fork of memfs maintained by SageMath (sagemathinc/memfs-js) which was created
-                                to fix 13 security vulnerabilities revealed by npm audit. This fork exists because, as
-                                their GitHub description notes, ‘there are longstanding bugs’ in the upstream memfs.”
-                            </p>
-                        </blockquote>
-                        <p><strong>Lesson:</strong> Even popular libraries can have security issues. Our conformance
-                            test suite should be comprehensive.</p>
-                        <hr>
-                        <h2 id="vulnerabilities-summary"><a class="header"
-                                href="#vulnerabilities-summary">Vulnerabilities Summary</a></h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Library</th>
-                                        <th>Vulnerability</th>
-                                        <th>Type</th>
-                                        <th>Our Mitigation</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><strong>Apache Commons VFS</strong></td>
-                                        <td>CVE (pre-2.10.0)</td>
-                                        <td>URL-encoded path traversal</td>
-                                        <td>Decode before validate</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Afero (Go)</strong></td>
-                                        <td>Issue #282, #88</td>
-                                        <td>Symlink escape from BasePathFs</td>
-                                        <td>Use <code>strict-path</code>, test thoroughly</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>PyFilesystem2</strong></td>
-                                        <td>Issue #171</td>
-                                        <td>Symlink loop causes infinite recursion</td>
-                                        <td>Loop detection with max depth</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>memfs (Node)</strong></td>
-                                        <td>13 vulns in npm audit</td>
-                                        <td>Various (unspecified)</td>
-                                        <td>Comprehensive test suite</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="features-comparison-matrix"><a class="header"
-                                href="#features-comparison-matrix">Features Comparison Matrix</a></h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Feature</th>
-                                        <th style="text-align: center">fsspec</th>
-                                        <th style="text-align: center">PyFS2</th>
-                                        <th style="text-align: center">Afero</th>
-                                        <th style="text-align: center">Commons VFS</th>
-                                        <th style="text-align: center">System.IO.Abs</th>
-                                        <th style="text-align: center">AnyFS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Middleware composition</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Quota enforcement</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Path sandboxing</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Rate limiting</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Caching layer</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Async support</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">🔜</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Block-wise caching</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                    </tr>
-                                    <tr>
-                                        <td>URL-based opening</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Union/overlay FS</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Memory backend</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>SQLite backend</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                    <tr>
-                                        <td>FUSE mounting</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">🔜</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Type-safe markers</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">❌</td>
-                                        <td style="text-align: center">✅</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="future-ideas-to-consider"><a class="header" href="#future-ideas-to-consider">Future
-                                Ideas to Consider</a></h2>
-                        <p>These are optional extensions inspired by other ecosystems. They are intentionally not part
-                            of the core v1 scope.</p>
-                        <p><strong>Keep (post-v1 add-ons that fit the current design):</strong></p>
-                        <ul>
-                            <li>URL-based backend registry (<code>sqlite://</code>, <code>mem://</code>,
-                                <code>stdfs://</code>) as a helper crate, not in core APIs.</li>
-                            <li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>,
-                                <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a
-                                utilities crate.</li>
-                            <li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without
-                                changing sync traits.</li>
-                            <li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes
-                                <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to
-                                demonstrate middleware and backend neutrality (navigation and file management only, not
-                                full bash scripting).</li>
-                            <li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a
-                                specialized <code>Overlay</code> variant.</li>
-                            <li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code>
-                                (PyFilesystem/fsspec-style).</li>
-                        </ul>
-                        <p><strong>Defer (valuable, but needs data or wider review):</strong></p>
-                        <ul>
-                            <li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style
-                                block cache).</li>
-                            <li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection
-                                (symlink control, case sensitivity, max path length).</li>
-                            <li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code
-                                (System.IO.Abstractions-style).</li>
-                            <li>Retry/timeout middleware for remote backends (once remote backends exist).</li>
-                        </ul>
-                        <p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
-                        <ul>
-                            <li>Change notification support (optional <code>FsWatch</code> trait or polling middleware).
-                            </li>
-                        </ul>
-                        <hr>
-                        <h2 id="security-tests-to-add"><a class="header" href="#security-tests-to-add">Security Tests to
-                                Add</a></h2>
-                        <p>Based on vulnerabilities found in other libraries, add these to our conformance test suite:
-                        </p>
-                        <h3 id="path-traversal-tests"><a class="header" href="#path-traversal-tests">Path Traversal
-                                Tests</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</li>
+</ol>
+<p><strong>Known Issues:</strong></p>
+<blockquote>
+<p>“There is a fork of memfs maintained by SageMath (sagemathinc/memfs-js) which was created to fix 13 security vulnerabilities revealed by npm audit. This fork exists because, as their GitHub description notes, ‘there are longstanding bugs’ in the upstream memfs.”</p>
+</blockquote>
+<p><strong>Lesson:</strong> Even popular libraries can have security issues. Our conformance test suite should be comprehensive.</p>
+<hr>
+<h2 id="vulnerabilities-summary"><a class="header" href="#vulnerabilities-summary">Vulnerabilities Summary</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Library</th><th>Vulnerability</th><th>Type</th><th>Our Mitigation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Apache Commons VFS</strong></td><td>CVE (pre-2.10.0)</td><td>URL-encoded path traversal</td><td>Decode before validate</td></tr>
+<tr><td><strong>Afero (Go)</strong></td><td>Issue #282, #88</td><td>Symlink escape from BasePathFs</td><td>Use <code>strict-path</code>, test thoroughly</td></tr>
+<tr><td><strong>PyFilesystem2</strong></td><td>Issue #171</td><td>Symlink loop causes infinite recursion</td><td>Loop detection with max depth</td></tr>
+<tr><td><strong>memfs (Node)</strong></td><td>13 vulns in npm audit</td><td>Various (unspecified)</td><td>Comprehensive test suite</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="features-comparison-matrix"><a class="header" href="#features-comparison-matrix">Features Comparison Matrix</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th style="text-align: center">fsspec</th><th style="text-align: center">PyFS2</th><th style="text-align: center">Afero</th><th style="text-align: center">Commons VFS</th><th style="text-align: center">System.IO.Abs</th><th style="text-align: center">AnyFS</th></tr>
+</thead>
+<tbody>
+<tr><td>Middleware composition</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Quota enforcement</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Path sandboxing</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Rate limiting</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Caching layer</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Async support</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">🔜</td></tr>
+<tr><td>Block-wise caching</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
+<tr><td>URL-based opening</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
+<tr><td>Union/overlay FS</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Memory backend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td></tr>
+<tr><td>SQLite backend</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>FUSE mounting</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">🔜</td></tr>
+<tr><td>Type-safe markers</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="future-ideas-to-consider"><a class="header" href="#future-ideas-to-consider">Future Ideas to Consider</a></h2>
+<p>These are optional extensions inspired by other ecosystems. They are intentionally not part of the core v1 scope.</p>
+<p><strong>Keep (post-v1 add-ons that fit the current design):</strong></p>
+<ul>
+<li>URL-based backend registry (<code>sqlite://</code>, <code>mem://</code>, <code>stdfs://</code>) as a helper crate, not in core APIs.</li>
+<li>Bulk operation helpers (<code>read_many</code>, <code>write_many</code>, <code>copy_many</code>, <code>glob</code>, <code>walk</code>) as <code>FsExt</code> or a utilities crate.</li>
+<li>Early async adapter crate (<code>anyfs-async</code>) to support remote backends without changing sync traits.</li>
+<li>Bash-style shell (example app or <code>anyfs-shell</code> crate) that routes <code>ls/cd/cat/cp/mv/rm/mkdir/stat</code> through <code>FileStorage</code> to demonstrate middleware and backend neutrality (navigation and file management only, not full bash scripting).</li>
+<li>Copy-on-write overlay middleware (Afero-style <code>CopyOnWriteFs</code>) as a specialized <code>Overlay</code> variant.</li>
+<li>Archive backends (zip/tar) as separate crates implementing <code>Fs</code> (PyFilesystem/fsspec-style).</li>
+</ul>
+<p><strong>Defer (valuable, but needs data or wider review):</strong></p>
+<ul>
+<li>Range/block caching middleware for <code>read_range</code> heavy workloads (fsspec-style block cache).</li>
+<li>Runtime capability discovery (<code>Capabilities</code> struct) for feature detection (symlink control, case sensitivity, max path length).</li>
+<li>Lint/analyzer to discourage direct <code>std::fs</code> usage in app code (System.IO.Abstractions-style).</li>
+<li>Retry/timeout middleware for remote backends (once remote backends exist).</li>
+</ul>
+<p><strong>Drop for now (adds noise or cross-platform complexity):</strong></p>
+<ul>
+<li>Change notification support (optional <code>FsWatch</code> trait or polling middleware).</li>
+</ul>
+<hr>
+<h2 id="security-tests-to-add"><a class="header" href="#security-tests-to-add">Security Tests to Add</a></h2>
+<p>Based on vulnerabilities found in other libraries, add these to our conformance test suite:</p>
+<h3 id="path-traversal-tests"><a class="header" href="#path-traversal-tests">Path Traversal Tests</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_url_encoded_path_traversal() {
@@ -918,9 +582,8 @@ fn test_symlink_loop_detection() {
     assert!(matches!(result, Err(FsError::TooManySymlinks { .. })));
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="resource-exhaustion-tests"><a class="header" href="#resource-exhaustion-tests">Resource
-                                Exhaustion Tests</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="resource-exhaustion-tests"><a class="header" href="#resource-exhaustion-tests">Resource Exhaustion Tests</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_deep_directory_traversal() {
@@ -946,244 +609,114 @@ fn test_many_open_handles() {
     // Should either succeed or return resource error, not crash
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="action-items"><a class="header" href="#action-items">Action Items</a></h2>
-                        <h3 id="high-priority-before-v10"><a class="header" href="#high-priority-before-v10">High
-                                Priority (Before v1.0)</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Task</th>
-                                        <th>Source</th>
-                                        <th>Priority</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Add URL-encoded path traversal tests</td>
-                                        <td>Apache Commons VFS CVE</td>
-                                        <td>🔴 Critical</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add symlink escape tests for VRootFsBackend</td>
-                                        <td>Afero issues</td>
-                                        <td>🔴 Critical</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add symlink loop detection</td>
-                                        <td>PyFilesystem2 #171</td>
-                                        <td>🔴 Critical</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Verify <code>strict-path</code> handles all edge cases</td>
-                                        <td>Afero BasePathFs issues</td>
-                                        <td>🔴 Critical</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="medium-priority-v11"><a class="header" href="#medium-priority-v11">Medium Priority
-                                (v1.1+)</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Task</th>
-                                        <th>Source</th>
-                                        <th>Priority</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Consider block-wise caching for large files</td>
-                                        <td>fsspec</td>
-                                        <td>🟡 Enhancement</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add async support</td>
-                                        <td>fsspec async design</td>
-                                        <td>🟡 Enhancement</td>
-                                    </tr>
-                                    <tr>
-                                        <td>URL-based filesystem specification</td>
-                                        <td>PyFilesystem2, Commons VFS</td>
-                                        <td>🟢 Nice-to-have</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="documentation"><a class="header" href="#documentation">Documentation</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Task</th>
-                                        <th>Source</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Document symlink behavior for each backend</td>
-                                        <td>All libraries have issues</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Add security considerations for path handling</td>
-                                        <td>Apache Commons VFS CVE</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Compare AnyFS to alternatives</td>
-                                        <td>This analysis</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="sibling-rust-projects-path-security-libraries"><a class="header"
-                                href="#sibling-rust-projects-path-security-libraries">Sibling Rust Projects: Path
-                                Security Libraries</a></h2>
-                        <p>AnyFS builds on foundational security work from two related Rust crates that specifically
-                            address path resolution vulnerabilities. These crates are planned to be used in AnyFS’s path
-                            handling implementation.</p>
-                        <h3 id="soft-canonicalize-rs"><a class="header"
-                                href="#soft-canonicalize-rs">soft-canonicalize-rs</a></h3>
-                        <p><strong>Repository:</strong> <a
-                                href="https://github.com/DK26/soft-canonicalize-rs">DK26/soft-canonicalize-rs</a></p>
-                        <p><strong>Purpose:</strong> Path canonicalization that works with non-existing paths—a critical
-                            gap in <code>std::fs::canonicalize</code>.</p>
-                        <p><strong>Security Features:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Feature</th>
-                                        <th>Description</th>
-                                        <th>Attack Prevented</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>NTFS ADS validation</td>
-                                        <td>Blocks alternate data stream syntax</td>
-                                        <td>Hidden data, path escape</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Symlink cycle detection</td>
-                                        <td>Bounded depth tracking</td>
-                                        <td>DoS via infinite loops</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Path traversal clamping</td>
-                                        <td>Can’t ascend past root</td>
-                                        <td>Directory escape</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Null byte rejection</td>
-                                        <td>Early validation</td>
-                                        <td>Null injection</td>
-                                    </tr>
-                                    <tr>
-                                        <td>TOCTOU resistance</td>
-                                        <td>Atomic-like resolution</td>
-                                        <td>Race conditions</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Windows UNC handling</td>
-                                        <td>Normalizes extended paths</td>
-                                        <td>Path confusion</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Linux namespace preservation</td>
-                                        <td>Uses <code>proc-canonicalize</code></td>
-                                        <td>Container escape via <code>/proc/PID/root</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Key Innovation: Anchored Canonicalization</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="action-items"><a class="header" href="#action-items">Action Items</a></h2>
+<h3 id="high-priority-before-v10"><a class="header" href="#high-priority-before-v10">High Priority (Before v1.0)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Task</th><th>Source</th><th>Priority</th></tr>
+</thead>
+<tbody>
+<tr><td>Add URL-encoded path traversal tests</td><td>Apache Commons VFS CVE</td><td>🔴 Critical</td></tr>
+<tr><td>Add symlink escape tests for VRootFsBackend</td><td>Afero issues</td><td>🔴 Critical</td></tr>
+<tr><td>Add symlink loop detection</td><td>PyFilesystem2 #171</td><td>🔴 Critical</td></tr>
+<tr><td>Verify <code>strict-path</code> handles all edge cases</td><td>Afero BasePathFs issues</td><td>🔴 Critical</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="medium-priority-v11"><a class="header" href="#medium-priority-v11">Medium Priority (v1.1+)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Task</th><th>Source</th><th>Priority</th></tr>
+</thead>
+<tbody>
+<tr><td>Consider block-wise caching for large files</td><td>fsspec</td><td>🟡 Enhancement</td></tr>
+<tr><td>Add async support</td><td>fsspec async design</td><td>🟡 Enhancement</td></tr>
+<tr><td>URL-based filesystem specification</td><td>PyFilesystem2, Commons VFS</td><td>🟢 Nice-to-have</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="documentation"><a class="header" href="#documentation">Documentation</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Task</th><th>Source</th></tr>
+</thead>
+<tbody>
+<tr><td>Document symlink behavior for each backend</td><td>All libraries have issues</td></tr>
+<tr><td>Add security considerations for path handling</td><td>Apache Commons VFS CVE</td></tr>
+<tr><td>Compare AnyFS to alternatives</td><td>This analysis</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="sibling-rust-projects-path-security-libraries"><a class="header" href="#sibling-rust-projects-path-security-libraries">Sibling Rust Projects: Path Security Libraries</a></h2>
+<p>AnyFS builds on foundational security work from two related Rust crates that specifically address path resolution vulnerabilities. These crates are planned to be used in AnyFS’s path handling implementation.</p>
+<h3 id="soft-canonicalize-rs"><a class="header" href="#soft-canonicalize-rs">soft-canonicalize-rs</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/DK26/soft-canonicalize-rs">DK26/soft-canonicalize-rs</a></p>
+<p><strong>Purpose:</strong> Path canonicalization that works with non-existing paths—a critical gap in <code>std::fs::canonicalize</code>.</p>
+<p><strong>Security Features:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th>Description</th><th>Attack Prevented</th></tr>
+</thead>
+<tbody>
+<tr><td>NTFS ADS validation</td><td>Blocks alternate data stream syntax</td><td>Hidden data, path escape</td></tr>
+<tr><td>Symlink cycle detection</td><td>Bounded depth tracking</td><td>DoS via infinite loops</td></tr>
+<tr><td>Path traversal clamping</td><td>Can’t ascend past root</td><td>Directory escape</td></tr>
+<tr><td>Null byte rejection</td><td>Early validation</td><td>Null injection</td></tr>
+<tr><td>TOCTOU resistance</td><td>Atomic-like resolution</td><td>Race conditions</td></tr>
+<tr><td>Windows UNC handling</td><td>Normalizes extended paths</td><td>Path confusion</td></tr>
+<tr><td>Linux namespace preservation</td><td>Uses <code>proc-canonicalize</code></td><td>Container escape via <code>/proc/PID/root</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Key Innovation: Anchored Canonicalization</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// All paths (including symlink targets) are clamped to anchor
 let result = anchored_canonicalize("/workspace", user_input)?;
 // If symlink points to /etc/passwd, result becomes /workspace/etc/passwd
 <span class="boring">}</span></code></pre>
-                        <p>This is exactly what <code>VRootFsBackend</code> needs for safe path containment.</p>
-                        <h3 id="strict-path-rs"><a class="header" href="#strict-path-rs">strict-path-rs</a></h3>
-                        <p><strong>Repository:</strong> <a
-                                href="https://github.com/DK26/strict-path-rs">DK26/strict-path-rs</a></p>
-                        <p><strong>Purpose:</strong> Type-safe path handling that prevents traversal attacks at compile
-                            time.</p>
-                        <p><strong>Two Modes:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Mode</th>
-                                        <th>Behavior</th>
-                                        <th>Use Case</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>StrictPath</code></td>
-                                        <td>Returns <code>Err(PathEscapesBoundary)</code> on escape</td>
-                                        <td>Archive extraction, file uploads</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>VirtualPath</code></td>
-                                        <td>Clamps escape attempts within sandbox</td>
-                                        <td>Multi-tenant, per-user storage</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Documented Attack Coverage (19+ vulnerabilities):</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Attack Type</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Symlink/junction escapes</td>
-                                        <td>Follows and validates canonical paths</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Windows 8.3 short names</td>
-                                        <td>Detects <code>PROGRA~1</code> obfuscation</td>
-                                    </tr>
-                                    <tr>
-                                        <td>NTFS Alternate Data Streams</td>
-                                        <td>Blocks <code>file.txt:hidden:$DATA</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Zip Slip (CVE-2018-1000178)</td>
-                                        <td>Validates archive entries before extraction</td>
-                                    </tr>
-                                    <tr>
-                                        <td>TOCTOU (CVE-2022-21658)</td>
-                                        <td>Handles time-of-check-time-of-use races</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Unicode/encoding bypasses</td>
-                                        <td>Normalizes path representations</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Mixed separators</td>
-                                        <td>Handles <code>/</code> and <code>\</code> on Windows</td>
-                                    </tr>
-                                    <tr>
-                                        <td>UNC path tricks</td>
-                                        <td>Prevents <code>\\?\C:\..\..\</code> attacks</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Type-Safe Marker Pattern (mirrors AnyFS’s design!):</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>This is exactly what <code>VRootFsBackend</code> needs for safe path containment.</p>
+<h3 id="strict-path-rs"><a class="header" href="#strict-path-rs">strict-path-rs</a></h3>
+<p><strong>Repository:</strong> <a href="https://github.com/DK26/strict-path-rs">DK26/strict-path-rs</a></p>
+<p><strong>Purpose:</strong> Type-safe path handling that prevents traversal attacks at compile time.</p>
+<p><strong>Two Modes:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mode</th><th>Behavior</th><th>Use Case</th></tr>
+</thead>
+<tbody>
+<tr><td><code>StrictPath</code></td><td>Returns <code>Err(PathEscapesBoundary)</code> on escape</td><td>Archive extraction, file uploads</td></tr>
+<tr><td><code>VirtualPath</code></td><td>Clamps escape attempts within sandbox</td><td>Multi-tenant, per-user storage</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Documented Attack Coverage (19+ vulnerabilities):</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Attack Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Symlink/junction escapes</td><td>Follows and validates canonical paths</td></tr>
+<tr><td>Windows 8.3 short names</td><td>Detects <code>PROGRA~1</code> obfuscation</td></tr>
+<tr><td>NTFS Alternate Data Streams</td><td>Blocks <code>file.txt:hidden:$DATA</code></td></tr>
+<tr><td>Zip Slip (CVE-2018-1000178)</td><td>Validates archive entries before extraction</td></tr>
+<tr><td>TOCTOU (CVE-2022-21658)</td><td>Handles time-of-check-time-of-use races</td></tr>
+<tr><td>Unicode/encoding bypasses</td><td>Normalizes path representations</td></tr>
+<tr><td>Mixed separators</td><td>Handles <code>/</code> and <code>\</code> on Windows</td></tr>
+<tr><td>UNC path tricks</td><td>Prevents <code>\\?\C:\..\..\</code> attacks</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Type-Safe Marker Pattern (mirrors AnyFS’s design!):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>struct UserFiles;
 struct SystemFiles;
@@ -1191,168 +724,123 @@ struct SystemFiles;
 fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 // Wrong marker type = compile error
 <span class="boring">}</span></code></pre>
-                        <h3 id="applicability-to-anyfs"><a class="header" href="#applicability-to-anyfs">Applicability
-                                to AnyFS</a></h3>
-                        <p><strong>Important distinction:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Backend Type</th>
-                                        <th>Storage Mechanism</th>
-                                        <th>Path Resolution Provider</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>VRootFsBackend</code></td>
-                                        <td>Real filesystem</td>
-                                        <td>OS (backend is <code>SelfResolving</code>)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>MemoryBackend</code></td>
-                                        <td>HashMap keys</td>
-                                        <td>FileStorage (symlink-aware)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>SqliteBackend</code></td>
-                                        <td>DB strings</td>
-                                        <td>FileStorage (symlink-aware)</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>For virtual backends (Memory, SQLite, etc.):</strong></p>
-                        <ul>
-                            <li>These third-party crates perform <strong>real filesystem resolution</strong> (follow
-                                actual symlinks on disk)</li>
-                            <li>Virtual backends treat paths as keys, so these crates can’t help</li>
-                            <li>AnyFS implements its own path resolution in <code>FileStorage</code> that:
-                                <ol>
-                                    <li>Walks path components via <code>metadata()</code> and <code>read_link()</code>
-                                    </li>
-                                    <li>Resolves symlinks by reading targets from virtual storage</li>
-                                    <li>Handles <code>..</code> correctly after symlink resolution</li>
-                                    <li>Detects loops by tracking visited virtual paths</li>
-                                </ol>
-                            </li>
-                        </ul>
-                        <p><strong>For <code>VRootFsBackend</code> only:</strong></p>
-                        <ul>
-                            <li>Since it wraps the real filesystem, <code>strict-path</code> provides safe containment
-                            </li>
-                            <li>The backend implements <code>SelfResolving</code>, so FileStorage skips its own
-                                resolution</li>
-                        </ul>
-                        <h3 id="security-tests-added-to-conformance-suite"><a class="header"
-                                href="#security-tests-added-to-conformance-suite">Security Tests Added to Conformance
-                                Suite</a></h3>
-                        <p>Based on these libraries, we’ve added tests for:</p>
-                        <p><strong>Windows-Specific:</strong></p>
-                        <ul>
-                            <li>NTFS Alternate Data Streams (<code>file.txt:hidden</code>)</li>
-                            <li>Windows 8.3 short names (<code>PROGRA~1</code>)</li>
-                            <li>UNC path traversal (<code>\\?\C:\..\..\</code>)</li>
-                            <li>Reserved device names (CON, PRN, NUL)</li>
-                            <li>Junction point escapes</li>
-                        </ul>
-                        <p><strong>Linux-Specific:</strong></p>
-                        <ul>
-                            <li><code>/proc/PID/root</code> magic symlinks</li>
-                            <li><code>/dev/fd/N</code> file descriptor symlinks</li>
-                        </ul>
-                        <p><strong>Unicode:</strong></p>
-                        <ul>
-                            <li>NFC vs NFD normalization</li>
-                            <li>Right-to-Left Override (U+202E)</li>
-                            <li>Homoglyph confusion (Cyrillic vs Latin)</li>
-                        </ul>
-                        <p><strong>TOCTOU:</strong></p>
-                        <ul>
-                            <li>Check-then-use race conditions</li>
-                            <li>Symlink target changes during resolution</li>
-                        </ul>
-                        <hr>
-                        <h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
-                        <p><strong>What makes AnyFS unique:</strong></p>
-                        <ol>
-                            <li><strong>Middleware composition</strong> - Only Afero has this, and we do it better
-                                (Tower-style)</li>
-                            <li><strong>Quota + rate limiting</strong> - No other library has built-in resource control
-                            </li>
-                            <li><strong>Type-safe markers</strong> - Compile-time container isolation is unique to us
-                            </li>
-                            <li><strong>SQLite backend</strong> - No other abstraction library offers this</li>
-                        </ol>
-                        <p><strong>What we should learn from others:</strong></p>
-                        <ol>
-                            <li><strong>Path traversal via encoding</strong> - Apache Commons VFS vulnerability</li>
-                            <li><strong>Symlink handling complexity</strong> - All libraries struggle with this</li>
-                            <li><strong>Caching strategies</strong> - fsspec’s block-wise caching is sophisticated</li>
-                            <li><strong>Async support</strong> - fsspec shows how to do this well</li>
-                        </ol>
-                        <p><strong>Critical security tests to add:</strong></p>
-                        <ol>
-                            <li>URL-encoded path traversal (<code>%2e%2e</code>)</li>
-                            <li>Symlink escape from sandboxed directories</li>
-                            <li>Symlink loop detection</li>
-                            <li>Deep path exhaustion</li>
-                        </ol>
-                        <hr>
-                        <h2 id="sources"><a class="header" href="#sources">Sources</a></h2>
-                        <h3 id="external-libraries"><a class="header" href="#external-libraries">External Libraries</a>
-                        </h3>
-                        <ul>
-                            <li><a href="https://filesystem-spec.readthedocs.io/">fsspec Documentation</a></li>
-                            <li><a href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem2 GitHub</a></li>
-                            <li><a href="https://github.com/spf13/afero">Afero GitHub</a></li>
-                            <li><a href="https://commons.apache.org/vfs/">Apache Commons VFS</a></li>
-                            <li><a href="https://github.com/TestableIO/System.IO.Abstractions">System.IO.Abstractions
-                                    GitHub</a></li>
-                            <li><a href="https://github.com/streamich/memfs">memfs GitHub</a></li>
-                        </ul>
-                        <h3 id="sibling-rust-projects"><a class="header" href="#sibling-rust-projects">Sibling Rust
-                                Projects</a></h3>
-                        <ul>
-                            <li><a href="https://github.com/DK26/soft-canonicalize-rs">soft-canonicalize-rs GitHub</a>
-                            </li>
-                            <li><a href="https://github.com/DK26/strict-path-rs">strict-path-rs GitHub</a></li>
-                        </ul>
-                        <h3 id="vulnerability-references"><a class="header"
-                                href="#vulnerability-references">Vulnerability References</a></h3>
-                        <ul>
-                            <li><a href="https://nvd.nist.gov/vuln/search/results?query=Apache%20Commons%20VFS">Apache
-                                    Commons VFS CVEs (NVD search)</a></li>
-                            <li><a href="https://github.com/spf13/afero/issues/282">Afero BasePathFs Issue #282</a></li>
-                            <li><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">PyFilesystem2 Symlink
-                                    Loop Issue #171</a></li>
-                            <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2018-1000178">CVE-2018-1000178 (Zip
-                                    Slip)</a></li>
-                            <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2022-21658">CVE-2022-21658 (TOCTOU in Rust
-                                    std)</a></li>
-                        </ul>
+<h3 id="applicability-to-anyfs"><a class="header" href="#applicability-to-anyfs">Applicability to AnyFS</a></h3>
+<p><strong>Important distinction:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Backend Type</th><th>Storage Mechanism</th><th>Path Resolution Provider</th></tr>
+</thead>
+<tbody>
+<tr><td><code>VRootFsBackend</code></td><td>Real filesystem</td><td>OS (backend is <code>SelfResolving</code>)</td></tr>
+<tr><td><code>MemoryBackend</code></td><td>HashMap keys</td><td>FileStorage (symlink-aware)</td></tr>
+<tr><td><code>SqliteBackend</code></td><td>DB strings</td><td>FileStorage (symlink-aware)</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>For virtual backends (Memory, SQLite, etc.):</strong></p>
+<ul>
+<li>These third-party crates perform <strong>real filesystem resolution</strong> (follow actual symlinks on disk)</li>
+<li>Virtual backends treat paths as keys, so these crates can’t help</li>
+<li>AnyFS implements its own path resolution in <code>FileStorage</code> that:
+<ol>
+<li>Walks path components via <code>metadata()</code> and <code>read_link()</code></li>
+<li>Resolves symlinks by reading targets from virtual storage</li>
+<li>Handles <code>..</code> correctly after symlink resolution</li>
+<li>Detects loops by tracking visited virtual paths</li>
+</ol>
+</li>
+</ul>
+<p><strong>For <code>VRootFsBackend</code> only:</strong></p>
+<ul>
+<li>Since it wraps the real filesystem, <code>strict-path</code> provides safe containment</li>
+<li>The backend implements <code>SelfResolving</code>, so FileStorage skips its own resolution</li>
+</ul>
+<h3 id="security-tests-added-to-conformance-suite"><a class="header" href="#security-tests-added-to-conformance-suite">Security Tests Added to Conformance Suite</a></h3>
+<p>Based on these libraries, we’ve added tests for:</p>
+<p><strong>Windows-Specific:</strong></p>
+<ul>
+<li>NTFS Alternate Data Streams (<code>file.txt:hidden</code>)</li>
+<li>Windows 8.3 short names (<code>PROGRA~1</code>)</li>
+<li>UNC path traversal (<code>\\?\C:\..\..\</code>)</li>
+<li>Reserved device names (CON, PRN, NUL)</li>
+<li>Junction point escapes</li>
+</ul>
+<p><strong>Linux-Specific:</strong></p>
+<ul>
+<li><code>/proc/PID/root</code> magic symlinks</li>
+<li><code>/dev/fd/N</code> file descriptor symlinks</li>
+</ul>
+<p><strong>Unicode:</strong></p>
+<ul>
+<li>NFC vs NFD normalization</li>
+<li>Right-to-Left Override (U+202E)</li>
+<li>Homoglyph confusion (Cyrillic vs Latin)</li>
+</ul>
+<p><strong>TOCTOU:</strong></p>
+<ul>
+<li>Check-then-use race conditions</li>
+<li>Symlink target changes during resolution</li>
+</ul>
+<hr>
+<h2 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h2>
+<p><strong>What makes AnyFS unique:</strong></p>
+<ol>
+<li><strong>Middleware composition</strong> - Only Afero has this, and we do it better (Tower-style)</li>
+<li><strong>Quota + rate limiting</strong> - No other library has built-in resource control</li>
+<li><strong>Type-safe markers</strong> - Compile-time container isolation is unique to us</li>
+<li><strong>SQLite backend</strong> - No other abstraction library offers this</li>
+</ol>
+<p><strong>What we should learn from others:</strong></p>
+<ol>
+<li><strong>Path traversal via encoding</strong> - Apache Commons VFS vulnerability</li>
+<li><strong>Symlink handling complexity</strong> - All libraries struggle with this</li>
+<li><strong>Caching strategies</strong> - fsspec’s block-wise caching is sophisticated</li>
+<li><strong>Async support</strong> - fsspec shows how to do this well</li>
+</ol>
+<p><strong>Critical security tests to add:</strong></p>
+<ol>
+<li>URL-encoded path traversal (<code>%2e%2e</code>)</li>
+<li>Symlink escape from sandboxed directories</li>
+<li>Symlink loop detection</li>
+<li>Deep path exhaustion</li>
+</ol>
+<hr>
+<h2 id="sources"><a class="header" href="#sources">Sources</a></h2>
+<h3 id="external-libraries"><a class="header" href="#external-libraries">External Libraries</a></h3>
+<ul>
+<li><a href="https://filesystem-spec.readthedocs.io/">fsspec Documentation</a></li>
+<li><a href="https://github.com/PyFilesystem/pyfilesystem2">PyFilesystem2 GitHub</a></li>
+<li><a href="https://github.com/spf13/afero">Afero GitHub</a></li>
+<li><a href="https://commons.apache.org/vfs/">Apache Commons VFS</a></li>
+<li><a href="https://github.com/TestableIO/System.IO.Abstractions">System.IO.Abstractions GitHub</a></li>
+<li><a href="https://github.com/streamich/memfs">memfs GitHub</a></li>
+</ul>
+<h3 id="sibling-rust-projects"><a class="header" href="#sibling-rust-projects">Sibling Rust Projects</a></h3>
+<ul>
+<li><a href="https://github.com/DK26/soft-canonicalize-rs">soft-canonicalize-rs GitHub</a></li>
+<li><a href="https://github.com/DK26/strict-path-rs">strict-path-rs GitHub</a></li>
+</ul>
+<h3 id="vulnerability-references"><a class="header" href="#vulnerability-references">Vulnerability References</a></h3>
+<ul>
+<li><a href="https://nvd.nist.gov/vuln/search/results?query=Apache%20Commons%20VFS">Apache Commons VFS CVEs (NVD search)</a></li>
+<li><a href="https://github.com/spf13/afero/issues/282">Afero BasePathFs Issue #282</a></li>
+<li><a href="https://github.com/PyFilesystem/pyfilesystem2/issues/171">PyFilesystem2 Symlink Loop Issue #171</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2018-1000178">CVE-2018-1000178 (Zip Slip)</a></li>
+<li><a href="https://nvd.nist.gov/vuln/detail/CVE-2022-21658">CVE-2022-21658 (TOCTOU in Rust std)</a></li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                        <a rel="prev" href="../comparisons/build-vs-reuse.html" class="mobile-nav-chapters previous"
-                            title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="prev" href="../comparisons/build-vs-reuse.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                        <a rel="next prefetch" href="../implementation/plan.html" class="mobile-nav-chapters next"
-                            title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="next prefetch" href="../implementation/plan.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -1360,52 +848,22 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                <a rel="prev" href="../comparisons/build-vs-reuse.html" class="nav-chapters previous"
-                    title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="prev" href="../comparisons/build-vs-reuse.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                <a rel="next prefetch" href="../implementation/plan.html" class="nav-chapters next" title="Next chapter"
-                    aria-label="Next chapter" aria-keyshortcuts="Right">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="next prefetch" href="../implementation/plan.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
 
-        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z" />
-                </svg></span></template>
-        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z" />
-                </svg></span></template>
-        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z" />
-                </svg></span></template>
-        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-                </svg></span></template>
-        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z" />
-                </svg></span></template>
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
 
         <script>
@@ -1435,6 +893,5 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 
 
     </div>
-</body>
-
+    </body>
 </html>

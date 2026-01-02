@@ -1,49 +1,46 @@
 <!DOCTYPE HTML>
 <html lang="en" class="rust sidebar-visible" dir="ltr">
-
-<head>
-    <!-- Book generated using mdBook -->
-    <meta charset="UTF-8">
-    <title>Backend Implementer&#x27;s Guide - AnyFS Ecosystem Manual</title>
-
-
-    <!-- Custom HTML head -->
-
-    <meta name="description"
-        content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
-
-    <link rel="icon" href="../favicon-de23e50b.svg">
-    <link rel="shortcut icon" href="../favicon-8114d1fc.png">
-    <link rel="stylesheet" href="../css/variables-8adf115d.css">
-    <link rel="stylesheet" href="../css/general-2459343d.css">
-    <link rel="stylesheet" href="../css/chrome-ae938929.css">
-    <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
-
-    <!-- Fonts -->
-    <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
-
-    <!-- Highlight.js Stylesheets -->
-    <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
-    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
-    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
-
-    <!-- Custom theme stylesheets -->
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Backend Implementer&#x27;s Guide - AnyFS Ecosystem Manual</title>
 
 
-    <!-- Provide site root and default themes to javascript -->
-    <script>
-        const path_to_root = "../";
-        const default_light_theme = "rust";
-        const default_dark_theme = "coal";
-        window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
-    </script>
-    <!-- Start loading toc.js asap -->
-    <script src="../toc-30b1f61e.js"></script>
-</head>
+        <!-- Custom HTML head -->
 
-<body>
+        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "rust";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex-0cc552b6.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-f2dc2851.js"></script>
+    </head>
+    <body>
     <div id="mdbook-help-container">
         <div id="mdbook-help-popup">
             <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
@@ -76,7 +73,7 @@
         <script>
             const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
             let theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
             html.classList.remove('rust')
@@ -91,7 +88,7 @@
             let sidebar = null;
             const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
@@ -121,46 +118,22 @@
                 <div id="mdbook-menu-bar-hover-placeholder"></div>
                 <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor"
-                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
-                            aria-controls="mdbook-sidebar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z" />
-                                </svg></span>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
                         </label>
-                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme"
-                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
-                            aria-controls="mdbook-theme-list">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z" />
-                                </svg></span>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme"
-                                    id="mdbook-theme-default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button>
-                            </li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button>
-                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
                         </ul>
-                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)"
-                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s"
-                            aria-controls="mdbook-searchbar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z" />
-                                </svg></span>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
                         </button>
                     </div>
 
@@ -168,27 +141,13 @@
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
-                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z" />
-                                </svg></span>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository"
-                            aria-label="Git repository">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/implementation/backend-guide.md"
-                            title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
-                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z" />
-                                </svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/implementation/backend-guide.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
                     </div>
@@ -197,15 +156,9 @@
                 <div id="mdbook-search-wrapper" class="hidden">
                     <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="mdbook-searchbar" name="searchbar"
-                                placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer"
-                                aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                        <path
-                                            d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z" />
-                                    </svg></span>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
                             </div>
                         </div>
                     </form>
@@ -220,20 +173,19 @@
                 <script>
                     document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function (link) {
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="backend-implementers-guide"><a class="header" href="#backend-implementers-guide">Backend
-                                Implementer’s Guide</a></h1>
-                        <p>This guide walks you through implementing a custom AnyFS backend.</p>
-                        <hr>
-                        <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-                        <p>AnyFS uses <strong>layered traits</strong> - you implement only what you need:</p>
-                        <pre><code>FsPosix (full POSIX)
+                        <h1 id="backend-implementers-guide"><a class="header" href="#backend-implementers-guide">Backend Implementer’s Guide</a></h1>
+<p>This guide walks you through implementing a custom AnyFS backend.</p>
+<hr>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>AnyFS uses <strong>layered traits</strong> - you implement only what you need:</p>
+<pre><code>FsPosix (full POSIX)
    │
 FsFuse (FUSE-mountable)
    │
@@ -243,63 +195,39 @@ FsFull (std::fs features)
    │
 FsRead + FsWrite + FsDir (core)
 </code></pre>
-                        <p>Key properties:</p>
-                        <ul>
-                            <li>Backends accept <code>&amp;Path</code> for all path parameters</li>
-                            <li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path
-                                resolution (symlinks, <code>..</code>, normalization). See ADR-029.</li>
-                            <li>Backends handle <strong>storage only</strong> - just store/retrieve bytes at given paths
-                            </li>
-                            <li>Policy (limits, feature gates) is handled by middleware, not backends</li>
-                            <li>Implement only the traits your backend supports</li>
-                            <li><strong>Backends must be thread-safe</strong> - all trait methods use
-                                <code>&amp;self</code>, so backends must use interior mutability (e.g.,
-                                <code>RwLock</code>, <code>Mutex</code>) for synchronization</li>
-                        </ul>
-                        <hr>
-                        <h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
-                        <p>Depend only on <code>anyfs-backend</code>:</p>
-                        <pre><code class="language-toml">[dependencies]
+<p>Key properties:</p>
+<ul>
+<li>Backends accept <code>&amp;Path</code> for all path parameters</li>
+<li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path resolution (symlinks, <code>..</code>, normalization). See ADR-029.</li>
+<li>Backends handle <strong>storage only</strong> - just store/retrieve bytes at given paths</li>
+<li>Policy (limits, feature gates) is handled by middleware, not backends</li>
+<li>Implement only the traits your backend supports</li>
+<li><strong>Backends must be thread-safe</strong> - all trait methods use <code>&amp;self</code>, so backends must use interior mutability (e.g., <code>RwLock</code>, <code>Mutex</code>) for synchronization</li>
+</ul>
+<hr>
+<h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
+<p>Depend only on <code>anyfs-backend</code>:</p>
+<pre><code class="language-toml">[dependencies]
 anyfs-backend = "0.1"
 </code></pre>
-                        <hr>
-                        <h2 id="choosing-which-traits-to-implement"><a class="header"
-                                href="#choosing-which-traits-to-implement">Choosing Which Traits to Implement</a></h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Your Backend Supports</th>
-                                        <th>Implement</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Basic file operations</td>
-                                        <td><code>Fs</code> (= <code>FsRead</code> + <code>FsWrite</code> +
-                                            <code>FsDir</code>)</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Links, permissions, sync</td>
-                                        <td>Add <code>FsLink</code>, <code>FsPermissions</code>, <code>FsSync</code>,
-                                            <code>FsStats</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Hardlinks, FUSE mounting</td>
-                                        <td>Add <code>FsInode</code> → becomes <code>FsFuse</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Full POSIX (handles, locks, xattr)</td>
-                                        <td>Add <code>FsHandles</code>, <code>FsLock</code>, <code>FsXattr</code> →
-                                            becomes <code>FsPosix</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="minimal-backend-just-fs"><a class="header" href="#minimal-backend-just-fs">Minimal
-                                Backend: Just <code>Fs</code></a></h2>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="choosing-which-traits-to-implement"><a class="header" href="#choosing-which-traits-to-implement">Choosing Which Traits to Implement</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Your Backend Supports</th><th>Implement</th></tr>
+</thead>
+<tbody>
+<tr><td>Basic file operations</td><td><code>Fs</code> (= <code>FsRead</code> + <code>FsWrite</code> + <code>FsDir</code>)</td></tr>
+<tr><td>Links, permissions, sync</td><td>Add <code>FsLink</code>, <code>FsPermissions</code>, <code>FsSync</code>, <code>FsStats</code></td></tr>
+<tr><td>Hardlinks, FUSE mounting</td><td>Add <code>FsInode</code> → becomes <code>FsFuse</code></td></tr>
+<tr><td>Full POSIX (handles, locks, xattr)</td><td>Add <code>FsHandles</code>, <code>FsLock</code>, <code>FsXattr</code> → becomes <code>FsPosix</code></td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="minimal-backend-just-fs"><a class="header" href="#minimal-backend-just-fs">Minimal Backend: Just <code>Fs</code></a></h2>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Metadata, DirEntry};
 use std::io::{Read, Write};
@@ -395,31 +323,26 @@ impl FsDir for MyBackend {
 
 // MyBackend now implements Fs automatically (blanket impl)!
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="implementation-steps"><a class="header" href="#implementation-steps">Implementation
-                                Steps</a></h2>
-                        <h3 id="step-1-pick-a-data-model"><a class="header" href="#step-1-pick-a-data-model">Step 1:
-                                Pick a Data Model</a></h3>
-                        <p>Your backend needs internal storage. Options:</p>
-                        <ul>
-                            <li><strong>HashMap-based</strong>: <code>HashMap&lt;PathBuf, Entry&gt;</code> for simple
-                                cases</li>
-                            <li><strong>Tree-based</strong>: Explicit directory tree structure</li>
-                            <li><strong>Database-backed</strong>: SQLite, key-value store, etc.</li>
-                        </ul>
-                        <p>Minimum metadata per entry:</p>
-                        <ul>
-                            <li>File type (file/directory/symlink)</li>
-                            <li>Size (for files)</li>
-                            <li>Content (for files)</li>
-                            <li>Timestamps (optional)</li>
-                            <li>Permissions (optional)</li>
-                        </ul>
-                        <h3 id="step-2-implement-fsread-layer-1"><a class="header"
-                                href="#step-2-implement-fsread-layer-1">Step 2: Implement <code>FsRead</code> (Layer
-                                1)</a></h3>
-                        <p>Start with read operations (easiest):</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="implementation-steps"><a class="header" href="#implementation-steps">Implementation Steps</a></h2>
+<h3 id="step-1-pick-a-data-model"><a class="header" href="#step-1-pick-a-data-model">Step 1: Pick a Data Model</a></h3>
+<p>Your backend needs internal storage. Options:</p>
+<ul>
+<li><strong>HashMap-based</strong>: <code>HashMap&lt;PathBuf, Entry&gt;</code> for simple cases</li>
+<li><strong>Tree-based</strong>: Explicit directory tree structure</li>
+<li><strong>Database-backed</strong>: SQLite, key-value store, etc.</li>
+</ul>
+<p>Minimum metadata per entry:</p>
+<ul>
+<li>File type (file/directory/symlink)</li>
+<li>Size (for files)</li>
+<li>Content (for files)</li>
+<li>Timestamps (optional)</li>
+<li>Permissions (optional)</li>
+</ul>
+<h3 id="step-2-implement-fsread-layer-1"><a class="header" href="#step-2-implement-fsread-layer-1">Step 2: Implement <code>FsRead</code> (Layer 1)</a></h3>
+<p>Start with read operations (easiest):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MyBackend {
     fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
@@ -430,27 +353,25 @@ impl FsDir for MyBackend {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Streaming implementation options:</strong></p>
-                        <p>For <code>MemoryBackend</code> or similar, you can use <code>std::io::Cursor</code>:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Streaming implementation options:</strong></p>
+<p>For <code>MemoryBackend</code> or similar, you can use <code>std::io::Cursor</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt; {
     let data = self.read(path)?;
     Ok(Box::new(std::io::Cursor::new(data)))
 }
 <span class="boring">}</span></code></pre>
-                        <p>For <code>VRootFsBackend</code>, return the actual file handle:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>For <code>VRootFsBackend</code>, return the actual file handle:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt; {
     let file = std::fs::File::open(self.resolve(path)?)?;
     Ok(Box::new(file))
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="step-3-implement-fswrite-layer-1"><a class="header"
-                                href="#step-3-implement-fswrite-layer-1">Step 3: Implement <code>FsWrite</code> (Layer
-                                1)</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="step-3-implement-fswrite-layer-1"><a class="header" href="#step-3-implement-fswrite-layer-1">Step 3: Implement <code>FsWrite</code> (Layer 1)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsWrite for MyBackend {
     fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt;;
@@ -462,16 +383,14 @@ impl FsDir for MyBackend {
     fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Note on truncate:</strong></p>
-                        <ul>
-                            <li>If <code>size &lt; current</code>: discard trailing bytes</li>
-                            <li>If <code>size &gt; current</code>: extend with zero bytes</li>
-                            <li>Required for FUSE support and editor save operations</li>
-                        </ul>
-                        <h3 id="step-4-implement-fsdir-layer-1"><a class="header"
-                                href="#step-4-implement-fsdir-layer-1">Step 4: Implement <code>FsDir</code> (Layer
-                                1)</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Note on truncate:</strong></p>
+<ul>
+<li>If <code>size &lt; current</code>: discard trailing bytes</li>
+<li>If <code>size &gt; current</code>: extend with zero bytes</li>
+<li>Required for FUSE support and editor save operations</li>
+</ul>
+<h3 id="step-4-implement-fsdir-layer-1"><a class="header" href="#step-4-implement-fsdir-layer-1">Step 4: Implement <code>FsDir</code> (Layer 1)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsDir for MyBackend {
     fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
@@ -481,17 +400,12 @@ impl FsDir for MyBackend {
     fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Congratulations!</strong> After implementing <code>FsRead</code>,
-                            <code>FsWrite</code>, and <code>FsDir</code>, your backend implements <code>Fs</code>
-                            automatically (blanket impl). This covers 90% of use cases.</p>
-                        <hr>
-                        <h2 id="optional-layer-2-traits"><a class="header" href="#optional-layer-2-traits">Optional:
-                                Layer 2 Traits</a></h2>
-                        <p>Add these if your backend supports the features:</p>
-                        <h3 id="fslink---symlinks-and-hardlinks"><a class="header"
-                                href="#fslink---symlinks-and-hardlinks"><code>FsLink</code> - Symlinks and Hardlinks</a>
-                        </h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Congratulations!</strong> After implementing <code>FsRead</code>, <code>FsWrite</code>, and <code>FsDir</code>, your backend implements <code>Fs</code> automatically (blanket impl). This covers 90% of use cases.</p>
+<hr>
+<h2 id="optional-layer-2-traits"><a class="header" href="#optional-layer-2-traits">Optional: Layer 2 Traits</a></h2>
+<p>Add these if your backend supports the features:</p>
+<h3 id="fslink---symlinks-and-hardlinks"><a class="header" href="#fslink---symlinks-and-hardlinks"><code>FsLink</code> - Symlinks and Hardlinks</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsLink for MyBackend {
     fn symlink(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
@@ -500,44 +414,41 @@ impl FsDir for MyBackend {
     fn symlink_metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <ul>
-                            <li>Symlinks store a target path as a string</li>
-                            <li>Hard links share content with the original (update link count)</li>
-                        </ul>
-                        <h3 id="fspermissions"><a class="header" href="#fspermissions"><code>FsPermissions</code></a>
-                        </h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<ul>
+<li>Symlinks store a target path as a string</li>
+<li>Hard links share content with the original (update link count)</li>
+</ul>
+<h3 id="fspermissions"><a class="header" href="#fspermissions"><code>FsPermissions</code></a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsPermissions for MyBackend {
     fn set_permissions(&amp;self, path: &amp;Path, perm: Permissions) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fssync---durability"><a class="header" href="#fssync---durability"><code>FsSync</code> -
-                                Durability</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fssync---durability"><a class="header" href="#fssync---durability"><code>FsSync</code> - Durability</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsSync for MyBackend {
     fn sync(&amp;self) -&gt; Result&lt;(), FsError&gt;;
     fn fsync(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <ul>
-                            <li><code>sync()</code>: Flush all pending writes to durable storage</li>
-                            <li><code>fsync(path)</code>: Flush pending writes for a specific file</li>
-                            <li><code>MemoryBackend</code> can no-op these (volatile by design)</li>
-                            <li><code>SqliteBackend</code>: <code>PRAGMA wal_checkpoint</code> or connection flush</li>
-                            <li><code>VRootFsBackend</code>: <code>std::fs::File::sync_all()</code></li>
-                        </ul>
-                        <h3 id="fsstats---filesystem-stats"><a class="header"
-                                href="#fsstats---filesystem-stats"><code>FsStats</code> - Filesystem Stats</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<ul>
+<li><code>sync()</code>: Flush all pending writes to durable storage</li>
+<li><code>fsync(path)</code>: Flush pending writes for a specific file</li>
+<li><code>MemoryBackend</code> can no-op these (volatile by design)</li>
+<li><code>SqliteBackend</code>: <code>PRAGMA wal_checkpoint</code> or connection flush</li>
+<li><code>VRootFsBackend</code>: <code>std::fs::File::sync_all()</code></li>
+</ul>
+<h3 id="fsstats---filesystem-stats"><a class="header" href="#fsstats---filesystem-stats"><code>FsStats</code> - Filesystem Stats</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsStats for MyBackend {
     fn statfs(&amp;self) -&gt; Result&lt;StatFs, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p>Return filesystem capacity information:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>Return filesystem capacity information:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>StatFs {
     total_bytes: 0,      // 0 = unlimited
@@ -550,12 +461,10 @@ impl FsDir for MyBackend {
     max_name_len: 255,
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="optional-layer-3---fsinode-for-fuse"><a class="header"
-                                href="#optional-layer-3---fsinode-for-fuse">Optional: Layer 3 - <code>FsInode</code>
-                                (For FUSE)</a></h2>
-                        <p>Implement <code>FsInode</code> if you need FUSE mounting or proper hardlink support:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="optional-layer-3---fsinode-for-fuse"><a class="header" href="#optional-layer-3---fsinode-for-fuse">Optional: Layer 3 - <code>FsInode</code> (For FUSE)</a></h2>
+<p>Implement <code>FsInode</code> if you need FUSE mounting or proper hardlink support:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsInode for MyBackend {
     fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt;;
@@ -564,18 +473,16 @@ impl FsDir for MyBackend {
     fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>No blanket/default implementation</strong> - you must implement this trait explicitly
-                            if you need:</p>
-                        <ul>
-                            <li><strong>FUSE mounting</strong>: FUSE operates on inodes, not paths</li>
-                            <li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
-                        </ul>
-                        <p><strong>Level 1: Simple backend (no FsInode)</strong></p>
-                        <p>Don’t implement <code>FsInode</code>. The backend won’t support FUSE mounting or hardlinks.
-                        </p>
-                        <p><strong>Level 2: Hardlink support</strong></p>
-                        <p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>No blanket/default implementation</strong> - you must implement this trait explicitly if you need:</p>
+<ul>
+<li><strong>FUSE mounting</strong>: FUSE operates on inodes, not paths</li>
+<li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
+</ul>
+<p><strong>Level 1: Simple backend (no FsInode)</strong></p>
+<p>Don’t implement <code>FsInode</code>. The backend won’t support FUSE mounting or hardlinks.</p>
+<p><strong>Level 2: Hardlink support</strong></p>
+<p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>struct Node {
     id: u64,          // Unique node ID (the inode)
@@ -607,9 +514,9 @@ impl FsLink for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Level 3: Full FUSE efficiency</strong></p>
-                        <p>Override all 4 methods for O(1) inode operations:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Level 3: Full FUSE efficiency</strong></p>
+<p>Override all 4 methods for O(1) inode operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsInode for SqliteBackend {
     fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt; {
@@ -649,43 +556,24 @@ impl FsLink for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Summary:</strong></p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Your Backend</th>
-                                        <th>Implement</th>
-                                        <th>Result</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Simple (no hardlinks)</td>
-                                        <td>Nothing</td>
-                                        <td>Works with defaults</td>
-                                    </tr>
-                                    <tr>
-                                        <td>With hardlinks</td>
-                                        <td><code>FsInode::path_to_inode</code></td>
-                                        <td>Hardlinks work correctly</td>
-                                    </tr>
-                                    <tr>
-                                        <td>FUSE-optimized</td>
-                                        <td>Full <code>FsInode</code></td>
-                                        <td>Maximum performance</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="optional-layer-4---posix-traits"><a class="header"
-                                href="#optional-layer-4---posix-traits">Optional: Layer 4 - POSIX Traits</a></h2>
-                        <p>For full POSIX semantics (file handles, locking, extended attributes):</p>
-                        <h3 id="fshandles---file-handle-operations"><a class="header"
-                                href="#fshandles---file-handle-operations"><code>FsHandles</code> - File Handle
-                                Operations</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Summary:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Your Backend</th><th>Implement</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Simple (no hardlinks)</td><td>Nothing</td><td>Works with defaults</td></tr>
+<tr><td>With hardlinks</td><td><code>FsInode::path_to_inode</code></td><td>Hardlinks work correctly</td></tr>
+<tr><td>FUSE-optimized</td><td>Full <code>FsInode</code></td><td>Maximum performance</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="optional-layer-4---posix-traits"><a class="header" href="#optional-layer-4---posix-traits">Optional: Layer 4 - POSIX Traits</a></h2>
+<p>For full POSIX semantics (file handles, locking, extended attributes):</p>
+<h3 id="fshandles---file-handle-operations"><a class="header" href="#fshandles---file-handle-operations"><code>FsHandles</code> - File Handle Operations</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsHandles for MyBackend {
     fn open(&amp;self, path: &amp;Path, flags: OpenFlags) -&gt; Result&lt;Handle, FsError&gt;;
@@ -694,9 +582,8 @@ impl FsLink for MemoryBackend {
     fn close(&amp;self, handle: Handle) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fslock---file-locking"><a class="header"
-                                href="#fslock---file-locking"><code>FsLock</code> - File Locking</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fslock---file-locking"><a class="header" href="#fslock---file-locking"><code>FsLock</code> - File Locking</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsLock for MyBackend {
     fn lock(&amp;self, handle: Handle, lock: LockType) -&gt; Result&lt;(), FsError&gt;;
@@ -704,10 +591,8 @@ impl FsLink for MemoryBackend {
     fn unlock(&amp;self, handle: Handle) -&gt; Result&lt;(), FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="fsxattr---extended-attributes"><a class="header"
-                                href="#fsxattr---extended-attributes"><code>FsXattr</code> - Extended Attributes</a>
-                        </h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="fsxattr---extended-attributes"><a class="header" href="#fsxattr---extended-attributes"><code>FsXattr</code> - Extended Attributes</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsXattr for MyBackend {
     fn get_xattr(&amp;self, path: &amp;Path, name: &amp;str) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
@@ -716,98 +601,54 @@ impl FsLink for MemoryBackend {
     fn list_xattr(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;String&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Note:</strong> Most backends don’t need Layer 4. Only implement if you’re wrapping a
-                            real filesystem (<code>VRootFsBackend</code>) or building a database that needs full POSIX
-                            semantics.</p>
-                        <hr>
-                        <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
-                        <p>Return appropriate <code>FsError</code> variants:</p>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Situation</th>
-                                        <th>Error</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Path doesn’t exist</td>
-                                        <td><code>FsError::NotFound { path, operation }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Path already exists</td>
-                                        <td><code>FsError::AlreadyExists { path, operation }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Expected file, got dir</td>
-                                        <td><code>FsError::NotAFile { path }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Expected dir, got file</td>
-                                        <td><code>FsError::NotADirectory { path }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Remove non-empty dir</td>
-                                        <td><code>FsError::DirectoryNotEmpty { path }</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Internal error</td>
-                                        <td><code>FsError::Backend { message }</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="what-backends-do-not-do"><a class="header" href="#what-backends-do-not-do">What Backends
-                                Do NOT Do</a></h2>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Concern</th>
-                                        <th>Where It Lives</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Quota enforcement</td>
-                                        <td><code>Quota&lt;B&gt;</code> middleware</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Feature gating</td>
-                                        <td><code>Restrictions&lt;B&gt;</code> middleware</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Logging</td>
-                                        <td><code>Tracing&lt;B&gt;</code> middleware</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Ergonomic API</td>
-                                        <td><code>FileStorage&lt;B, M&gt;</code> wrapper</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>Backends focus on storage.</strong> Keep them simple.</p>
-                        <hr>
-                        <h2 id="optional-optimizations"><a class="header" href="#optional-optimizations">Optional
-                                Optimizations</a></h2>
-                        <p>Some trait methods have default implementations that work universally but may be suboptimal
-                            for specific backends. You can <strong>override these for better performance</strong>.</p>
-                        <h3 id="path-canonicalization-fspath-trait"><a class="header"
-                                href="#path-canonicalization-fspath-trait">Path Canonicalization (FsPath Trait)</a></h3>
-                        <p>The <code>FsPath</code> trait provides <code>canonicalize()</code> and
-                            <code>soft_canonicalize()</code> with default implementations that call
-                            <code>read_link()</code> and <code>symlink_metadata()</code> per path component.</p>
-                        <p><strong>Default behavior:</strong> O(n) calls for a path with n components</p>
-                        <p><strong>When to override:</strong></p>
-                        <ul>
-                            <li>Your backend can resolve paths more efficiently (e.g., SQL query)</li>
-                            <li>Your backend delegates to OS (which has optimized syscalls)</li>
-                        </ul>
-                        <p><strong>SQLite Example - Single Query Resolution:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Note:</strong> Most backends don’t need Layer 4. Only implement if you’re wrapping a real filesystem (<code>VRootFsBackend</code>) or building a database that needs full POSIX semantics.</p>
+<hr>
+<h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
+<p>Return appropriate <code>FsError</code> variants:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Situation</th><th>Error</th></tr>
+</thead>
+<tbody>
+<tr><td>Path doesn’t exist</td><td><code>FsError::NotFound { path, operation }</code></td></tr>
+<tr><td>Path already exists</td><td><code>FsError::AlreadyExists { path, operation }</code></td></tr>
+<tr><td>Expected file, got dir</td><td><code>FsError::NotAFile { path }</code></td></tr>
+<tr><td>Expected dir, got file</td><td><code>FsError::NotADirectory { path }</code></td></tr>
+<tr><td>Remove non-empty dir</td><td><code>FsError::DirectoryNotEmpty { path }</code></td></tr>
+<tr><td>Internal error</td><td><code>FsError::Backend { message }</code></td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="what-backends-do-not-do"><a class="header" href="#what-backends-do-not-do">What Backends Do NOT Do</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Concern</th><th>Where It Lives</th></tr>
+</thead>
+<tbody>
+<tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
+<tr><td>Ergonomic API</td><td><code>FileStorage&lt;B, M&gt;</code> wrapper</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Backends focus on storage.</strong> Keep them simple.</p>
+<hr>
+<h2 id="optional-optimizations"><a class="header" href="#optional-optimizations">Optional Optimizations</a></h2>
+<p>Some trait methods have default implementations that work universally but may be suboptimal for specific backends. You can <strong>override these for better performance</strong>.</p>
+<h3 id="path-canonicalization-fspath-trait"><a class="header" href="#path-canonicalization-fspath-trait">Path Canonicalization (FsPath Trait)</a></h3>
+<p>The <code>FsPath</code> trait provides <code>canonicalize()</code> and <code>soft_canonicalize()</code> with default implementations that call <code>read_link()</code> and <code>symlink_metadata()</code> per path component.</p>
+<p><strong>Default behavior:</strong> O(n) calls for a path with n components</p>
+<p><strong>When to override:</strong></p>
+<ul>
+<li>Your backend can resolve paths more efficiently (e.g., SQL query)</li>
+<li>Your backend delegates to OS (which has optimized syscalls)</li>
+</ul>
+<p><strong>SQLite Example - Single Query Resolution:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsPath for SqliteBackend {
     fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
@@ -838,8 +679,8 @@ impl FsLink for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>VRootFsBackend Example - OS Delegation:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>VRootFsBackend Example - OS Delegation:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsPath for VRootFsBackend {
     fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
@@ -864,43 +705,22 @@ impl FsLink for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="other-optimization-opportunities"><a class="header"
-                                href="#other-optimization-opportunities">Other Optimization Opportunities</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Method</th>
-                                        <th>Default</th>
-                                        <th>Optimization Opportunity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><code>canonicalize()</code></td>
-                                        <td>O(n) per component</td>
-                                        <td>SQL CTE, OS delegation</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>create_dir_all()</code></td>
-                                        <td>Recursive <code>create_dir()</code></td>
-                                        <td>Single SQL INSERT with path hierarchy</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>remove_dir_all()</code></td>
-                                        <td>Recursive traversal</td>
-                                        <td>SQL DELETE with LIKE pattern</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>copy()</code></td>
-                                        <td>read + write</td>
-                                        <td>Database-level copy, reflink</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <p><strong>General Pattern:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="other-optimization-opportunities"><a class="header" href="#other-optimization-opportunities">Other Optimization Opportunities</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Method</th><th>Default</th><th>Optimization Opportunity</th></tr>
+</thead>
+<tbody>
+<tr><td><code>canonicalize()</code></td><td>O(n) per component</td><td>SQL CTE, OS delegation</td></tr>
+<tr><td><code>create_dir_all()</code></td><td>Recursive <code>create_dir()</code></td><td>Single SQL INSERT with path hierarchy</td></tr>
+<tr><td><code>remove_dir_all()</code></td><td>Recursive traversal</td><td>SQL DELETE with LIKE pattern</td></tr>
+<tr><td><code>copy()</code></td><td>read + write</td><td>Database-level copy, reflink</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>General Pattern:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Override any trait method with optimized implementation
 impl FsDir for SqliteBackend {
@@ -915,19 +735,16 @@ impl FsDir for SqliteBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>When NOT to optimize:</strong></p>
-                        <ul>
-                            <li><code>MemoryBackend</code>: In-memory operations are already fast; keep it simple</li>
-                            <li>Low-volume operations: Optimize where it matters (hot paths)</li>
-                            <li>Prototype phase: Get correctness first, optimize later</li>
-                        </ul>
-                        <p>See <a
-                                href="../architecture/adrs.html#adr-032-path-canonicalization-via-fspath-trait">ADR-032</a>
-                            for the full design rationale.</p>
-                        <h2 id="testing-your-backend"><a class="header" href="#testing-your-backend">Testing Your
-                                Backend</a></h2>
-                        <p>Use the conformance test suite:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>When NOT to optimize:</strong></p>
+<ul>
+<li><code>MemoryBackend</code>: In-memory operations are already fast; keep it simple</li>
+<li>Low-volume operations: Optimize where it matters (hot paths)</li>
+<li>Prototype phase: Get correctness first, optimize later</li>
+</ul>
+<p>See <a href="../architecture/adrs.html#adr-032-path-canonicalization-via-fspath-trait">ADR-032</a> for the full design rationale.</p>
+<h2 id="testing-your-backend"><a class="header" href="#testing-your-backend">Testing Your Backend</a></h2>
+<p>Use the conformance test suite:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[cfg(test)]
 mod tests {
@@ -956,24 +773,15 @@ mod tests {
     // ... more tests
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="note-on-vrootfsbackend"><a class="header" href="#note-on-vrootfsbackend">Note on
-                                VRootFsBackend</a></h2>
-                        <p>If you are implementing a backend that wraps a <strong>real host filesystem
-                                directory</strong>, consider using <code>strict-path::VirtualPath</code> and
-                            <code>strict-path::VirtualRoot</code> internally for path containment. This ensures paths
-                            cannot escape the designated root directory.</p>
-                        <p>This is an implementation choice for filesystem-based backends, not a requirement of the
-                            <code>Fs</code> trait.</p>
-                        <hr>
-                        <h2 id="for-middleware-authors-wrapping-streams"><a class="header"
-                                href="#for-middleware-authors-wrapping-streams">For Middleware Authors: Wrapping
-                                Streams</a></h2>
-                        <p>Middleware that needs to intercept streaming I/O must wrap the returned
-                            <code>Box&lt;dyn Read/Write&gt;</code>.</p>
-                        <h3 id="countingwriter-example"><a class="header" href="#countingwriter-example">CountingWriter
-                                Example</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="note-on-vrootfsbackend"><a class="header" href="#note-on-vrootfsbackend">Note on VRootFsBackend</a></h2>
+<p>If you are implementing a backend that wraps a <strong>real host filesystem directory</strong>, consider using <code>strict-path::VirtualPath</code> and <code>strict-path::VirtualRoot</code> internally for path containment. This ensures paths cannot escape the designated root directory.</p>
+<p>This is an implementation choice for filesystem-based backends, not a requirement of the <code>Fs</code> trait.</p>
+<hr>
+<h2 id="for-middleware-authors-wrapping-streams"><a class="header" href="#for-middleware-authors-wrapping-streams">For Middleware Authors: Wrapping Streams</a></h2>
+<p>Middleware that needs to intercept streaming I/O must wrap the returned <code>Box&lt;dyn Read/Write&gt;</code>.</p>
+<h3 id="countingwriter-example"><a class="header" href="#countingwriter-example">CountingWriter Example</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::io::{self, Write};
 use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
@@ -1001,9 +809,8 @@ impl&lt;W: Write + Send&gt; Write for CountingWriter&lt;W&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="using-in-quota-middleware"><a class="header" href="#using-in-quota-middleware">Using in
-                                Quota Middleware</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="using-in-quota-middleware"><a class="header" href="#using-in-quota-middleware">Using in Quota Middleware</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: Fs&gt; Fs for Quota&lt;B&gt; {
     fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Write + Send&gt;, FsError&gt; {
@@ -1017,59 +824,36 @@ impl&lt;W: Write + Send&gt; Write for CountingWriter&lt;W&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="alternatives-to-wrapping"><a class="header"
-                                href="#alternatives-to-wrapping">Alternatives to Wrapping</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Middleware</th>
-                                        <th>Alternative to wrapping</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>PathFilter</td>
-                                        <td>Check path at open time, pass stream through</td>
-                                    </tr>
-                                    <tr>
-                                        <td>ReadOnly</td>
-                                        <td>Block <code>open_write</code> entirely</td>
-                                    </tr>
-                                    <tr>
-                                        <td>RateLimit</td>
-                                        <td>Count the open call, not stream bytes</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Tracing</td>
-                                        <td>Log the open call, pass stream through</td>
-                                    </tr>
-                                    <tr>
-                                        <td>DryRun</td>
-                                        <td>Return <code>std::io::sink()</code> instead of real writer</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <hr>
-                        <h2 id="creating-custom-middleware"><a class="header"
-                                href="#creating-custom-middleware">Creating Custom Middleware</a></h2>
-                        <p>Custom middleware only requires <code>anyfs-backend</code> as a dependency - same as
-                            backends.</p>
-                        <h3 id="dependency-1"><a class="header" href="#dependency-1">Dependency</a></h3>
-                        <pre><code class="language-toml">[dependencies]
+<h3 id="alternatives-to-wrapping"><a class="header" href="#alternatives-to-wrapping">Alternatives to Wrapping</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Middleware</th><th>Alternative to wrapping</th></tr>
+</thead>
+<tbody>
+<tr><td>PathFilter</td><td>Check path at open time, pass stream through</td></tr>
+<tr><td>ReadOnly</td><td>Block <code>open_write</code> entirely</td></tr>
+<tr><td>RateLimit</td><td>Count the open call, not stream bytes</td></tr>
+<tr><td>Tracing</td><td>Log the open call, pass stream through</td></tr>
+<tr><td>DryRun</td><td>Return <code>std::io::sink()</code> instead of real writer</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="creating-custom-middleware"><a class="header" href="#creating-custom-middleware">Creating Custom Middleware</a></h2>
+<p>Custom middleware only requires <code>anyfs-backend</code> as a dependency - same as backends.</p>
+<h3 id="dependency-1"><a class="header" href="#dependency-1">Dependency</a></h3>
+<pre><code class="language-toml">[dependencies]
 anyfs-backend = "0.1"
 </code></pre>
-                        <h3 id="the-pattern-5-minutes-to-understand"><a class="header"
-                                href="#the-pattern-5-minutes-to-understand">The Pattern (5 Minutes to Understand)</a>
-                        </h3>
-                        <p>Middleware is just a struct that:</p>
-                        <ol>
-                            <li>Wraps another <code>Fs</code></li>
-                            <li>Implements <code>Fs</code> itself</li>
-                            <li>Intercepts some methods, delegates others</li>
-                        </ol>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="the-pattern-5-minutes-to-understand"><a class="header" href="#the-pattern-5-minutes-to-understand">The Pattern (5 Minutes to Understand)</a></h3>
+<p>Middleware is just a struct that:</p>
+<ol>
+<li>Wraps another <code>Fs</code></li>
+<li>Implements <code>Fs</code> itself</li>
+<li>Intercepts some methods, delegates others</li>
+</ol>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>//  ┌─────────────────────────────────────┐
 //  │  Your Middleware                    │
@@ -1081,11 +865,9 @@ anyfs-backend = "0.1"
 //  Request → Middleware (intercept/modify) → Inner Backend
 //  Response ← Middleware (intercept/modify) ← Inner Backend
 <span class="boring">}</span></code></pre>
-                        <h3 id="simplest-possible-middleware-operation-counter"><a class="header"
-                                href="#simplest-possible-middleware-operation-counter">Simplest Possible Middleware:
-                                Operation Counter</a></h3>
-                        <p>This middleware counts how many operations are performed:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="simplest-possible-middleware-operation-counter"><a class="header" href="#simplest-possible-middleware-operation-counter">Simplest Possible Middleware: Operation Counter</a></h3>
+<p>This middleware counts how many operations are performed:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_backend::{Fs, FsError, Metadata, DirEntry, Permissions, StatFs};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -1137,8 +919,8 @@ impl&lt;B: FsDir&gt; FsDir for Counter&lt;B&gt; {
 
 // Counter&lt;B&gt; now implements Fs when B: Fs (blanket impl)
 <span class="boring">}</span></code></pre>
-                        <p><strong>Usage:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Usage:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let backend = Counter::new(MemoryBackend::new());
 backend.write(std::path::Path::new("/file.txt"), b"hello")?;
@@ -1147,11 +929,10 @@ backend.read(std::path::Path::new("/file.txt"))?;
 
 println!("Operations: {}", backend.operations());  // 3
 <span class="boring">}</span></code></pre>
-                        <p>That’s it. That’s the entire pattern.</p>
-                        <h3 id="adding-a-layer-for-layer-syntax"><a class="header"
-                                href="#adding-a-layer-for-layer-syntax">Adding a Layer (for .layer() syntax)</a></h3>
-                        <p>To enable the fluent <code>.layer()</code> syntax, add a Layer struct:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>That’s it. That’s the entire pattern.</p>
+<h3 id="adding-a-layer-for-layer-syntax"><a class="header" href="#adding-a-layer-for-layer-syntax">Adding a Layer (for .layer() syntax)</a></h3>
+<p>To enable the fluent <code>.layer()</code> syntax, add a Layer struct:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_backend::Layer;
 
@@ -1165,16 +946,15 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for CounterLayer {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Usage with .layer():</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Usage with .layer():</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let backend = MemoryBackend::new()
     .layer(CounterLayer);
 <span class="boring">}</span></code></pre>
-                        <h3 id="real-example-readonly-middleware"><a class="header"
-                                href="#real-example-readonly-middleware">Real Example: ReadOnly Middleware</a></h3>
-                        <p>A practical middleware that blocks all write operations:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="real-example-readonly-middleware"><a class="header" href="#real-example-readonly-middleware">Real Example: ReadOnly Middleware</a></h3>
+<p>A practical middleware that blocks all write operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub struct ReadOnly&lt;B&gt; {
     inner: B,
@@ -1239,70 +1019,33 @@ impl&lt;B: FsWrite&gt; FsWrite for ReadOnly&lt;B&gt; {
     // ... block all FsWrite methods
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Usage:</strong></p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Usage:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let backend = ReadOnly::new(MemoryBackend::new());
 
 backend.read(std::path::Path::new("/file.txt"));       // OK (if file exists)
 backend.write(std::path::Path::new("/file.txt"), b""); // Error: ReadOnly
 <span class="boring">}</span></code></pre>
-                        <h3 id="middleware-decision-table"><a class="header"
-                                href="#middleware-decision-table">Middleware Decision Table</a></h3>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>What You Want</th>
-                                        <th>Intercept</th>
-                                        <th>Delegate</th>
-                                        <th>Example</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Count operations</td>
-                                        <td>All methods (before)</td>
-                                        <td>All methods</td>
-                                        <td><code>Counter</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Block writes</td>
-                                        <td>Write methods</td>
-                                        <td>Read methods</td>
-                                        <td><code>ReadOnly</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Transform data</td>
-                                        <td><code>read</code>/<code>write</code></td>
-                                        <td>Everything else</td>
-                                        <td><code>Encryption</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Check permissions</td>
-                                        <td>All methods (before)</td>
-                                        <td>All methods</td>
-                                        <td><code>PathFilter</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Log operations</td>
-                                        <td>All methods (before)</td>
-                                        <td>All methods</td>
-                                        <td><code>Tracing</code></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Enforce limits</td>
-                                        <td>Write methods (check size)</td>
-                                        <td>Read methods</td>
-                                        <td><code>Quota</code></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <h3 id="macro-for-boilerplate-optional"><a class="header"
-                                href="#macro-for-boilerplate-optional">Macro for Boilerplate (Optional)</a></h3>
-                        <p>If you don’t want to manually delegate all 29 methods, you can use a macro:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="middleware-decision-table"><a class="header" href="#middleware-decision-table">Middleware Decision Table</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>What You Want</th><th>Intercept</th><th>Delegate</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td>Count operations</td><td>All methods (before)</td><td>All methods</td><td><code>Counter</code></td></tr>
+<tr><td>Block writes</td><td>Write methods</td><td>Read methods</td><td><code>ReadOnly</code></td></tr>
+<tr><td>Transform data</td><td><code>read</code>/<code>write</code></td><td>Everything else</td><td><code>Encryption</code></td></tr>
+<tr><td>Check permissions</td><td>All methods (before)</td><td>All methods</td><td><code>PathFilter</code></td></tr>
+<tr><td>Log operations</td><td>All methods (before)</td><td>All methods</td><td><code>Tracing</code></td></tr>
+<tr><td>Enforce limits</td><td>Write methods (check size)</td><td>Read methods</td><td><code>Quota</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="macro-for-boilerplate-optional"><a class="header" href="#macro-for-boilerplate-optional">Macro for Boilerplate (Optional)</a></h3>
+<p>If you don’t want to manually delegate all 29 methods, you can use a macro:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>macro_rules! delegate {
     ($self:ident, $method:ident, $($arg:ident),*) =&gt; {
@@ -1323,12 +1066,9 @@ impl&lt;B: Fs&gt; Fs for MyMiddleware&lt;B&gt; {
     // ... etc
 }
 <span class="boring">}</span></code></pre>
-                        <p>Or provide a <code>delegate_all!</code> macro in <code>anyfs-backend</code> that generates
-                            all the passthrough implementations.</p>
-                        <h3 id="complete-example-encryption-middleware"><a class="header"
-                                href="#complete-example-encryption-middleware">Complete Example: Encryption
-                                Middleware</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p>Or provide a <code>delegate_all!</code> macro in <code>anyfs-backend</code> that generates all the passthrough implementations.</p>
+<h3 id="complete-example-encryption-middleware"><a class="header" href="#complete-example-encryption-middleware">Complete Example: Encryption Middleware</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs_backend::{FsRead, FsWrite, FsDir, Layer, FsError, Metadata, DirEntry};
 use std::io::{Read, Write};
@@ -1418,8 +1158,8 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for EncryptedLayer {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use anyfs::MemoryBackend;
 use my_middleware::{EncryptedLayer, Encrypted};
@@ -1431,52 +1171,36 @@ let fs = Encrypted::new(MemoryBackend::new(), key);
 let fs = MemoryBackend::new()
     .layer(EncryptedLayer::new(key));
 <span class="boring">}</span></code></pre>
-                        <h3 id="middleware-checklist"><a class="header" href="#middleware-checklist">Middleware
-                                Checklist</a></h3>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Depends only on <code>anyfs-backend</code></li>
-                            <li><input disabled="" type="checkbox"> Implements the same traits as the inner backend
-                                (<code>FsRead</code>, <code>FsWrite</code>, <code>FsDir</code>, etc.)</li>
-                            <li><input disabled="" type="checkbox"> Implements <code>Layer&lt;B&gt;</code> for
-                                <code>MyMiddlewareLayer</code></li>
-                            <li><input disabled="" type="checkbox"> Delegates unmodified operations to inner backend
-                            </li>
-                            <li><input disabled="" type="checkbox"> Handles streaming I/O appropriately (wrap,
-                                pass-through, or block)</li>
-                            <li><input disabled="" type="checkbox"> Documents which operations are intercepted vs
-                                delegated</li>
-                        </ul>
-                        <hr>
-                        <h2 id="backend-checklist"><a class="header" href="#backend-checklist">Backend Checklist</a>
-                        </h2>
-                        <ul>
-                            <li><input disabled="" type="checkbox"> Depends only on <code>anyfs-backend</code></li>
-                            <li><input disabled="" type="checkbox"> Implements core traits: <code>FsRead</code>,
-                                <code>FsWrite</code>, <code>FsDir</code> (= <code>Fs</code>)</li>
-                            <li><input disabled="" type="checkbox"> Optional: Implements <code>FsLink</code>,
-                                <code>FsPermissions</code>, <code>FsSync</code>, <code>FsStats</code> (=
-                                <code>FsFull</code>)</li>
-                            <li><input disabled="" type="checkbox"> Optional: Implements <code>FsInode</code> for FUSE
-                                support (= <code>FsFuse</code>)</li>
-                            <li><input disabled="" type="checkbox"> Optional: Implements <code>FsHandles</code>,
-                                <code>FsLock</code>, <code>FsXattr</code> for POSIX (= <code>FsPosix</code>)</li>
-                            <li><input disabled="" type="checkbox"> Accepts <code>&amp;Path</code> for all paths</li>
-                            <li><input disabled="" type="checkbox"> Returns correct <code>FsError</code> variants</li>
-                            <li><input disabled="" type="checkbox"> Passes conformance tests for implemented traits</li>
-                            <li><input disabled="" type="checkbox"> No panics (see below)</li>
-                            <li><input disabled="" type="checkbox"> Thread-safe (see below)</li>
-                            <li><input disabled="" type="checkbox"> Documents performance characteristics</li>
-                        </ul>
-                        <hr>
-                        <h2 id="critical-implementation-guidelines"><a class="header"
-                                href="#critical-implementation-guidelines">Critical Implementation Guidelines</a></h2>
-                        <p>These guidelines are derived from issues found in similar projects (<code>vfs</code>,
-                            <code>agentfs</code>). <strong>All implementations MUST follow these.</strong></p>
-                        <h3 id="1-no-panic-policy"><a class="header" href="#1-no-panic-policy">1. No Panic Policy</a>
-                        </h3>
-                        <p><strong>NEVER use <code>.unwrap()</code> or <code>.expect()</code> in library code.</strong>
-                        </p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="middleware-checklist"><a class="header" href="#middleware-checklist">Middleware Checklist</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Depends only on <code>anyfs-backend</code></li>
+<li><input disabled="" type="checkbox"> Implements the same traits as the inner backend (<code>FsRead</code>, <code>FsWrite</code>, <code>FsDir</code>, etc.)</li>
+<li><input disabled="" type="checkbox"> Implements <code>Layer&lt;B&gt;</code> for <code>MyMiddlewareLayer</code></li>
+<li><input disabled="" type="checkbox"> Delegates unmodified operations to inner backend</li>
+<li><input disabled="" type="checkbox"> Handles streaming I/O appropriately (wrap, pass-through, or block)</li>
+<li><input disabled="" type="checkbox"> Documents which operations are intercepted vs delegated</li>
+</ul>
+<hr>
+<h2 id="backend-checklist"><a class="header" href="#backend-checklist">Backend Checklist</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"> Depends only on <code>anyfs-backend</code></li>
+<li><input disabled="" type="checkbox"> Implements core traits: <code>FsRead</code>, <code>FsWrite</code>, <code>FsDir</code> (= <code>Fs</code>)</li>
+<li><input disabled="" type="checkbox"> Optional: Implements <code>FsLink</code>, <code>FsPermissions</code>, <code>FsSync</code>, <code>FsStats</code> (= <code>FsFull</code>)</li>
+<li><input disabled="" type="checkbox"> Optional: Implements <code>FsInode</code> for FUSE support (= <code>FsFuse</code>)</li>
+<li><input disabled="" type="checkbox"> Optional: Implements <code>FsHandles</code>, <code>FsLock</code>, <code>FsXattr</code> for POSIX (= <code>FsPosix</code>)</li>
+<li><input disabled="" type="checkbox"> Accepts <code>&amp;Path</code> for all paths</li>
+<li><input disabled="" type="checkbox"> Returns correct <code>FsError</code> variants</li>
+<li><input disabled="" type="checkbox"> Passes conformance tests for implemented traits</li>
+<li><input disabled="" type="checkbox"> No panics (see below)</li>
+<li><input disabled="" type="checkbox"> Thread-safe (see below)</li>
+<li><input disabled="" type="checkbox"> Documents performance characteristics</li>
+</ul>
+<hr>
+<h2 id="critical-implementation-guidelines"><a class="header" href="#critical-implementation-guidelines">Critical Implementation Guidelines</a></h2>
+<p>These guidelines are derived from issues found in similar projects (<code>vfs</code>, <code>agentfs</code>). <strong>All implementations MUST follow these.</strong></p>
+<h3 id="1-no-panic-policy"><a class="header" href="#1-no-panic-policy">1. No Panic Policy</a></h3>
+<p><strong>NEVER use <code>.unwrap()</code> or <code>.expect()</code> in library code.</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// BAD - will panic on missing file
 fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
@@ -1492,46 +1216,41 @@ fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
     Ok(entry.content.clone())
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Edge cases that must NOT panic:</strong></p>
-                        <ul>
-                            <li>File doesn’t exist</li>
-                            <li>Directory doesn’t exist</li>
-                            <li>Path is empty string</li>
-                            <li>Path is invalid UTF-8 (if using OsStr)</li>
-                            <li>Parent directory missing</li>
-                            <li>Trying to read a directory as a file</li>
-                            <li>Trying to list a file as a directory</li>
-                            <li>Concurrent access conflicts</li>
-                        </ul>
-                        <h3 id="2-thread-safety-required"><a class="header" href="#2-thread-safety-required">2. Thread
-                                Safety (Required)</a></h3>
-                        <p><strong>All trait methods use <code>&amp;self</code>, not
-                                <code>&amp;mut self</code>.</strong> This means backends MUST use interior mutability
-                            for thread-safe concurrent access.</p>
-                        <p><strong>Why <code>&amp;self</code>?</strong></p>
-                        <ul>
-                            <li>Enables concurrent access patterns (multiple readers, concurrent operations)</li>
-                            <li>Matches real filesystem semantics (concurrent access is normal)</li>
-                            <li>More flexible API (can share references without exclusive ownership)</li>
-                        </ul>
-                        <p><strong>Backend implementer responsibility:</strong></p>
-                        <ul>
-                            <li>Use <code>RwLock</code>, <code>Mutex</code>, or similar for internal state</li>
-                            <li>Ensure operations are atomic (a single <code>write()</code> call shouldn’t produce
-                                partial results)</li>
-                            <li>Handle lock poisoning gracefully</li>
-                        </ul>
-                        <p><strong>What the synchronization guarantees:</strong></p>
-                        <ul>
-                            <li>Memory safety (no data corruption)</li>
-                            <li>Atomic operations (writes don’t interleave)</li>
-                        </ul>
-                        <p><strong>What it does NOT guarantee:</strong></p>
-                        <ul>
-                            <li>Order of concurrent writes to the same path (last write wins - standard FS behavior)
-                            </li>
-                        </ul>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Edge cases that must NOT panic:</strong></p>
+<ul>
+<li>File doesn’t exist</li>
+<li>Directory doesn’t exist</li>
+<li>Path is empty string</li>
+<li>Path is invalid UTF-8 (if using OsStr)</li>
+<li>Parent directory missing</li>
+<li>Trying to read a directory as a file</li>
+<li>Trying to list a file as a directory</li>
+<li>Concurrent access conflicts</li>
+</ul>
+<h3 id="2-thread-safety-required"><a class="header" href="#2-thread-safety-required">2. Thread Safety (Required)</a></h3>
+<p><strong>All trait methods use <code>&amp;self</code>, not <code>&amp;mut self</code>.</strong> This means backends MUST use interior mutability for thread-safe concurrent access.</p>
+<p><strong>Why <code>&amp;self</code>?</strong></p>
+<ul>
+<li>Enables concurrent access patterns (multiple readers, concurrent operations)</li>
+<li>Matches real filesystem semantics (concurrent access is normal)</li>
+<li>More flexible API (can share references without exclusive ownership)</li>
+</ul>
+<p><strong>Backend implementer responsibility:</strong></p>
+<ul>
+<li>Use <code>RwLock</code>, <code>Mutex</code>, or similar for internal state</li>
+<li>Ensure operations are atomic (a single <code>write()</code> call shouldn’t produce partial results)</li>
+<li>Handle lock poisoning gracefully</li>
+</ul>
+<p><strong>What the synchronization guarantees:</strong></p>
+<ul>
+<li>Memory safety (no data corruption)</li>
+<li>Atomic operations (writes don’t interleave)</li>
+</ul>
+<p><strong>What it does NOT guarantee:</strong></p>
+<ul>
+<li>Order of concurrent writes to the same path (last write wins - standard FS behavior)</li>
+</ul>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
@@ -1557,26 +1276,23 @@ impl FsWrite for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Common race conditions to avoid:</strong></p>
-                        <ul>
-                            <li><code>create_dir_all</code> called concurrently for same path</li>
-                            <li><code>read</code> during <code>write</code> to same file</li>
-                            <li><code>read_dir</code> while directory is being modified</li>
-                            <li><code>rename</code> with concurrent access to source or destination</li>
-                        </ul>
-                        <h3 id="3-path-resolution---not-your-job"><a class="header"
-                                href="#3-path-resolution---not-your-job">3. Path Resolution - NOT Your Job</a></h3>
-                        <p><strong>Backends do NOT handle path resolution.</strong> FileStorage handles:</p>
-                        <ul>
-                            <li>Resolving <code>..</code> and <code>.</code> components</li>
-                            <li>Following symlinks for non-<code>SelfResolving</code> backends that implement
-                                <code>FsLink</code></li>
-                            <li>Normalizing paths (<code>//</code> → <code>/</code>, trailing slashes, etc.)</li>
-                            <li>Walking the virtual directory structure</li>
-                        </ul>
-                        <p>Your backend receives <strong>already-resolved, clean paths</strong>. Just store and retrieve
-                            bytes at those paths.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Common race conditions to avoid:</strong></p>
+<ul>
+<li><code>create_dir_all</code> called concurrently for same path</li>
+<li><code>read</code> during <code>write</code> to same file</li>
+<li><code>read_dir</code> while directory is being modified</li>
+<li><code>rename</code> with concurrent access to source or destination</li>
+</ul>
+<h3 id="3-path-resolution---not-your-job"><a class="header" href="#3-path-resolution---not-your-job">3. Path Resolution - NOT Your Job</a></h3>
+<p><strong>Backends do NOT handle path resolution.</strong> FileStorage handles:</p>
+<ul>
+<li>Resolving <code>..</code> and <code>.</code> components</li>
+<li>Following symlinks for non-<code>SelfResolving</code> backends that implement <code>FsLink</code></li>
+<li>Normalizing paths (<code>//</code> → <code>/</code>, trailing slashes, etc.)</li>
+<li>Walking the virtual directory structure</li>
+</ul>
+<p>Your backend receives <strong>already-resolved, clean paths</strong>. Just store and retrieve bytes at those paths.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MyBackend {
     fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
@@ -1586,16 +1302,14 @@ impl FsWrite for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <p><strong>Exception:</strong> If your backend wraps a real filesystem (like
-                            <code>VRootFsBackend</code>), implement <code>SelfResolving</code> to tell FileStorage to
-                            skip resolution - the OS handles it.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<p><strong>Exception:</strong> If your backend wraps a real filesystem (like <code>VRootFsBackend</code>), implement <code>SelfResolving</code> to tell FileStorage to skip resolution - the OS handles it.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-                        <h3 id="4-error-messages"><a class="header" href="#4-error-messages">4. Error Messages</a></h3>
-                        <p>Include context in errors for debugging:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="4-error-messages"><a class="header" href="#4-error-messages">4. Error Messages</a></h3>
+<p>Include context in errors for debugging:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// BAD - no context
 Err(FsError::NotFound)
@@ -1610,10 +1324,9 @@ Err(FsError::Io {
     source: io_error,
 })
 <span class="boring">}</span></code></pre>
-                        <h3 id="5-drop-implementation"><a class="header" href="#5-drop-implementation">5. Drop
-                                Implementation</a></h3>
-                        <p>Ensure cleanup happens correctly:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="5-drop-implementation"><a class="header" href="#5-drop-implementation">5. Drop Implementation</a></h3>
+<p>Ensure cleanup happens correctly:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl Drop for SqliteBackend {
     fn drop(&amp;mut self) {
@@ -1624,10 +1337,9 @@ Err(FsError::Io {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="6-performance-documentation"><a class="header" href="#6-performance-documentation">6.
-                                Performance Documentation</a></h3>
-                        <p>Document the complexity of operations:</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="6-performance-documentation"><a class="header" href="#6-performance-documentation">6. Performance Documentation</a></h3>
+<p>Document the complexity of operations:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>/// Memory-based virtual filesystem backend.
 ///
@@ -1648,13 +1360,11 @@ Err(FsError::Io {
 /// Writes are exclusive.
 pub struct MemoryBackend { ... }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="testing-requirements"><a class="header" href="#testing-requirements">Testing
-                                Requirements</a></h2>
-                        <p>Your backend MUST pass these test categories:</p>
-                        <h3 id="basic-functionality"><a class="header" href="#basic-functionality">Basic
-                                Functionality</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="testing-requirements"><a class="header" href="#testing-requirements">Testing Requirements</a></h2>
+<p>Your backend MUST pass these test categories:</p>
+<h3 id="basic-functionality"><a class="header" href="#basic-functionality">Basic Functionality</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_read_write_roundtrip() { ... }
@@ -1665,9 +1375,8 @@ fn test_create_dir_and_list() { ... }
 #[test]
 fn test_remove_file() { ... }
 <span class="boring">}</span></code></pre>
-                        <h3 id="edge-cases-no-panics"><a class="header" href="#edge-cases-no-panics">Edge Cases (No
-                                Panics)</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="edge-cases-no-panics"><a class="header" href="#edge-cases-no-panics">Edge Cases (No Panics)</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_read_nonexistent_returns_error() {
@@ -1694,8 +1403,8 @@ fn test_empty_path_returns_error() {
     assert!(backend.read(std::path::Path::new("")).is_err());
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="thread-safety"><a class="header" href="#thread-safety">Thread Safety</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="thread-safety"><a class="header" href="#thread-safety">Thread Safety</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_concurrent_reads() {
@@ -1731,17 +1440,13 @@ fn test_concurrent_create_dir_all() {
     }
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="path-normalization"><a class="header" href="#path-normalization">Path Normalization</a>
-                        </h3>
-                        <blockquote>
-                            <p><strong>Note:</strong> These tests apply to <code>FileStorage</code> integration tests,
-                                NOT direct backend tests.
-                                Backends receive already-resolved paths from <code>FileStorage</code>. The tests below
-                                verify
-                                that <code>FileStorage</code> correctly normalizes paths before passing them to
-                                backends.</p>
-                        </blockquote>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="path-normalization"><a class="header" href="#path-normalization">Path Normalization</a></h3>
+<blockquote>
+<p><strong>Note:</strong> These tests apply to <code>FileStorage</code> integration tests, NOT direct backend tests.
+Backends receive already-resolved paths from <code>FileStorage</code>. The tests below verify
+that <code>FileStorage</code> correctly normalizes paths before passing them to backends.</p>
+</blockquote>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[test]
 fn test_filestorage_path_normalization() {
@@ -1767,14 +1472,12 @@ fn test_backend_with_clean_paths() {
     assert_eq!(backend.read(std::path::Path::new("/foo/bar/test.txt")).unwrap(), b"data");
 }
 <span class="boring">}</span></code></pre>
-                        <hr>
-                        <h2 id="memorybackend-snapshot--restore"><a class="header"
-                                href="#memorybackend-snapshot--restore">MemoryBackend Snapshot &amp; Restore</a></h2>
-                        <p><code>MemoryBackend</code> supports cloning its entire state (snapshot) and serializing to
-                            bytes for persistence.</p>
-                        <h3 id="core-concept"><a class="header" href="#core-concept">Core Concept</a></h3>
-                        <p><strong>Snapshot = Clone the storage.</strong> That’s it.</p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<hr>
+<h2 id="memorybackend-snapshot--restore"><a class="header" href="#memorybackend-snapshot--restore">MemoryBackend Snapshot &amp; Restore</a></h2>
+<p><code>MemoryBackend</code> supports cloning its entire state (snapshot) and serializing to bytes for persistence.</p>
+<h3 id="core-concept"><a class="header" href="#core-concept">Core Concept</a></h3>
+<p><strong>Snapshot = Clone the storage.</strong> That’s it.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// MemoryBackend implements Clone (custom impl, not derive)
 pub struct MemoryBackend { ... }
@@ -1792,8 +1495,8 @@ let snapshot = fs.clone();
 // Restore is just assignment
 fs = snapshot;
 <span class="boring">}</span></code></pre>
-                        <h3 id="api"><a class="header" href="#api">API</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="api"><a class="header" href="#api">API</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl MemoryBackend {
     /// Clone the entire filesystem state.
@@ -1815,8 +1518,8 @@ fs = snapshot;
     pub fn load_from(path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;Self, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-                        <h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let fs = MemoryBackend::new();
 fs.write(std::path::Path::new("/data.txt"), b"important")?;
@@ -1831,8 +1534,8 @@ fs.write(std::path::Path::new("/data.txt"), b"corrupted")?;
 fs = checkpoint;
 assert_eq!(fs.read(std::path::Path::new("/data.txt"))?, b"important");
 <span class="boring">}</span></code></pre>
-                        <h3 id="persistence"><a class="header" href="#persistence">Persistence</a></h3>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="persistence"><a class="header" href="#persistence">Persistence</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Save to disk
 fs.save_to("state.bin")?;
@@ -1840,10 +1543,9 @@ fs.save_to("state.bin")?;
 // Load from disk
 let fs = MemoryBackend::load_from("state.bin")?;
 <span class="boring">}</span></code></pre>
-                        <h3 id="sqlitebackend"><a class="header" href="#sqlitebackend">SqliteBackend</a></h3>
-                        <p>SQLite already has persistence - the database file IS the snapshot. For explicit snapshots:
-                        </p>
-                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="sqlitebackend"><a class="header" href="#sqlitebackend">SqliteBackend</a></h3>
+<p>SQLite already has persistence - the database file IS the snapshot. For explicit snapshots:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl SqliteBackend {
     /// Create an in-memory copy of the database.
@@ -1858,24 +1560,13 @@ let fs = MemoryBackend::load_from("state.bin")?;
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                        <a rel="prev" href="../implementation/plan.html" class="mobile-nav-chapters previous"
-                            title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="prev" href="../implementation/plan.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                        <a rel="next prefetch" href="../implementation/sqlite-operations.html"
-                            class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter"
-                            aria-keyshortcuts="Right">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                                    <path
-                                        d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                                </svg></span>
-                        </a>
+                            <a rel="next prefetch" href="../implementation/sqlite-operations.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -1883,52 +1574,22 @@ let fs = MemoryBackend::load_from("state.bin")?;
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                <a rel="prev" href="../implementation/plan.html" class="nav-chapters previous" title="Previous chapter"
-                    aria-label="Previous chapter" aria-keyshortcuts="Left">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="prev" href="../implementation/plan.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                <a rel="next prefetch" href="../implementation/sqlite-operations.html" class="nav-chapters next"
-                    title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                            <path
-                                d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
-                        </svg></span>
-                </a>
+                    <a rel="next prefetch" href="../implementation/sqlite-operations.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
 
-        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z" />
-                </svg></span></template>
-        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z" />
-                </svg></span></template>
-        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z" />
-                </svg></span></template>
-        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
-                </svg></span></template>
-        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
-                    <path
-                        d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z" />
-                </svg></span></template>
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
 
         <script>
@@ -1958,6 +1619,5 @@ let fs = MemoryBackend::load_from("state.bin")?;
 
 
     </div>
-</body>
-
+    </body>
 </html>
