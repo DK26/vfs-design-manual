@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -424,7 +424,8 @@ impl&lt;B: FsRead&gt; FsRead for Tracing&lt;B&gt; {
 <h2 id="4-ratelimit"><a class="header" href="#4-ratelimit">4. RateLimit<b></b></a></h2>
 <p><strong>Complexity:</strong> Moderate
 <strong>State:</strong> Counter + timestamp (requires interior mutability)
-<strong>Dependencies:</strong> None (uses <code>std::time</code>)</p>
+<strong>Dependencies:</strong> None (uses <code>std::time</code>)
+<strong>Algorithm:</strong> Fixed-window counter (simpler than token bucket, sufficient for v1)</p>
 <h3 id="implementation-3"><a class="header" href="#implementation-3">Implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {

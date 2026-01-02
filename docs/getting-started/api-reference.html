@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -436,8 +436,7 @@ fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -&gt; PathBuf
 fs.symlink_metadata("/link")?;           // Metadata of link itself, not target
-// Symlink following is backend-defined (no toggle).
-// Use Restrictions to block symlink creation if needed.
+// Symlink capability is determined by FsLink trait bounds, not middleware.
 
 // Permissions (requires FsPermissions)
 fs.set_permissions("/path", perms)?;

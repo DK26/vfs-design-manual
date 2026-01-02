@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -351,8 +351,8 @@ let entry = self.entries.get(&amp;path)
 <p><strong>Root cause:</strong> Symlinks are complex and were deferred indefinitely.</p>
 <h3 id="anyfs-response-4"><a class="header" href="#anyfs-response-4">AnyFS Response</a></h3>
 <ul>
-<li><strong>Symlinks are supported by default</strong> - use <code>Restrictions</code> to deny creation when needed</li>
-<li><strong>Symlink behavior is backend-defined</strong> - no runtime toggle; avoid <code>FsLink</code> or block creation if needed</li>
+<li><strong>Symlinks supported via <code>FsLink</code> trait</strong> - backends that implement <code>FsLink</code> support symlinks</li>
+<li><strong>Compile-time capability</strong> - no <code>FsLink</code> impl = no symlinks (won’t compile)</li>
 <li><strong>Bound resolution depth</strong> (default: 40 hops)</li>
 <li><strong><code>strict-path</code> prevents symlink escapes</strong> in <code>VRootFsBackend</code></li>
 </ul>
@@ -560,7 +560,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No middleware pattern</td><td>Tower-style composable middleware</td></tr>
 <tr><td>No quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Symlink complexity</td><td><code>Restrictions&lt;B&gt;</code> (opt-in)</td></tr>
+<tr><td>Symlink complexity</td><td><code>FsLink</code> trait (compile-time)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
 <tr><td>FUSE complexity</td><td>Isolated in optional companion crate</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>

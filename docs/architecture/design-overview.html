@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -514,7 +514,7 @@ let backend = av_plugin.wrap(backend);
 <p><strong>Verdict:</strong> The current design supports dynamic middleware via <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading is a post-v1 enhancement.</p>
 <h3 id="middleware-with-configurable-backends"><a class="header" href="#middleware-with-configurable-backends">Middleware with Configurable Backends</a></h3>
 <p>Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.</p>
-<p><strong>Metrics Middleware with Prometheus Exporter:</strong>
+<p><strong>Metrics Middleware with Prometheus Exporter (Post-v1):</strong>
 <em>(Requires <code>features = ["metrics"]</code>)</em></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -763,7 +763,7 @@ pub trait FsStats: Send + Sync {
 <h2 id="inode-traits-layer-3---for-fuse"><a class="header" href="#inode-traits-layer-3---for-fuse">Inode Traits (Layer 3 - For FUSE)</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub trait FsInode: Send {
+</span>pub trait FsInode: Send + Sync {
     fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt;;
     fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, FsError&gt;;
     fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, FsError&gt;;
@@ -1800,8 +1800,10 @@ pub enum FsError {
     },
 
     /// Feature not enabled (from Restrictions middleware).
+    /// Note: Symlink/hard-link capability is determined by trait bounds (FsLink),
+    /// not middleware. Restrictions only controls "permissions".
     FeatureNotEnabled {
-        feature: &amp;'static str,  // "symlinks", "hard_links", "permissions"
+        feature: &amp;'static str,  // "permissions"
         operation: &amp;'static str,
     },
 

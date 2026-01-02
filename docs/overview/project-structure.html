@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -186,7 +186,7 @@
 <hr>
 <p>This manual describes the intended code repository layout; this repository contains documentation only.</p>
 <h2 id="repository-layout"><a class="header" href="#repository-layout">Repository Layout</a></h2>
-<pre><code>anyfs-backend/              # Crate 1: traits + types (no dependencies)
+<pre><code>anyfs-backend/              # Crate 1: traits + types (minimal dependencies)
   Cargo.toml
   src/
     lib.rs
@@ -267,18 +267,21 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
 <li><code>stdfs</code> — Direct <code>std::fs</code> delegation (no containment)</li>
 <li><code>vrootfs</code> — Host filesystem backend with path containment (uses <code>strict-path</code>)</li>
 </ul>
-<h3 id="middleware"><a class="header" href="#middleware">Middleware</a></h3>
-<p>Following the <strong>Tower/Axum</strong> pattern, we use feature flags to keep the core lightweight:</p>
+<h3 id="middleware-mvp-scope"><a class="header" href="#middleware-mvp-scope">Middleware (MVP Scope)</a></h3>
+<p>Following the <strong>Tower/Axum</strong> pattern, feature flags keep the core lightweight:</p>
 <ul>
 <li><code>quota</code> — Storage limits (default)</li>
 <li><code>path-filter</code> — Glob-based access control (default)</li>
-<li><code>restrictions</code> — Permission/Link control (default)</li>
+<li><code>restrictions</code> — Permission control (default)</li>
 <li><code>read-only</code> — Write blocking (default)</li>
-<li><code>rate-limit</code> — Token bucket throttling (default)</li>
-<li><code>metrics</code> — Prometheus integration (requires <code>prometheus</code> crate)</li>
+<li><code>rate-limit</code> — Fixed-window rate limiting (default)</li>
 <li><code>tracing</code> — Detailed audit logging (requires <code>tracing</code> crate)</li>
 </ul>
 <p>Use <code>default-features = false</code> to cherry-pick exactly what you need.</p>
+<h3 id="middleware-future-scope"><a class="header" href="#middleware-future-scope">Middleware (Future Scope)</a></h3>
+<ul>
+<li><code>metrics</code> — Prometheus integration (requires <code>prometheus</code> crate)</li>
+</ul>
 <hr>
 <h2 id="where-to-start"><a class="header" href="#where-to-start">Where To Start</a></h2>
 <ul>

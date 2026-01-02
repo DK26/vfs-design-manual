@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -473,13 +473,13 @@ impl FsDir for MyBackend {
     fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Default implementations exist</strong> (via blanket impl) - you only need to override for:</p>
+<p><strong>No blanket/default implementation</strong> - you must implement this trait explicitly if you need:</p>
 <ul>
+<li><strong>FUSE mounting</strong>: FUSE operates on inodes, not paths</li>
 <li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
-<li><strong>FUSE efficiency</strong>: Direct inode operations without path lookup</li>
 </ul>
-<p><strong>Level 1: Simple backend (use defaults)</strong></p>
-<p>Don’t implement <code>FsInode</code>. Hardlinks won’t work correctly, but basic operations will.</p>
+<p><strong>Level 1: Simple backend (no FsInode)</strong></p>
+<p>Don’t implement <code>FsInode</code>. The backend won’t support FUSE mounting or hardlinks.</p>
 <p><strong>Level 2: Hardlink support</strong></p>
 <p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1479,9 +1479,15 @@ fn test_backend_with_clean_paths() {
 <p><strong>Snapshot = Clone the storage.</strong> That’s it.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// MemoryBackend implements Clone
-#[derive(Clone)]
+</span>// MemoryBackend implements Clone (custom impl, not derive)
 pub struct MemoryBackend { ... }
+
+impl Clone for MemoryBackend {
+    fn clone(&amp;self) -&gt; Self {
+        // Deep copy of Arc&lt;RwLock&lt;...&gt;&gt; contents
+        // ...
+    }
+}
 
 // Snapshot is just .clone()
 let snapshot = fs.clone();
@@ -1494,8 +1500,10 @@ fs = snapshot;
 </span><span class="boring">fn main() {
 </span>impl MemoryBackend {
     /// Clone the entire filesystem state.
-    /// This is a deep copy - modifications to the clone don't affect the original.
-    pub fn clone(&amp;self) -&gt; Self { ... }  // via #[derive(Clone)]
+    /// This is a DEEP COPY - modifications to the clone don't affect the original.
+    /// Implemented via custom Clone (not #[derive(Clone)]) to ensure deep copy
+    /// of Arc&lt;RwLock&lt;...&gt;&gt; contents.
+    pub fn clone(&amp;self) -&gt; Self { ... }
 
     /// Serialize to bytes for persistence/transfer.
     pub fn to_bytes(&amp;self) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;

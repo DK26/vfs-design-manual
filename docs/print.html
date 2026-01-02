@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-30b1f61e.js"></script>
@@ -402,7 +402,7 @@ fs.write("/documents/hello.txt", b"Hello!")?;
 <hr>
 <p>This manual describes the intended code repository layout; this repository contains documentation only.</p>
 <h2 id="repository-layout"><a class="header" href="#repository-layout">Repository Layout</a></h2>
-<pre><code>anyfs-backend/              # Crate 1: traits + types (no dependencies)
+<pre><code>anyfs-backend/              # Crate 1: traits + types (minimal dependencies)
   Cargo.toml
   src/
     lib.rs
@@ -483,18 +483,21 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
 <li><code>stdfs</code> — Direct <code>std::fs</code> delegation (no containment)</li>
 <li><code>vrootfs</code> — Host filesystem backend with path containment (uses <code>strict-path</code>)</li>
 </ul>
-<h3 id="middleware"><a class="header" href="#middleware">Middleware</a></h3>
-<p>Following the <strong>Tower/Axum</strong> pattern, we use feature flags to keep the core lightweight:</p>
+<h3 id="middleware-mvp-scope"><a class="header" href="#middleware-mvp-scope">Middleware (MVP Scope)</a></h3>
+<p>Following the <strong>Tower/Axum</strong> pattern, feature flags keep the core lightweight:</p>
 <ul>
 <li><code>quota</code> — Storage limits (default)</li>
 <li><code>path-filter</code> — Glob-based access control (default)</li>
-<li><code>restrictions</code> — Permission/Link control (default)</li>
+<li><code>restrictions</code> — Permission control (default)</li>
 <li><code>read-only</code> — Write blocking (default)</li>
-<li><code>rate-limit</code> — Token bucket throttling (default)</li>
-<li><code>metrics</code> — Prometheus integration (requires <code>prometheus</code> crate)</li>
+<li><code>rate-limit</code> — Fixed-window rate limiting (default)</li>
 <li><code>tracing</code> — Detailed audit logging (requires <code>tracing</code> crate)</li>
 </ul>
 <p>Use <code>default-features = false</code> to cherry-pick exactly what you need.</p>
+<h3 id="middleware-future-scope"><a class="header" href="#middleware-future-scope">Middleware (Future Scope)</a></h3>
+<ul>
+<li><code>metrics</code> — Prometheus integration (requires <code>prometheus</code> crate)</li>
+</ul>
 <hr>
 <h2 id="where-to-start"><a class="header" href="#where-to-start">Where To Start</a></h2>
 <ul>
@@ -640,7 +643,7 @@ fs.remove_dir("/empty-folder")?;
 fs.remove_dir_all("/old-folder")?;
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="middleware-1"><a class="header" href="#middleware-1">Middleware</a></h2>
+<h2 id="middleware"><a class="header" href="#middleware">Middleware</a></h2>
 <h3 id="quota--resource-limits"><a class="header" href="#quota--resource-limits">Quota — Resource Limits</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1184,8 +1187,7 @@ fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -&gt; PathBuf
 fs.symlink_metadata("/link")?;           // Metadata of link itself, not target
-// Symlink following is backend-defined (no toggle).
-// Use Restrictions to block symlink creation if needed.
+// Symlink capability is determined by FsLink trait bounds, not middleware.
 
 // Permissions (requires FsPermissions)
 fs.set_permissions("/path", perms)?;
@@ -1356,7 +1358,7 @@ backend.change_password("new-password")?;
 <span class="boring">}</span></code></pre>
 <p>Without the correct password, the <code>.db</code> file appears as random bytes.</p>
 <hr>
-<h2 id="middleware-2"><a class="header" href="#middleware-2">Middleware</a></h2>
+<h2 id="middleware-1"><a class="header" href="#middleware-1">Middleware</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1862,7 +1864,7 @@ let backend = av_plugin.wrap(backend);
 <p><strong>Verdict:</strong> The current design supports dynamic middleware via <code>Box&lt;dyn Fs&gt;</code>. A formal <code>MiddlewarePlugin</code> trait for hot-loading is a post-v1 enhancement.</p>
 <h3 id="middleware-with-configurable-backends"><a class="header" href="#middleware-with-configurable-backends">Middleware with Configurable Backends</a></h3>
 <p>Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.</p>
-<p><strong>Metrics Middleware with Prometheus Exporter:</strong>
+<p><strong>Metrics Middleware with Prometheus Exporter (Post-v1):</strong>
 <em>(Requires <code>features = ["metrics"]</code>)</em></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2111,7 +2113,7 @@ pub trait FsStats: Send + Sync {
 <h2 id="inode-traits-layer-3---for-fuse"><a class="header" href="#inode-traits-layer-3---for-fuse">Inode Traits (Layer 3 - For FUSE)</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub trait FsInode: Send {
+</span>pub trait FsInode: Send + Sync {
     fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt;;
     fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;PathBuf, FsError&gt;;
     fn lookup(&amp;self, parent_inode: u64, name: &amp;OsStr) -&gt; Result&lt;u64, FsError&gt;;
@@ -3148,8 +3150,10 @@ pub enum FsError {
     },
 
     /// Feature not enabled (from Restrictions middleware).
+    /// Note: Symlink/hard-link capability is determined by trait bounds (FsLink),
+    /// not middleware. Restrictions only controls "permissions".
     FeatureNotEnabled {
-        feature: &amp;'static str,  // "symlinks", "hard_links", "permissions"
+        feature: &amp;'static str,  // "permissions"
         operation: &amp;'static str,
     },
 
@@ -6122,6 +6126,11 @@ impl ReadDirIter {
         Self(Box::new(iter))
     }
 
+    /// Create from a pre-collected vector (useful for middleware like Overlay).
+    pub fn from_vec(entries: Vec&lt;Result&lt;DirEntry, FsError&gt;&gt;) -&gt; Self {
+        Self(Box::new(entries.into_iter()))
+    }
+
     /// Collect all entries, short-circuiting on first error.
     pub fn collect_all(self) -&gt; Result&lt;Vec&lt;DirEntry&gt;, FsError&gt; {
         self.collect()
@@ -6333,7 +6342,7 @@ fn mount_filesystem(fs: impl FsFuse) -&gt; Result&lt;(), FsError&gt; {
     /// Check if path is a directory.
     fn is_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt;;
 
-    /// JSON methods (require `serde` feature in anyfs-backend)
+    /// JSON methods (require optional `serde` feature in anyfs-backend)
     #[cfg(feature = "serde")]
     fn read_json&lt;T: DeserializeOwned&gt;(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;T, FsError&gt;;
     #[cfg(feature = "serde")]
@@ -10317,8 +10326,8 @@ fs.write("/test.txt", b"hello")?;
 <tr><td>Quota enforcement</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
 <tr><td>Rate limiting</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
 <tr><td>Type-safe markers</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
-<tr><td>Path sandboxing</td><td style="text-align: center">✅ (19 vectors)</td><td style="text-align: center">Basic</td><td style="text-align: center">Basic (2 vectors)</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
-<tr><td>Async API</td><td style="text-align: center">✅</td><td style="text-align: center">Partial</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>Path sandboxing</td><td style="text-align: center">✅</td><td style="text-align: center">Basic</td><td style="text-align: center">Basic (2 vectors)</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td></tr>
+<tr><td>Async API</td><td style="text-align: center">🔜</td><td style="text-align: center">Partial</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
 <tr><td>std::fs-aligned API</td><td style="text-align: center">✅</td><td style="text-align: center">Custom</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">Custom</td></tr>
 <tr><td>FUSE mounting</td><td style="text-align: center">MVP scope</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td></tr>
 <tr><td>Conformance tests</td><td style="text-align: center">Planned (80+)</td><td style="text-align: center">Unknown</td><td style="text-align: center">Unknown</td><td style="text-align: center">Unknown</td><td style="text-align: center">Unknown</td></tr>
@@ -11553,7 +11562,7 @@ let fs = FileStorage::new(backend);
 <tbody>
 <tr><td><code>Quota</code></td><td>Writes</td><td>Reject if over limit</td></tr>
 <tr><td><code>PathFilter</code></td><td>All ops</td><td>Block denied paths</td></tr>
-<tr><td><code>Restrictions</code></td><td>Configurable operations</td><td>Block via <code>.deny_*()</code> methods</td></tr>
+<tr><td><code>Restrictions</code></td><td>Permission changes</td><td>Block via <code>.deny_permissions()</code></td></tr>
 <tr><td><code>RateLimit</code></td><td>All ops</td><td>Throttle per second</td></tr>
 <tr><td><code>ReadOnly</code></td><td>Writes</td><td>Block all writes</td></tr>
 <tr><td><code>Tracing</code></td><td>All ops</td><td>Log with tracing crate</td></tr>
@@ -12185,7 +12194,7 @@ ufs.use(memfs);     // Memory overlay
 <tr><td>Union/overlay FS</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
 <tr><td>Memory backend</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td><td style="text-align: center">✅</td></tr>
 <tr><td>SQLite backend</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
-<tr><td>FUSE mounting</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
+<tr><td>FUSE mounting</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">🔜</td></tr>
 <tr><td>Type-safe markers</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">❌</td><td style="text-align: center">✅</td></tr>
 </tbody>
 </table>
@@ -12667,8 +12676,9 @@ pub enum FsError {
 <ul>
 <li><strong><code>FsInode</code></strong>: <code>path_to_inode</code>, <code>inode_to_path</code>, <code>lookup</code>, <code>metadata_by_inode</code>
 <ul>
-<li>Default implementations use path hashing/fallback</li>
-<li>Override for hardlink support and FUSE efficiency</li>
+<li><strong>No blanket/default implementation</strong> - must be explicitly implemented</li>
+<li>Required for FUSE mounting and proper hardlink support</li>
+<li><code>inode_to_path</code> requires backend to maintain path mappings</li>
 </ul>
 </li>
 </ul>
@@ -12704,7 +12714,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li>Define <code>ROOT_INODE = 1</code> constant</li>
 <li>Define <code>SelfResolving</code> marker trait (opt-in for backends that handle their own path resolution, e.g., VRootFsBackend)</li>
 </ul>
-<p><strong>Exit criteria:</strong> <code>anyfs-backend</code> stands alone with minimal dependencies (<code>thiserror</code>).</p>
+<p><strong>Exit criteria:</strong> <code>anyfs-backend</code> stands alone with minimal dependencies (<code>thiserror</code> required; <code>serde</code> optional for JSON in <code>FsExt</code>).</p>
 <hr>
 <h2 id="phase-2-anyfs-backends--middleware"><a class="header" href="#phase-2-anyfs-backends--middleware">Phase 2: <code>anyfs</code> (backends + middleware)</a></h2>
 <p><strong>Goal:</strong> Provide reference backends and core middleware.</p>
@@ -12765,7 +12775,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 </ul>
 </li>
 </ul>
-<h3 id="middleware-3"><a class="header" href="#middleware-3">Middleware</a></h3>
+<h3 id="middleware-2"><a class="header" href="#middleware-2">Middleware</a></h3>
 <ul>
 <li><code>Quota&lt;B&gt;</code> + <code>QuotaLayer</code> - Resource limits</li>
 <li><code>Restrictions&lt;B&gt;</code> + <code>RestrictionsLayer</code> - Runtime policy (<code>.deny_permissions()</code>)</li>
@@ -12865,7 +12875,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <h3 id="middleware-tests"><a class="header" href="#middleware-tests">Middleware tests</a></h3>
 <ul>
 <li><code>Quota</code>: Limit enforcement, usage tracking, streaming writes</li>
-<li><code>Restrictions</code>: Operation blocking via <code>.deny_*()</code> methods, error messages</li>
+<li><code>Restrictions</code>: Permission blocking via <code>.deny_permissions()</code>, error messages</li>
 <li><code>PathFilter</code>: Glob pattern matching, deny-by-default</li>
 <li><code>RateLimit</code>: Throttling behavior, burst handling</li>
 <li><code>ReadOnly</code>: All write operations blocked</li>
@@ -13107,7 +13117,7 @@ let sandbox = MountHandle::mount(
 <li>Companion shell (<code>anyfs-shell</code>) for interactive exploration of backends and middleware</li>
 <li><strong>Language bindings</strong> (<code>anyfs-python</code> via PyO3, C bindings) - see design-overview.md for approach</li>
 <li><strong>Dynamic middleware plugin system</strong> (<code>MiddlewarePlugin</code> trait for runtime-loaded <code>.so</code>/<code>.dll</code> plugins)</li>
-<li><strong>Metrics middleware</strong> with Prometheus exporter (<code>GET /metrics</code> endpoint)</li>
+<li><strong>Metrics middleware</strong> with Prometheus exporter (<code>GET /metrics</code> endpoint) - post-v1</li>
 <li><strong>Configurable tracing/logging backends</strong> (structured logs, CEF events, remote sinks)</li>
 </ul>
 <h3 id="anyfs-shell---local-companion-shell"><a class="header" href="#anyfs-shell---local-companion-shell"><code>anyfs-shell</code> - Local Companion Shell</a></h3>
@@ -13797,13 +13807,13 @@ impl FsDir for MyBackend {
     fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Default implementations exist</strong> (via blanket impl) - you only need to override for:</p>
+<p><strong>No blanket/default implementation</strong> - you must implement this trait explicitly if you need:</p>
 <ul>
+<li><strong>FUSE mounting</strong>: FUSE operates on inodes, not paths</li>
 <li><strong>Hardlink support</strong>: Two paths must share the same inode</li>
-<li><strong>FUSE efficiency</strong>: Direct inode operations without path lookup</li>
 </ul>
-<p><strong>Level 1: Simple backend (use defaults)</strong></p>
-<p>Don’t implement <code>FsInode</code>. Hardlinks won’t work correctly, but basic operations will.</p>
+<p><strong>Level 1: Simple backend (no FsInode)</strong></p>
+<p>Don’t implement <code>FsInode</code>. The backend won’t support FUSE mounting or hardlinks.</p>
 <p><strong>Level 2: Hardlink support</strong></p>
 <p>Override <code>path_to_inode</code> so hardlinked paths return the same inode:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -14803,9 +14813,15 @@ fn test_backend_with_clean_paths() {
 <p><strong>Snapshot = Clone the storage.</strong> That’s it.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// MemoryBackend implements Clone
-#[derive(Clone)]
+</span>// MemoryBackend implements Clone (custom impl, not derive)
 pub struct MemoryBackend { ... }
+
+impl Clone for MemoryBackend {
+    fn clone(&amp;self) -&gt; Self {
+        // Deep copy of Arc&lt;RwLock&lt;...&gt;&gt; contents
+        // ...
+    }
+}
 
 // Snapshot is just .clone()
 let snapshot = fs.clone();
@@ -14818,8 +14834,10 @@ fs = snapshot;
 </span><span class="boring">fn main() {
 </span>impl MemoryBackend {
     /// Clone the entire filesystem state.
-    /// This is a deep copy - modifications to the clone don't affect the original.
-    pub fn clone(&amp;self) -&gt; Self { ... }  // via #[derive(Clone)]
+    /// This is a DEEP COPY - modifications to the clone don't affect the original.
+    /// Implemented via custom Clone (not #[derive(Clone)]) to ensure deep copy
+    /// of Arc&lt;RwLock&lt;...&gt;&gt; contents.
+    pub fn clone(&amp;self) -&gt; Self { ... }
 
     /// Serialize to bytes for persistence/transfer.
     pub fn to_bytes(&amp;self) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
@@ -19631,7 +19649,8 @@ impl&lt;B: FsRead&gt; FsRead for Tracing&lt;B&gt; {
 <h2 id="4-ratelimit"><a class="header" href="#4-ratelimit">4. RateLimit<b></b></a></h2>
 <p><strong>Complexity:</strong> Moderate
 <strong>State:</strong> Counter + timestamp (requires interior mutability)
-<strong>Dependencies:</strong> None (uses <code>std::time</code>)</p>
+<strong>Dependencies:</strong> None (uses <code>std::time</code>)
+<strong>Algorithm:</strong> Fixed-window counter (simpler than token bucket, sufficient for v1)</p>
 <h3 id="implementation-3"><a class="header" href="#implementation-3">Implementation</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -20894,8 +20913,8 @@ let entry = self.entries.get(&amp;path)
 <p><strong>Root cause:</strong> Symlinks are complex and were deferred indefinitely.</p>
 <h3 id="anyfs-response-4"><a class="header" href="#anyfs-response-4">AnyFS Response</a></h3>
 <ul>
-<li><strong>Symlinks are supported by default</strong> - use <code>Restrictions</code> to deny creation when needed</li>
-<li><strong>Symlink behavior is backend-defined</strong> - no runtime toggle; avoid <code>FsLink</code> or block creation if needed</li>
+<li><strong>Symlinks supported via <code>FsLink</code> trait</strong> - backends that implement <code>FsLink</code> support symlinks</li>
+<li><strong>Compile-time capability</strong> - no <code>FsLink</code> impl = no symlinks (won’t compile)</li>
 <li><strong>Bound resolution depth</strong> (default: 40 hops)</li>
 <li><strong><code>strict-path</code> prevents symlink escapes</strong> in <code>VRootFsBackend</code></li>
 </ul>
@@ -21103,7 +21122,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No middleware pattern</td><td>Tower-style composable middleware</td></tr>
 <tr><td>No quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Symlink complexity</td><td><code>Restrictions&lt;B&gt;</code> (opt-in)</td></tr>
+<tr><td>Symlink complexity</td><td><code>FsLink</code> trait (compile-time)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
 <tr><td>FUSE complexity</td><td>Isolated in optional companion crate</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>

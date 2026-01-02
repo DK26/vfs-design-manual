@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -343,8 +343,9 @@ pub enum FsError {
 <ul>
 <li><strong><code>FsInode</code></strong>: <code>path_to_inode</code>, <code>inode_to_path</code>, <code>lookup</code>, <code>metadata_by_inode</code>
 <ul>
-<li>Default implementations use path hashing/fallback</li>
-<li>Override for hardlink support and FUSE efficiency</li>
+<li><strong>No blanket/default implementation</strong> - must be explicitly implemented</li>
+<li>Required for FUSE mounting and proper hardlink support</li>
+<li><code>inode_to_path</code> requires backend to maintain path mappings</li>
 </ul>
 </li>
 </ul>
@@ -380,7 +381,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li>Define <code>ROOT_INODE = 1</code> constant</li>
 <li>Define <code>SelfResolving</code> marker trait (opt-in for backends that handle their own path resolution, e.g., VRootFsBackend)</li>
 </ul>
-<p><strong>Exit criteria:</strong> <code>anyfs-backend</code> stands alone with minimal dependencies (<code>thiserror</code>).</p>
+<p><strong>Exit criteria:</strong> <code>anyfs-backend</code> stands alone with minimal dependencies (<code>thiserror</code> required; <code>serde</code> optional for JSON in <code>FsExt</code>).</p>
 <hr>
 <h2 id="phase-2-anyfs-backends--middleware"><a class="header" href="#phase-2-anyfs-backends--middleware">Phase 2: <code>anyfs</code> (backends + middleware)</a></h2>
 <p><strong>Goal:</strong> Provide reference backends and core middleware.</p>
@@ -541,7 +542,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <h3 id="middleware-tests"><a class="header" href="#middleware-tests">Middleware tests</a></h3>
 <ul>
 <li><code>Quota</code>: Limit enforcement, usage tracking, streaming writes</li>
-<li><code>Restrictions</code>: Operation blocking via <code>.deny_*()</code> methods, error messages</li>
+<li><code>Restrictions</code>: Permission blocking via <code>.deny_permissions()</code>, error messages</li>
 <li><code>PathFilter</code>: Glob pattern matching, deny-by-default</li>
 <li><code>RateLimit</code>: Throttling behavior, burst handling</li>
 <li><code>ReadOnly</code>: All write operations blocked</li>
@@ -783,7 +784,7 @@ let sandbox = MountHandle::mount(
 <li>Companion shell (<code>anyfs-shell</code>) for interactive exploration of backends and middleware</li>
 <li><strong>Language bindings</strong> (<code>anyfs-python</code> via PyO3, C bindings) - see design-overview.md for approach</li>
 <li><strong>Dynamic middleware plugin system</strong> (<code>MiddlewarePlugin</code> trait for runtime-loaded <code>.so</code>/<code>.dll</code> plugins)</li>
-<li><strong>Metrics middleware</strong> with Prometheus exporter (<code>GET /metrics</code> endpoint)</li>
+<li><strong>Metrics middleware</strong> with Prometheus exporter (<code>GET /metrics</code> endpoint) - post-v1</li>
 <li><strong>Configurable tracing/logging backends</strong> (structured logs, CEF events, remote sinks)</li>
 </ul>
 <h3 id="anyfs-shell---local-companion-shell"><a class="header" href="#anyfs-shell---local-companion-shell"><code>anyfs-shell</code> - Local Companion Shell</a></h3>

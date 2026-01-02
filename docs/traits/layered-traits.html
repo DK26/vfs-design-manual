@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-2c07eada.js";
+            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-30b1f61e.js"></script>
@@ -276,6 +276,11 @@ impl ReadDirIter {
         Self(Box::new(iter))
     }
 
+    /// Create from a pre-collected vector (useful for middleware like Overlay).
+    pub fn from_vec(entries: Vec&lt;Result&lt;DirEntry, FsError&gt;&gt;) -&gt; Self {
+        Self(Box::new(entries.into_iter()))
+    }
+
     /// Collect all entries, short-circuiting on first error.
     pub fn collect_all(self) -&gt; Result&lt;Vec&lt;DirEntry&gt;, FsError&gt; {
         self.collect()
@@ -487,7 +492,7 @@ fn mount_filesystem(fs: impl FsFuse) -&gt; Result&lt;(), FsError&gt; {
     /// Check if path is a directory.
     fn is_dir(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;bool, FsError&gt;;
 
-    /// JSON methods (require `serde` feature in anyfs-backend)
+    /// JSON methods (require optional `serde` feature in anyfs-backend)
     #[cfg(feature = "serde")]
     fn read_json&lt;T: DeserializeOwned&gt;(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;T, FsError&gt;;
     #[cfg(feature = "serde")]
