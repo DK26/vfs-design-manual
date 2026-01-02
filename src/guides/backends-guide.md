@@ -8,16 +8,15 @@ This guide explains each built-in backend in AnyFS, how it works internally, whe
 
 > **TL;DR** — Pick the first match from top to bottom:
 
-| Your Situation                                 | Best Backend            | Why                             |
-| ---------------------------------------------- | ----------------------- | ------------------------------- |
-| Writing tests                                  | **MemoryBackend**       | Fast, isolated, no cleanup      |
-| Running in WASM/browser                        | **MemoryBackend**       | Only option - no disk access    |
-| Need encrypted single-file storage             | **SqliteCipherBackend** | AES-256, portable               |
-| Need portable single-file database             | **SqliteBackend**       | Cross-platform, ACID            |
-| Storing large files (>100MB) with sandboxing   | **IndexedBackend**      | Virtual paths + native I/O      |
-| Containing untrusted code to a directory       | **VirtualRootBackend**  | Prevents path traversal attacks |
-| Working with real files in trusted environment | **StdFsBackend**        | Direct OS operations            |
-| Need layered filesystem (container-like)       | **Overlay**             | Base + writable upper layer     |
+| Your Situation                                 | Best Choice              | Why                             |
+| ---------------------------------------------- | ------------------------ | ------------------------------- |
+| Writing tests                                  | **MemoryBackend**        | Fast, isolated, no cleanup      |
+| Running in WASM/browser                        | **MemoryBackend**        | Only option - no disk access    |
+| Need encrypted single-file storage             | **SqliteCipherBackend**  | AES-256, portable               |
+| Need portable single-file database             | **SqliteBackend**        | Cross-platform, ACID            |
+| Containing untrusted code to a directory       | **VRootFsBackend**       | Prevents path traversal attacks |
+| Working with real files in trusted environment | **StdFsBackend**         | Direct OS operations            |
+| Need layered filesystem (container-like)       | **Overlay** (middleware) | Base + writable upper layer     |
 
 ⚠️ **Security Warning:** `StdFsBackend` provides **NO isolation**. Never use with untrusted input.
 
@@ -122,7 +121,7 @@ fs.write("/data.txt", b"Hello, World!")?;
 **❌ DON'T USE MemoryBackend when:**
 - Storing files larger than available RAM
 - Data must survive process restart (use SqliteBackend)
-- Working with existing files on disk (use VirtualRootBackend)
+- Working with existing files on disk (use VRootFsBackend)
 
 ---
 
@@ -168,21 +167,20 @@ fs.write("/documents/report.txt", b"Annual Report")?;
 
 - **Slower than memory** - database overhead on every operation
 - **Single-writer** - SQLite's write lock limits concurrency
-- **Blob storage** - not optimized for very large files (>100MB)
-- **Not streamable** - must read entire file into memory
+- **Large file tradeoffs** - files >100MB stored as BLOBs have higher memory pressure during operations
 
 #### When to Use
 
-| Use Case               | Recommendation                              |
-| ---------------------- | ------------------------------------------- |
-| Portable storage       | ✅ **Ideal** - single file, works everywhere |
-| Embedded databases     | ✅ **Ideal** - self-contained                |
-| Sandboxed environments | ✅ **Good** - complete isolation             |
-| Encrypted storage      | ✅ **Good** - use SqliteCipherBackend        |
-| Archive/backup         | ✅ **Good** - atomic, portable               |
-| High-throughput I/O    | ❌ **Avoid** - use MemoryBackend or disk     |
-| Large media files      | ❌ **Avoid** - use IndexedBackend            |
-| External tool access   | ❌ **Avoid** - files not on real filesystem  |
+| Use Case               | Recommendation                                      |
+| ---------------------- | --------------------------------------------------- |
+| Portable storage       | ✅ **Ideal** - single file, works everywhere         |
+| Embedded databases     | ✅ **Ideal** - self-contained                        |
+| Sandboxed environments | ✅ **Good** - complete isolation                     |
+| Encrypted storage      | ✅ **Good** - use SqliteCipherBackend                |
+| Archive/backup         | ✅ **Good** - atomic, portable                       |
+| Large media files      | ✅ **Works** - higher memory pressure during I/O     |
+| High-throughput I/O    | ⚠️ **Tradeoff** - database overhead vs MemoryBackend |
+| External tool access   | ❌ **Avoid** - files not on real filesystem          |
 
 **✅ USE SqliteBackend when:**
 - Need portable, single-file storage (easy to copy, backup, share)
@@ -193,112 +191,8 @@ fs.write("/documents/report.txt", b"Annual Report")?;
 - Cross-platform consistency is critical
 
 **❌ DON'T USE SqliteBackend when:**
-- Working with large media files (>100MB) - use IndexedBackend
-- Need high-throughput I/O (use MemoryBackend)
-- Files must be accessible to external tools (use VirtualRootBackend)
-- Need to stream very large files without loading into memory
-
----
-
-### IndexedBackend
-
-A hybrid backend: **virtual paths** with **disk-based content storage**. Paths, directories, symlinks, and metadata are fully emulated by an index database. Only file content is stored on the real filesystem (as opaque blobs).
-
-> **Also known as:** HybridBackend, MappedBackend
->
-> **Key insight:** Same isolation model as SqliteBackend, but file content stored externally for native I/O performance.
-
-```rust
-use anyfs::{IndexedBackend, FileStorage};
-
-// Files stored in ./storage/, index in ./storage/index.db
-let fs = FileStorage::new(IndexedBackend::open("./storage")?);
-fs.write("/documents/report.pdf", &pdf_bytes)?;
-// Actually stored as: ./storage/a1b2c3d4-5678-...-1704067200.bin
-```
-
-#### How It Works
-
-```
-Virtual Path                    Real Storage
-─────────────────────────────────────────────────────
-/documents/report.pdf    →    ./storage/a1b2c3d4-...-1704067200.bin
-/images/photo.jpg        →    ./storage/b2c3d4e5-...-1704067201.bin
-/config.json             →    ./storage/c3d4e5f6-...-1704067202.bin
-
-index.db contains:
-┌─────────────────────────┬──────────────────────────────┬──────────┐
-│ virtual_path            │ real_name                    │ metadata │
-├─────────────────────────┼──────────────────────────────┼──────────┤
-│ /documents/report.pdf   │ a1b2c3d4-...-1704067200.bin  │ {...}    │
-│ /images/photo.jpg       │ b2c3d4e5-...-1704067201.bin  │ {...}    │
-└─────────────────────────┴──────────────────────────────┴──────────┘
-```
-- **Virtual filesystem, real content:** The entire directory structure, paths, symlinks, and metadata are virtual (stored in `index.db`). Only raw file content lives on disk as opaque blobs.
-- Files stored with UUID + timestamp names (flat, meaningless filenames)
-- `index.db` SQLite database maps virtual paths to real blob names
-- Symlinks and hard links are simulated in the index (not OS symlinks)
-- Path resolution handled by AnyFS framework (Type 1 backend)
-- File content streamed directly from disk (native I/O performance)
-
-#### Performance
-
-| Operation       | Speed          | Notes                       |
-| --------------- | -------------- | --------------------------- |
-| Read/Write      | 🟢 **Normal**   | Native disk I/O for content |
-| Path Resolution | 🟡 **Moderate** | Index lookup + disk access  |
-| Adding/Removing | 🟡 **Moderate** | Index update overhead       |
-| Large Files     | ✅ **Good**     | Streamed directly from disk |
-
-#### Advantages
-
-- **Native file I/O** - content stored raw, fast streaming
-- **Large file support** - no memory constraints
-- **Inspectable** - can see files on disk (though renamed)
-- **Backup-friendly** - copy directory + index.db
-- **Deduplication potential** - could hash for content-addressable storage
-
-#### Disadvantages
-
-- **Index dependency** - losing `index.db` = losing virtual structure
-- **Two-phase operations** - must update both disk and index atomically
-- **Concurrency complexity** - need to coordinate index + file ops
-- **Content exposure** - if host is compromised, file blobs are accessible on disk (paths remain opaque, but content is exposed). Encryption is possible but complicates backup.
-- **Multi-file backup** - must copy directory + index.db together (vs SqliteBackend's single-file snapshot)
-- **Directory overhead** - many small files = many disk files
-
-#### When to Use
-
-| Use Case                | Recommendation                           |
-| ----------------------- | ---------------------------------------- |
-| Large file storage      | ✅ **Ideal** - native I/O performance     |
-| Media libraries         | ✅ **Ideal** - stream large videos/images |
-| Document management     | ✅ **Good** - searchable index            |
-| Sandboxed + large files | ✅ **Good** - virtual paths, real I/O     |
-| Single-file portability | ❌ **Avoid** - use SqliteBackend          |
-| Content must be hidden  | ❌ **Avoid** - blobs readable on disk     |
-| Simplicity              | ❌ **Avoid** - use MemoryBackend          |
-| WASM/Browser            | ❌ **Avoid** - requires real filesystem   |
-
-**✅ USE IndexedBackend when:**
-- Storing large files (videos, images, documents >100MB)
-- Need native I/O performance for streaming content
-- Building media libraries or document management systems
-- Want virtual path isolation but with real disk performance
-- Files are large but path structure should be sandboxed
-
-**❌ DON'T USE IndexedBackend when:**
-- Need single-file portability (use SqliteBackend)
-- Host security is a concern (content blobs are accessible on disk)
-- Want simplicity with minimal moving parts (use MemoryBackend)
-- Need WASM/browser support (requires real filesystem)
-
-#### Concurrency Considerations
-
-> ⚠️ **Open Question:** Atomic coordination between index updates and file operations needs careful design. Consider:
-> - Write-ahead logging for crash recovery
-> - File operation before index update (orphan cleanup)
-> - Locking strategy for concurrent access
+- Files must be accessible to external tools (use VRootFsBackend)
+- Minimizing memory pressure for very large files is critical (use VRootFsBackend)
 
 ---
 
@@ -352,7 +246,7 @@ fs.write("/tmp/data.txt", b"Hello")?; // Actually writes to /tmp/data.txt
 | Trusted environments         | ✅ **Good** - when isolation not needed    |
 | Migration path               | ✅ **Good** - gradually add AnyFS features |
 | Full host FS features        | ✅ **Good** - ACLs, xattrs, etc.           |
-| Untrusted input              | ❌ **Never** - use VirtualRootBackend      |
+| Untrusted input              | ❌ **Never** - use VRootFsBackend          |
 | Sandboxing                   | ❌ **Never** - no containment whatsoever   |
 | Multi-tenant systems         | ❌ **Avoid** - use virtual backends        |
 
@@ -364,7 +258,7 @@ fs.write("/tmp/data.txt", b"Hello")?; // Actually writes to /tmp/data.txt
 - Building tools that work with user's actual files
 
 **❌ DON'T USE StdFsBackend when:**
-- Handling untrusted path inputs (use VirtualRootBackend)
+- Handling untrusted path inputs (use VRootFsBackend)
 - Any form of sandboxing is required (no containment!)
 - Building multi-tenant systems (use virtual backends)
 - Security isolation matters at all
@@ -373,15 +267,17 @@ fs.write("/tmp/data.txt", b"Hello")?; // Actually writes to /tmp/data.txt
 
 ---
 
-### VirtualRootBackend
+### VRootFsBackend
 
 Sets a directory as a virtual root. All operations are contained within it.
 
+> **Feature:** `vrootfs`
+
 ```rust
-use anyfs::{VirtualRootBackend, FileStorage};
+use anyfs::{VRootFsBackend, FileStorage};
 
 // /home/user/sandbox becomes the virtual "/"
-let fs = FileStorage::new(VirtualRootBackend::new("/home/user/sandbox")?);
+let fs = FileStorage::new(VRootFsBackend::new("/home/user/sandbox")?);
 
 fs.write("/data.txt", b"Hello")?; 
 // Actually writes to: /home/user/sandbox/data.txt
@@ -441,14 +337,14 @@ Virtual Path          Validation              Real Path
 | Cross-platform symlinks    | ⚠️ **Careful** - Windows behavior differs  |
 | Complete host isolation    | ❌ **Avoid** - use SqliteBackend instead   |
 
-**✅ USE VirtualRootBackend when:**
+**✅ USE VRootFsBackend when:**
 - Containing user-uploaded content to a specific directory
 - Sandboxing plugins, extensions, or untrusted code
 - Need chroot-like isolation without actual chroot privileges
 - Building AI agent workspaces with filesystem boundaries
 - Want real filesystem performance with path containment
 
-**❌ DON'T USE VirtualRootBackend when:**
+**❌ DON'T USE VRootFsBackend when:**
 - Maximum security required (theoretical TOCTOU edge cases exist - use MemoryBackend)
 - Need highest I/O performance (validation adds overhead)
 - Cross-platform symlink consistency is critical (Windows differs)
@@ -456,11 +352,13 @@ Virtual Path          Validation              Real Path
 
 ---
 
-## Composition Backend
+## Composition Middleware
 
 ### Overlay<Base, Upper>
 
-Union filesystem combining a read-only base with a writable upper layer.
+Union filesystem middleware combining a read-only base with a writable upper layer.
+
+> **Note:** Overlay is middleware (in `anyfs/middleware/overlay.rs`), not a standalone backend. It composes two backends into a layered view.
 
 ```rust
 use anyfs::{SqliteBackend, MemoryBackend, Overlay, FileStorage};
@@ -583,33 +481,31 @@ Do you need persistence?
 ├─ No → MemoryBackend
 └─ Yes
    ├─ Single portable file? → SqliteBackend
-   ├─ Large files (>100MB)? → IndexedBackend
-   └─ Access existing files?
-      ├─ Need containment? → VirtualRootBackend  
+   └─ Access existing files on disk?
+      ├─ Need containment? → VRootFsBackend  
       └─ Trusted environment? → StdFsBackend
 ```
 
 ### Comparison Matrix
 
-| Backend            | Speed       | Isolation  | Persistence   | Large Files   | WASM   |
-| ------------------ | ----------- | ---------- | ------------- | ------------- | ------ |
-| MemoryBackend      | ⚡ Very Fast | ✅ Complete | ❌ None        | ⚠️ RAM-limited | ✅      |
-| SqliteBackend      | 🐢 Slower    | ✅ Complete | ✅ Single file | ⚠️ Blobs       | ✅      |
-| IndexedBackend     | 🟢 Normal    | ✅ Complete | ✅ Directory   | ✅ Native      | ❌      |
-| StdFsBackend       | 🟢 Normal    | ❌ None     | ✅ Native      | ✅ Native      | ❌      |
-| VirtualRootBackend | 🟡 Moderate  | ✅ Strong   | ✅ Native      | ✅ Native      | ❌      |
-| Overlay            | Varies      | Varies     | Varies        | Varies        | Varies |
+| Backend        | Speed       | Isolation  | Persistence   | Large Files   | WASM   |
+| -------------- | ----------- | ---------- | ------------- | ------------- | ------ |
+| MemoryBackend  | ⚡ Very Fast | ✅ Complete | ❌ None        | ⚠️ RAM-limited | ✅      |
+| SqliteBackend  | 🐢 Slower    | ✅ Complete | ✅ Single file | ✅ Supported   | ✅      |
+| StdFsBackend   | 🟢 Normal    | ❌ None     | ✅ Native      | ✅ Native      | ❌      |
+| VRootFsBackend | 🟡 Moderate  | ✅ Strong   | ✅ Native      | ✅ Native      | ❌      |
+| Overlay        | Varies      | Varies     | Varies        | Varies        | Varies |
 
 ### By Use Case
 
-| Use Case                     | Recommended Backend                   |
+| Use Case                     | Recommended                           |
 | ---------------------------- | ------------------------------------- |
 | Unit testing                 | MemoryBackend                         |
 | Integration testing          | MemoryBackend or SqliteBackend        |
 | Portable application data    | SqliteBackend                         |
 | Encrypted storage            | SqliteCipherBackend                   |
-| Media/large file storage     | IndexedBackend                        |
-| Plugin/agent sandboxing      | VirtualRootBackend                    |
+| Large file + isolation       | SqliteBackend or VRootFsBackend       |
+| Plugin/agent sandboxing      | VRootFsBackend                        |
 | Adding middleware to real FS | StdFsBackend                          |
 | Container-like isolation     | Overlay<SqliteBackend, MemoryBackend> |
 | Template with modifications  | Overlay<Base, Upper>                  |
@@ -619,14 +515,13 @@ Do you need persistence?
 
 ## Platform Compatibility
 
-| Backend            | Windows | Linux | macOS |  WASM  |
-| ------------------ | :-----: | :---: | :---: | :----: |
-| MemoryBackend      |    ✅    |   ✅   |   ✅   |   ✅    |
-| SqliteBackend      |    ✅    |   ✅   |   ✅   |   ✅*   |
-| IndexedBackend     |    ✅    |   ✅   |   ✅   |   ❌    |
-| StdFsBackend       |    ✅    |   ✅   |   ✅   |   ❌    |
-| VirtualRootBackend |   ✅**   |   ✅   |   ✅   |   ❌    |
-| Overlay            |    ✅    |   ✅   |   ✅   | Varies |
+| Backend        | Windows | Linux | macOS |  WASM  |
+| -------------- | :-----: | :---: | :---: | :----: |
+| MemoryBackend  |    ✅    |   ✅   |   ✅   |   ✅    |
+| SqliteBackend  |    ✅    |   ✅   |   ✅   |   ✅*   |
+| StdFsBackend   |    ✅    |   ✅   |   ✅   |   ❌    |
+| VRootFsBackend |   ✅**   |   ✅   |   ✅   |   ❌    |
+| Overlay        |    ✅    |   ✅   |   ✅   | Varies |
 
 \* Requires wasm32-compatible SQLite build  
 \** Windows symlinks require elevated privileges or Developer Mode
@@ -635,11 +530,9 @@ Do you need persistence?
 
 ## Common Mistakes to Avoid
 
-| ❌ Mistake                                                                       | ✅ Instead                                                                     |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Using `StdFsBackend` with user-provided paths                                   | Use `VirtualRootBackend` - it prevents `../../etc/passwd` attacks             |
-| Storing 1GB videos in `SqliteBackend`                                           | Use `IndexedBackend` - SQLite BLOBs aren't designed for large streaming       |
-| Using `MemoryBackend` for data that must survive restart                        | Use `SqliteBackend` for persistence, or call `save_to()` to serialize         |
-| Expecting identical symlink behavior across platforms with `VirtualRootBackend` | Use `MemoryBackend` or `SqliteBackend` for consistent cross-platform symlinks |
-| Using `Overlay` when a simple backend would suffice                             | Keep it simple - use `Overlay` only when you need true layered semantics      |
-| Assuming `IndexedBackend` content is hidden                                     | Content blobs are readable files on disk - only paths are virtualized         |
+| ❌ Mistake                                                                   | ✅ Instead                                                                     |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Using `StdFsBackend` with user-provided paths                               | Use `VRootFsBackend` - it prevents `../../etc/passwd` attacks                 |
+| Using `MemoryBackend` for data that must survive restart                    | Use `SqliteBackend` for persistence, or call `save_to()` to serialize         |
+| Expecting identical symlink behavior across platforms with `VRootFsBackend` | Use `MemoryBackend` or `SqliteBackend` for consistent cross-platform symlinks |
+| Using `Overlay` when a simple backend would suffice                         | Keep it simple - use `Overlay` only when you need true layered semantics      |
