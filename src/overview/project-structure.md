@@ -10,7 +10,7 @@ This manual describes the intended code repository layout; this repository conta
 ## Repository Layout
 
 ```
-anyfs-backend/              # Crate 1: traits + types (no dependencies)
+anyfs-backend/              # Crate 1: traits + types (minimal dependencies)
   Cargo.toml
   src/
     lib.rs
@@ -100,18 +100,21 @@ Each layer implements `Fs`, enabling composition.
 - `stdfs` — Direct `std::fs` delegation (no containment)
 - `vrootfs` — Host filesystem backend with path containment (uses `strict-path`)
 
-### Middleware
-Following the **Tower/Axum** pattern, we use feature flags to keep the core lightweight:
+### Middleware (MVP Scope)
+Following the **Tower/Axum** pattern, feature flags keep the core lightweight:
 
 - `quota` — Storage limits (default)
 - `path-filter` — Glob-based access control (default)
-- `restrictions` — Permission/Link control (default)
+- `restrictions` — Permission control (default)
 - `read-only` — Write blocking (default)
-- `rate-limit` — Token bucket throttling (default)
-- `metrics` — Prometheus integration (requires `prometheus` crate)
+- `rate-limit` — Fixed-window rate limiting (default)
 - `tracing` — Detailed audit logging (requires `tracing` crate)
 
 Use `default-features = false` to cherry-pick exactly what you need.
+
+### Middleware (Future Scope)
+
+- `metrics` — Prometheus integration (requires `prometheus` crate)
 
 ---
 

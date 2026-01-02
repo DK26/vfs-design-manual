@@ -107,6 +107,11 @@ impl ReadDirIter {
         Self(Box::new(iter))
     }
 
+    /// Create from a pre-collected vector (useful for middleware like Overlay).
+    pub fn from_vec(entries: Vec<Result<DirEntry, FsError>>) -> Self {
+        Self(Box::new(entries.into_iter()))
+    }
+
     /// Collect all entries, short-circuiting on first error.
     pub fn collect_all(self) -> Result<Vec<DirEntry>, FsError> {
         self.collect()
@@ -342,7 +347,7 @@ pub trait FsExt: Fs {
     /// Check if path is a directory.
     fn is_dir(&self, path: impl AsRef<Path>) -> Result<bool, FsError>;
 
-    /// JSON methods (require `serde` feature in anyfs-backend)
+    /// JSON methods (require optional `serde` feature in anyfs-backend)
     #[cfg(feature = "serde")]
     fn read_json<T: DeserializeOwned>(&self, path: impl AsRef<Path>) -> Result<T, FsError>;
     #[cfg(feature = "serde")]

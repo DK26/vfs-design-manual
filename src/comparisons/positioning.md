@@ -317,8 +317,8 @@ For `VRootFsBackend` (wrapping real filesystem):
 | Quota enforcement     |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
 | Rate limiting         |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
 | Type-safe markers     |       ✅        |    ❌    |         ❌         |    ❌    |    ❌    |
-| Path sandboxing       | ✅ (19 vectors) |  Basic  | Basic (2 vectors) |    ❌    |    ❌    |
-| Async API             |       ✅        | Partial |         ❌         |    ❌    |    ✅    |
+| Path sandboxing       |       ✅        |  Basic  | Basic (2 vectors) |    ❌    |    ❌    |
+| Async API             |       🔜        | Partial |         ❌         |    ❌    |    ✅    |
 | std::fs-aligned API   |       ✅        | Custom  |         ✅         |    ✅    | Custom  |
 | FUSE mounting         |   MVP scope    |    ❌    |         ❌         |    ✅    |    ❌    |
 | Conformance tests     | Planned (80+)  | Unknown |      Unknown      | Unknown | Unknown |

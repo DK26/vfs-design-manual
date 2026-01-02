@@ -118,18 +118,18 @@ let fs = FileStorage::new(backend);
 
 AnyFS middleware can **intercept, transform, and control** operations:
 
-| Middleware     | Intercepts              | Action                        |
-| -------------- | ----------------------- | ----------------------------- |
-| `Quota`        | Writes                  | Reject if over limit          |
-| `PathFilter`   | All ops                 | Block denied paths            |
-| `Restrictions` | Configurable operations | Block via `.deny_*()` methods |
-| `RateLimit`    | All ops                 | Throttle per second           |
-| `ReadOnly`     | Writes                  | Block all writes              |
-| `Tracing`      | All ops                 | Log with tracing crate        |
-| `DryRun`       | Writes                  | Log without executing         |
-| `Cache`        | Reads                   | LRU caching                   |
-| `Overlay`      | All ops                 | Union filesystem              |
-| Custom         | Any                     | Encryption, compression, ...  |
+| Middleware     | Intercepts         | Action                          |
+| -------------- | ------------------ | ------------------------------- |
+| `Quota`        | Writes             | Reject if over limit            |
+| `PathFilter`   | All ops            | Block denied paths              |
+| `Restrictions` | Permission changes | Block via `.deny_permissions()` |
+| `RateLimit`    | All ops            | Throttle per second             |
+| `ReadOnly`     | Writes             | Block all writes                |
+| `Tracing`      | All ops            | Log with tracing crate          |
+| `DryRun`       | Writes             | Log without executing           |
+| `Cache`        | Reads              | LRU caching                     |
+| `Overlay`      | All ops            | Union filesystem                |
+| Custom         | Any                | Encryption, compression, ...    |
 
 ---
 

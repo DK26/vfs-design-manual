@@ -268,6 +268,7 @@ Pure instrumentation wrapper. No state mutation, no complex logic.
 **Complexity:** Moderate
 **State:** Counter + timestamp (requires interior mutability)
 **Dependencies:** None (uses `std::time`)
+**Algorithm:** Fixed-window counter (simpler than token bucket, sufficient for v1)
 
 ### Implementation
 

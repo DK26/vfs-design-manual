@@ -340,7 +340,7 @@ let backend = av_plugin.wrap(backend);
 
 Some middleware benefit from pluggable backends for their own storage or output. The pattern is to inject a trait object or configuration at construction time.
 
-**Metrics Middleware with Prometheus Exporter:**
+**Metrics Middleware with Prometheus Exporter (Post-v1):**
 *(Requires `features = ["metrics"]`)*
 
 ```rust
@@ -603,7 +603,7 @@ pub trait FsStats: Send + Sync {
 ## Inode Traits (Layer 3 - For FUSE)
 
 ```rust
-pub trait FsInode: Send {
+pub trait FsInode: Send + Sync {
     fn path_to_inode(&self, path: &Path) -> Result<u64, FsError>;
     fn inode_to_path(&self, inode: u64) -> Result<PathBuf, FsError>;
     fn lookup(&self, parent_inode: u64, name: &OsStr) -> Result<u64, FsError>;
@@ -1740,8 +1740,10 @@ pub enum FsError {
     },
 
     /// Feature not enabled (from Restrictions middleware).
+    /// Note: Symlink/hard-link capability is determined by trait bounds (FsLink),
+    /// not middleware. Restrictions only controls "permissions".
     FeatureNotEnabled {
-        feature: &'static str,  // "symlinks", "hard_links", "permissions"
+        feature: &'static str,  // "permissions"
         operation: &'static str,
     },
 

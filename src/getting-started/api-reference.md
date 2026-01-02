@@ -290,8 +290,7 @@ fs.symlink("/target", "/link")?;
 fs.hard_link("/original", "/link")?;
 fs.read_link("/link")?;                  // -> PathBuf
 fs.symlink_metadata("/link")?;           // Metadata of link itself, not target
-// Symlink following is backend-defined (no toggle).
-// Use Restrictions to block symlink creation if needed.
+// Symlink capability is determined by FsLink trait bounds, not middleware.
 
 // Permissions (requires FsPermissions)
 fs.set_permissions("/path", perms)?;

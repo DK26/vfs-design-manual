@@ -6,6 +6,10 @@ READ THIS FIRST before making any changes to this repository.
 
 ## Project Overview
 
+> **This repository contains the design manual only.**
+> The AnyFS crates (`anyfs-backend`, `anyfs`) are not yet implemented.
+> All documentation describes the intended design and API.
+
 AnyFS is an open standard for pluggable virtual filesystem backends in Rust. It uses a **middleware/decorator pattern** (like Axum/Tower) for composable functionality.
 
 **Key design principle:** Complete separation of concerns via composable layers.
@@ -42,10 +46,10 @@ Each layer has **exactly one responsibility**:
 | ------------------ | ------------------------------------------------ |
 | Backend (`Fs`+)    | Storage + filesystem semantics                   |
 | `Quota<B>`         | Resource limits (size, count, depth)             |
-| `Restrictions<B>`  | Opt-in operation restrictions                    |
+| `Restrictions<B>`  | Block permission changes                         |
 | `PathFilter<B>`    | Path-based access control (sandbox)              |
 | `ReadOnly<B>`      | Prevent all write operations                     |
-| `RateLimit<B>`     | Limit operations per second                      |
+| `RateLimit<B>`     | Fixed-window rate limiting                       |
 | `Tracing<B>`       | Instrumentation / audit trail                    |
 | `DryRun<B>`        | Log operations without executing                 |
 | `Cache<B>`         | LRU cache for reads                              |
@@ -57,7 +61,7 @@ Each layer has **exactly one responsibility**:
 ## Crate Structure (2 Crates)
 
 ```
-anyfs-backend/              # Crate 1: traits + types (no dependencies)
+anyfs-backend/              # Crate 1: traits + types (minimal deps: thiserror; optional: serde)
   src/
     lib.rs
     traits/

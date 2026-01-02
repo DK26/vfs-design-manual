@@ -4,7 +4,7 @@
 
 It lets you control **how a drive acts, looks, and protects itself.**
 
-Whether it's a real filesystem, a SQLite database, or pure RAM, it can be mounted to look like a standard drive to your OS (planned companion crate; roadmap defined), but with *your* rules: antivirus active defense, live Prometheus metrics, quotas, and audit logging.
+Whether it's a real filesystem, a SQLite database, or pure RAM, it can be mounted to look like a standard drive to your OS (planned companion crate; roadmap defined), but with *your* rules: quotas, audit logging, and sandbox controls. (Prometheus metrics planned post-v1.)
 
 A composable middleware stack for filesystem operations with pluggable backends.
 
@@ -143,17 +143,17 @@ process_sandbox(&userdata);  // Compile error!
 
 Unlike logging-only solutions, AnyFS middleware can **transform and control**:
 
-| Middleware     | What It Does                                                  |
-| -------------- | ------------------------------------------------------------- |
-| `Quota`        | Enforce storage limits, reject writes over quota              |
-| `PathFilter`   | Sandbox to allowed paths, block sensitive files               |
-| `Restrictions` | Block specific operations (symlinks, hard links, permissions) |
-| `RateLimit`    | Throttle operations per second                                |
-| `ReadOnly`     | Block all writes                                              |
-| `Cache`        | LRU cache for repeated reads                                  |
-| `Overlay`      | Union filesystem (Docker-like layers)                         |
-| `DryRun`       | Log what would happen without executing                       |
-| Custom         | Implement encryption, compression, deduplication...           |
+| Middleware     | What It Does                                         |
+| -------------- | ---------------------------------------------------- |
+| `Quota`        | Enforce storage limits, reject writes over quota     |
+| `PathFilter`   | Sandbox to allowed paths, block sensitive files      |
+| `Restrictions` | Block permission changes (symlinks via trait bounds) |
+| `RateLimit`    | Throttle operations per second                       |
+| `ReadOnly`     | Block all writes                                     |
+| `Cache`        | LRU cache for repeated reads                         |
+| `Overlay`      | Union filesystem (Docker-like layers)                |
+| `DryRun`       | Log what would happen without executing              |
+| Custom         | Implement encryption, compression, deduplication...  |
 
 ### Snapshots & Persistence
 

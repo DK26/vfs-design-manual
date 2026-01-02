@@ -318,13 +318,13 @@ impl FsInode for MyBackend {
 }
 ```
 
-**Default implementations exist** (via blanket impl) - you only need to override for:
+**No blanket/default implementation** - you must implement this trait explicitly if you need:
+- **FUSE mounting**: FUSE operates on inodes, not paths
 - **Hardlink support**: Two paths must share the same inode
-- **FUSE efficiency**: Direct inode operations without path lookup
 
-**Level 1: Simple backend (use defaults)**
+**Level 1: Simple backend (no FsInode)**
 
-Don't implement `FsInode`. Hardlinks won't work correctly, but basic operations will.
+Don't implement `FsInode`. The backend won't support FUSE mounting or hardlinks.
 
 **Level 2: Hardlink support**
 
@@ -1368,9 +1368,15 @@ fn test_backend_with_clean_paths() {
 **Snapshot = Clone the storage.** That's it.
 
 ```rust
-// MemoryBackend implements Clone
-#[derive(Clone)]
+// MemoryBackend implements Clone (custom impl, not derive)
 pub struct MemoryBackend { ... }
+
+impl Clone for MemoryBackend {
+    fn clone(&self) -> Self {
+        // Deep copy of Arc<RwLock<...>> contents
+        // ...
+    }
+}
 
 // Snapshot is just .clone()
 let snapshot = fs.clone();
@@ -1384,8 +1390,10 @@ fs = snapshot;
 ```rust
 impl MemoryBackend {
     /// Clone the entire filesystem state.
-    /// This is a deep copy - modifications to the clone don't affect the original.
-    pub fn clone(&self) -> Self { ... }  // via #[derive(Clone)]
+    /// This is a DEEP COPY - modifications to the clone don't affect the original.
+    /// Implemented via custom Clone (not #[derive(Clone)]) to ensure deep copy
+    /// of Arc<RwLock<...>> contents.
+    pub fn clone(&self) -> Self { ... }
 
     /// Serialize to bytes for persistence/transfer.
     pub fn to_bytes(&self) -> Result<Vec<u8>, FsError>;

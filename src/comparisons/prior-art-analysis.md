@@ -298,7 +298,7 @@ fn resolve(path: &str) -> Result<PathBuf, FsError> {
 | Union/overlay FS       |   ❌    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
 | Memory backend         |   ✅    |   ✅   |   ✅   |      ✅      |       ✅       |   ✅   |
 | SQLite backend         |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
-| FUSE mounting          |   ✅    |   ❌   |   ✅   |      ❌      |       ❌       |   ✅   |
+| FUSE mounting          |   ✅    |   ❌   |   ✅   |      ❌      |       ❌       |   🔜   |
 | Type-safe markers      |   ❌    |   ❌   |   ❌   |      ❌      |       ❌       |   ✅   |
 
 ---

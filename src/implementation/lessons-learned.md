@@ -154,8 +154,8 @@ let entry = self.entries.get(&path)
 
 ### AnyFS Response
 
-- **Symlinks are supported by default** - use `Restrictions` to deny creation when needed
-- **Symlink behavior is backend-defined** - no runtime toggle; avoid `FsLink` or block creation if needed
+- **Symlinks supported via `FsLink` trait** - backends that implement `FsLink` support symlinks
+- **Compile-time capability** - no `FsLink` impl = no symlinks (won't compile)
 - **Bound resolution depth** (default: 40 hops)
 - **`strict-path` prevents symlink escapes** in `VRootFsBackend`
 
@@ -355,7 +355,7 @@ Our design decisions already prevent these problems:
 | No middleware pattern    | Tower-style composable middleware    |
 | No quota enforcement     | `Quota<B>` middleware                |
 | No read-only mode        | `ReadOnly<B>` middleware             |
-| Symlink complexity       | `Restrictions<B>` (opt-in)           |
+| Symlink complexity       | `FsLink` trait (compile-time)        |
 | Path escape via symlinks | `strict-path` canonicalization       |
 | FUSE complexity          | Isolated in optional companion crate |
 | SQLite-only              | Multiple backends                    |

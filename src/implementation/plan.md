@@ -173,8 +173,9 @@ Every backend and middleware must document:
 ### Inode Trait (Layer 3 - For FUSE)
 
 - **`FsInode`**: `path_to_inode`, `inode_to_path`, `lookup`, `metadata_by_inode`
-  - Default implementations use path hashing/fallback
-  - Override for hardlink support and FUSE efficiency
+  - **No blanket/default implementation** - must be explicitly implemented
+  - Required for FUSE mounting and proper hardlink support
+  - `inode_to_path` requires backend to maintain path mappings
 
 ### POSIX Traits (Layer 4 - Full POSIX)
 
@@ -209,7 +210,7 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 - Define `ROOT_INODE = 1` constant
 - Define `SelfResolving` marker trait (opt-in for backends that handle their own path resolution, e.g., VRootFsBackend)
 
-**Exit criteria:** `anyfs-backend` stands alone with minimal dependencies (`thiserror`).
+**Exit criteria:** `anyfs-backend` stands alone with minimal dependencies (`thiserror` required; `serde` optional for JSON in `FsExt`).
 
 ---
 
@@ -359,7 +360,7 @@ Conformance tests are organized by trait layer:
 ### Middleware tests
 
 - `Quota`: Limit enforcement, usage tracking, streaming writes
-- `Restrictions`: Operation blocking via `.deny_*()` methods, error messages
+- `Restrictions`: Permission blocking via `.deny_permissions()`, error messages
 - `PathFilter`: Glob pattern matching, deny-by-default
 - `RateLimit`: Throttling behavior, burst handling
 - `ReadOnly`: All write operations blocked
@@ -595,7 +596,7 @@ let sandbox = MountHandle::mount(
 - Companion shell (`anyfs-shell`) for interactive exploration of backends and middleware
 - **Language bindings** (`anyfs-python` via PyO3, C bindings) - see design-overview.md for approach
 - **Dynamic middleware plugin system** (`MiddlewarePlugin` trait for runtime-loaded `.so`/`.dll` plugins)
-- **Metrics middleware** with Prometheus exporter (`GET /metrics` endpoint)
+- **Metrics middleware** with Prometheus exporter (`GET /metrics` endpoint) - post-v1
 - **Configurable tracing/logging backends** (structured logs, CEF events, remote sinks)
 
 ### `anyfs-shell` - Local Companion Shell
