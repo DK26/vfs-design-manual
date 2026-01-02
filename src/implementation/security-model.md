@@ -10,38 +10,38 @@ This guide covers security considerations for deploying AnyFS-based filesystems,
 
 ### Actors
 
-| Actor | Description | Trust Level |
-|-------|-------------|-------------|
-| **User** | Legitimate filesystem user | Trusted for their data |
-| **Other User** | Another tenant (multi-tenant) | Untrusted (isolation required) |
-| **Operator** | System administrator | Trusted for ops, not data |
-| **Attacker** | External malicious actor | Untrusted |
-| **Compromised Host** | Server with attacker access | Assume worst case |
+| Actor                | Description                   | Trust Level                    |
+| -------------------- | ----------------------------- | ------------------------------ |
+| **User**             | Legitimate filesystem user    | Trusted for their data         |
+| **Other User**       | Another tenant (multi-tenant) | Untrusted (isolation required) |
+| **Operator**         | System administrator          | Trusted for ops, not data      |
+| **Attacker**         | External malicious actor      | Untrusted                      |
+| **Compromised Host** | Server with attacker access   | Assume worst case              |
 
 ### Assets to Protect
 
-| Asset | Confidentiality | Integrity | Availability |
-|-------|----------------|-----------|--------------|
-| File contents | High | High | High |
-| File metadata (names, sizes) | Medium | High | High |
-| Directory structure | Medium | High | Medium |
-| Encryption keys | Critical | Critical | High |
-| Audit logs | Medium | Critical | Medium |
-| User credentials | Critical | Critical | High |
+| Asset                        | Confidentiality | Integrity | Availability |
+| ---------------------------- | --------------- | --------- | ------------ |
+| File contents                | High            | High      | High         |
+| File metadata (names, sizes) | Medium          | High      | High         |
+| Directory structure          | Medium          | High      | Medium       |
+| Encryption keys              | Critical        | Critical  | High         |
+| Audit logs                   | Medium          | Critical  | Medium       |
+| User credentials             | Critical        | Critical  | High         |
 
 ### Attack Vectors
 
-| Vector | Mitigation |
-|--------|------------|
-| Network interception | TLS for all traffic |
-| Unauthorized access | Authentication + authorization |
-| Data theft (at rest) | Encryption (SQLCipher) |
-| Data theft (in memory) | Memory protection, key isolation |
-| Tenant data leakage | Strict isolation, no cross-tenant dedup |
-| Path traversal | PathFilter middleware, input validation |
-| Denial of service | Rate limiting, quotas |
-| Privilege escalation | Principle of least privilege |
-| Audit tampering | Append-only logs, signatures |
+| Vector                 | Mitigation                              |
+| ---------------------- | --------------------------------------- |
+| Network interception   | TLS for all traffic                     |
+| Unauthorized access    | Authentication + authorization          |
+| Data theft (at rest)   | Encryption (SQLCipher)                  |
+| Data theft (in memory) | Memory protection, key isolation        |
+| Tenant data leakage    | Strict isolation, no cross-tenant dedup |
+| Path traversal         | PathFilter middleware, input validation |
+| Denial of service      | Rate limiting, quotas                   |
+| Privilege escalation   | Principle of least privilege            |
+| Audit tampering        | Append-only logs, signatures            |
 
 ---
 
@@ -183,12 +183,12 @@ pub fn generate_key_id() -> String {
 
 **Recommended storage:**
 
-| Environment | Solution |
-|-------------|----------|
-| Development | File with restricted permissions (0600) |
-| Production (cloud) | KMS (AWS KMS, GCP KMS, Azure Key Vault) |
-| Production (on-prem) | HSM or dedicated secrets manager |
-| User devices | OS keychain (macOS Keychain, Windows Credential Manager) |
+| Environment          | Solution                                                 |
+| -------------------- | -------------------------------------------------------- |
+| Development          | File with restricted permissions (0600)                  |
+| Production (cloud)   | KMS (AWS KMS, GCP KMS, Azure Key Vault)                  |
+| Production (on-prem) | HSM or dedicated secrets manager                         |
+| User devices         | OS keychain (macOS Keychain, Windows Credential Manager) |
 
 ```rust
 /// Key storage abstraction.
@@ -294,11 +294,11 @@ impl Default for KeyRotationPolicy {
 
 ### Isolation Strategies
 
-| Strategy | Isolation Level | Complexity | Use Case |
-|----------|-----------------|------------|----------|
-| **Separate databases** | Strongest | Low | Few large tenants |
-| **Separate tables** | Strong | Medium | Many small tenants |
-| **Row-level** | Moderate | High | Shared infrastructure |
+| Strategy               | Isolation Level | Complexity | Use Case              |
+| ---------------------- | --------------- | ---------- | --------------------- |
+| **Separate databases** | Strongest       | Low        | Few large tenants     |
+| **Separate tables**    | Strong          | Medium     | Many small tenants    |
+| **Row-level**          | Moderate        | High       | Shared infrastructure |
 
 **Recommendation:** Separate databases (one SQLite file per tenant).
 
@@ -348,15 +348,17 @@ Tenant B uploads same file → instantly deduped → B knows A has that file
 
 **Options:**
 
-| Approach | Dedup Savings | Privacy |
-|----------|---------------|---------|
-| No cross-tenant dedup | None | Full privacy |
-| Convergent encryption | Partial | Leaks file existence |
-| Per-tenant keys before hash | None | Full privacy |
+| Approach                    | Dedup Savings | Privacy              |
+| --------------------------- | ------------- | -------------------- |
+| No cross-tenant dedup       | None          | Full privacy         |
+| Convergent encryption       | Partial       | Leaks file existence |
+| Per-tenant keys before hash | None          | Full privacy         |
 
 **Recommendation:** Only deduplicate within a tenant, not across tenants.
 
 ```rust
+// Pattern for any hybrid backend (e.g., IndexedBackend or custom implementations)
+// See hybrid-backend-design.md for the full pattern
 impl HybridBackend {
     fn blob_id_for_tenant(&self, tenant_id: &TenantId, data: &[u8]) -> String {
         // Include tenant ID in hash to prevent cross-tenant dedup
@@ -374,16 +376,16 @@ impl HybridBackend {
 
 ### What to Log
 
-| Event | Severity | Data to Capture |
-|-------|----------|-----------------|
-| File read | Info | path, user, timestamp, size |
-| File write | Info | path, user, timestamp, size, hash |
-| File delete | Warning | path, user, timestamp |
-| Permission change | Warning | path, user, old/new perms |
-| Login success | Info | user, IP, timestamp |
-| Login failure | Warning | user, IP, timestamp, reason |
-| Key rotation | Critical | key_id, user, timestamp |
-| Admin action | Critical | action, user, timestamp |
+| Event             | Severity | Data to Capture                   |
+| ----------------- | -------- | --------------------------------- |
+| File read         | Info     | path, user, timestamp, size       |
+| File write        | Info     | path, user, timestamp, size, hash |
+| File delete       | Warning  | path, user, timestamp             |
+| Permission change | Warning  | path, user, old/new perms         |
+| Login success     | Info     | user, IP, timestamp               |
+| Login failure     | Warning  | user, IP, timestamp, reason       |
+| Key rotation      | Critical | key_id, user, timestamp           |
+| Admin action      | Critical | action, user, timestamp           |
 
 ### Audit Log Schema
 
@@ -741,14 +743,14 @@ pub async fn connect_with_mtls(
 
 ## Summary
 
-| Layer | Protection |
-|-------|------------|
-| **Transport** | TLS, mTLS |
-| **Authentication** | Tokens, certificates |
-| **Authorization** | RBAC, PathFilter |
-| **Data at rest** | SQLCipher encryption |
-| **Key management** | KMS, rotation |
-| **Audit** | Tamper-evident logging |
-| **Isolation** | Per-tenant DBs and keys |
+| Layer              | Protection              |
+| ------------------ | ----------------------- |
+| **Transport**      | TLS, mTLS               |
+| **Authentication** | Tokens, certificates    |
+| **Authorization**  | RBAC, PathFilter        |
+| **Data at rest**   | SQLCipher encryption    |
+| **Key management** | KMS, rotation           |
+| **Audit**          | Tamper-evident logging  |
+| **Isolation**      | Per-tenant DBs and keys |
 
 Security is not optional. Build it in from the start.

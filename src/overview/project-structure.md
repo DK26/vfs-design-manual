@@ -41,6 +41,7 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
       memory.rs             # MemoryBackend [feature: memory, default]
       sqlite.rs             # SqliteBackend [feature: sqlite]
       sqlite_cipher.rs      # SqliteCipherBackend [feature: sqlite-cipher]
+      indexed.rs            # IndexedBackend [feature: indexed]
       stdfs.rs              # StdFsBackend [feature: stdfs]
       vrootfs.rs            # VRootFsBackend [feature: vrootfs]
     middleware/

@@ -4,6 +4,8 @@
 
 This document validates that AnyFS can support hybrid backends and provides implementation patterns for this advanced use case.
 
+> **Built-in Implementation:** AnyFS ships `IndexedBackend` as a production-ready implementation of this pattern using local disk blobs. See the [Backends Guide](../guides/backends-guide.md#indexedbackend) for usage. This document covers the underlying design pattern for those building custom hybrid backends (e.g., with S3, cloud storage, or custom blob stores).
+
 ---
 
 ## Overview
@@ -14,7 +16,7 @@ A **hybrid backend** separates:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    HybridBackend                        │
+│            Hybrid Backend (pattern)                     │
 │  ┌─────────────────────┐    ┌────────────────────────┐  │
 │  │   SQLite Metadata   │    │   Blob Store (CAS)     │  │
 │  │                     │    │                        │  │
@@ -24,6 +26,9 @@ A **hybrid backend** separates:
 │  │  - audit log        │    │                        │  │
 │  └─────────────────────┘    └────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
+
+IndexedBackend implements this pattern with local disk blobs.
+Custom backends can use S3, cloud storage, or other blob stores.
 ```
 
 **Why this pattern?**

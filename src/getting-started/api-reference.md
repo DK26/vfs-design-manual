@@ -429,13 +429,14 @@ match result {
 
 ## Built-in Backends
 
-| Type                  | Feature            | Description                              |
-| --------------------- | ------------------ | ---------------------------------------- |
-| `MemoryBackend`       | `memory` (default) | In-memory                                |
-| `SqliteBackend`       | `sqlite`           | Persistent single-file database          |
-| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite (AES-256 via SQLCipher) |
-| `StdFsBackend`        | `stdfs`            | Direct `std::fs` (no containment)        |
-| `VRootFsBackend`      | `vrootfs`          | Host filesystem (with containment)       |
+| Type                  | Feature            | Description                                     |
+| --------------------- | ------------------ | ----------------------------------------------- |
+| `MemoryBackend`       | `memory` (default) | In-memory                                       |
+| `SqliteBackend`       | `sqlite`           | Persistent single-file database                 |
+| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite (AES-256 via SQLCipher)        |
+| `IndexedBackend`      | `indexed`          | Virtual paths + disk blobs (large file support) |
+| `StdFsBackend`        | `stdfs`            | Direct `std::fs` (no containment)               |
+| `VRootFsBackend`      | `vrootfs`          | Host filesystem (with containment)              |
 
 **Note:** `sqlite` and `sqlite-cipher` are mutually exclusive features.
 

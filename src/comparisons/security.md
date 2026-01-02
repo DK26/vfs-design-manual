@@ -150,6 +150,7 @@ Different backends achieve containment differently:
 | ---------------- | ------------------------------------------------------------------- |
 | `MemoryBackend`  | Isolated in process memory                                          |
 | `SqliteBackend`  | Each container is a separate `.db` file                             |
+| `IndexedBackend` | SQLite index + isolated blob directory (content-addressable)        |
 | `StdFsBackend`   | **None** - full filesystem access (do NOT use with untrusted input) |
 | `VRootFsBackend` | Uses `strict-path::VirtualRoot` to contain paths                    |
 

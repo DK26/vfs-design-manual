@@ -1239,13 +1239,14 @@ let fs = BackendStack::new(SqliteBackend::open("data.db")?)
 
 ## Built-in Backends
 
-| Backend               | Feature            | Description                                             |
-| --------------------- | ------------------ | ------------------------------------------------------- |
-| `MemoryBackend`       | `memory` (default) | In-memory storage                                       |
-| `SqliteBackend`       | `sqlite`           | Single-file portable database                           |
-| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite via SQLCipher (AES-256)                |
-| `StdFsBackend`        | `stdfs`            | Direct `std::fs` delegation (no containment)            |
-| `VRootFsBackend`      | `vrootfs`          | Host filesystem with path containment (via strict-path) |
+| Backend               | Feature            | Description                                                    |
+| --------------------- | ------------------ | -------------------------------------------------------------- |
+| `MemoryBackend`       | `memory` (default) | In-memory storage                                              |
+| `SqliteBackend`       | `sqlite`           | Single-file portable database                                  |
+| `SqliteCipherBackend` | `sqlite-cipher`    | Encrypted SQLite via SQLCipher (AES-256)                       |
+| `IndexedBackend`      | `indexed`          | Virtual paths + disk blobs (large file support with isolation) |
+| `StdFsBackend`        | `stdfs`            | Direct `std::fs` delegation (no containment)                   |
+| `VRootFsBackend`      | `vrootfs`          | Host filesystem with path containment (via strict-path)        |
 
 **Note:** `sqlite` and `sqlite-cipher` features are mutually exclusive (both use rusqlite with different SQLite builds).
 
