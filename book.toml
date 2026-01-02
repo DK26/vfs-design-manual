@@ -8,9 +8,9 @@ language = "en"
 build-dir = "docs"
 
 [output.html]
-git-repository-url = "https://github.com/DK26/vfs-design-manual"
-edit-url-template = "https://github.com/DK26/vfs-design-manual/edit/main/{path}"
-site-url = "/vfs-design-manual/"
+git-repository-url = "https://github.com/DK26/anyfs-design-manual"
+edit-url-template = "https://github.com/DK26/anyfs-design-manual/edit/main/{path}"
+site-url = "/anyfs-design-manual/"
 default-theme = "rust"
 preferred-dark-theme = "coal"
 smart-punctuation = true

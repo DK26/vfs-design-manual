@@ -1,46 +1,49 @@
 <!DOCTYPE HTML>
 <html lang="en" class="rust sidebar-visible" dir="ltr">
-    <head>
-        <!-- Book generated using mdBook -->
-        <meta charset="UTF-8">
-        <title>Open Questions &amp; Future - AnyFS Ecosystem Manual</title>
+
+<head>
+    <!-- Book generated using mdBook -->
+    <meta charset="UTF-8">
+    <title>Open Questions &amp; Future - AnyFS Ecosystem Manual</title>
 
 
-        <!-- Custom HTML head -->
+    <!-- Custom HTML head -->
 
-        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff">
+    <meta name="description"
+        content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="../favicon-de23e50b.svg">
-        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
-        <link rel="stylesheet" href="../css/variables-8adf115d.css">
-        <link rel="stylesheet" href="../css/general-2459343d.css">
-        <link rel="stylesheet" href="../css/chrome-ae938929.css">
-        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+    <link rel="icon" href="../favicon-de23e50b.svg">
+    <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+    <link rel="stylesheet" href="../css/variables-8adf115d.css">
+    <link rel="stylesheet" href="../css/general-2459343d.css">
+    <link rel="stylesheet" href="../css/chrome-ae938929.css">
+    <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
-        <!-- Fonts -->
-        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+    <!-- Fonts -->
+    <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
 
-        <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
-        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
-        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+    <!-- Highlight.js Stylesheets -->
+    <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
 
-        <!-- Custom theme stylesheets -->
+    <!-- Custom theme stylesheets -->
 
 
-        <!-- Provide site root and default themes to javascript -->
-        <script>
-            const path_to_root = "../";
-            const default_light_theme = "rust";
-            const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
-        </script>
-        <!-- Start loading toc.js asap -->
-        <script src="../toc-30b1f61e.js"></script>
-    </head>
-    <body>
+    <!-- Provide site root and default themes to javascript -->
+    <script>
+        const path_to_root = "../";
+        const default_light_theme = "rust";
+        const default_dark_theme = "coal";
+        window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
+    </script>
+    <!-- Start loading toc.js asap -->
+    <script src="../toc-30b1f61e.js"></script>
+</head>
+
+<body>
     <div id="mdbook-help-container">
         <div id="mdbook-help-popup">
             <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
@@ -73,7 +76,7 @@
         <script>
             const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
             let theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
             html.classList.remove('rust')
@@ -88,7 +91,7 @@
             let sidebar = null;
             const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
@@ -118,22 +121,46 @@
                 <div id="mdbook-menu-bar-hover-placeholder"></div>
                 <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor"
+                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
+                            aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z" />
+                                </svg></span>
                         </label>
-                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme"
+                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
+                            aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z" />
+                                </svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme"
+                                    id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button>
+                            </li>
                         </ul>
-                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)"
+                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s"
+                            aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z" />
+                                </svg></span>
                         </button>
                     </div>
 
@@ -141,13 +168,27 @@
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
-                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z" />
+                                </svg></span>
                         </a>
-                        <a href="https://github.com/DK26/vfs-design-manual" title="Git repository" aria-label="Git repository">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository"
+                            aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z" />
+                                </svg></span>
                         </a>
-                        <a href="https://github.com/DK26/vfs-design-manual/edit/main/src/review/open-questions.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
-                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/review/open-questions.md"
+                            title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z" />
+                                </svg></span>
                         </a>
 
                     </div>
@@ -156,9 +197,15 @@
                 <div id="mdbook-search-wrapper" class="hidden">
                     <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar"
+                                placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer"
+                                aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                        <path
+                                            d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z" />
+                                    </svg></span>
                             </div>
                         </div>
                     </form>
@@ -173,209 +220,335 @@
                 <script>
                     document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function (link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="open-questions--future-considerations"><a class="header" href="#open-questions--future-considerations">Open Questions &amp; Future Considerations</a></h1>
-<p><strong>Status:</strong> Resolved for v1 (future considerations tracked)
-<strong>Last Updated:</strong> 2025-12-28</p>
-<hr>
-<p>This document captures previously open questions and design considerations. Unless explicitly marked as future, the items below are resolved for v1.</p>
-<blockquote>
-<p><strong>Note:</strong> Final decisions live in the Architecture Decision Records.</p>
-</blockquote>
-<hr>
-<h2 id="symlink-security-following-vs-creating"><a class="header" href="#symlink-security-following-vs-creating">Symlink Security: Following vs Creating</a></h2>
-<p><strong>Status:</strong> Resolved</p>
-<h3 id="decision-v1"><a class="header" href="#decision-v1">Decision (v1)</a></h3>
-<ul>
-<li>Symlink support is a backend capability (via <code>FsLink</code>). There is no runtime toggle to disable following.</li>
-<li><code>FileStorage</code> resolves paths for non-<code>SelfResolving</code> backends; symlink following is inherent in that resolution.</li>
-<li><code>SelfResolving</code> backends delegate to the OS. <code>strict-path</code> prevents escapes but cannot disable following.</li>
-</ul>
-<h3 id="implications"><a class="header" href="#implications">Implications</a></h3>
-<ul>
-<li>If you need symlink-free semantics, use a backend that does not implement <code>FsLink</code> or block symlink creation and ensure no preexisting symlinks exist.</li>
-<li><code>Restrictions</code> only controls creation, not resolution.</li>
-</ul>
-<h3 id="why"><a class="header" href="#why">Why</a></h3>
-<ul>
-<li>Virtual backends have no host filesystem to escape to; symlink resolution stays inside the virtual structure.</li>
-<li>OS-backed backends cannot reliably disable symlink following without TOCTOU risks or platform-specific hacks.</li>
-</ul>
-<hr>
-<h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
-<p><strong>Status:</strong> Resolved</p>
-<p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?</p>
-<p><strong>Resolution:</strong> <code>FileStorage</code> handles symlink-aware path resolution for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to the OS, so FileStorage does not pre-resolve paths for them.</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Backend Type</th><th>Path Resolution</th><th>Symlink Handling</th></tr>
-</thead>
-<tbody>
-<tr><td>MemoryBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
-<tr><td>SqliteBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
-<tr><td>VRootFsBackend</td><td><strong>OS</strong> (implements <code>SelfResolving</code>)</td><td>OS follows symlinks (strict-path prevents escapes)</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Key design decision:</strong> Backends that wrap a real filesystem implement the <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h1 id="open-questions--future-considerations"><a class="header"
+                                href="#open-questions--future-considerations">Open Questions &amp; Future
+                                Considerations</a></h1>
+                        <p><strong>Status:</strong> Resolved for v1 (future considerations tracked)
+                            <strong>Last Updated:</strong> 2025-12-28
+                        </p>
+                        <hr>
+                        <p>This document captures previously open questions and design considerations. Unless explicitly
+                            marked as future, the items below are resolved for v1.</p>
+                        <blockquote>
+                            <p><strong>Note:</strong> Final decisions live in the Architecture Decision Records.</p>
+                        </blockquote>
+                        <hr>
+                        <h2 id="symlink-security-following-vs-creating"><a class="header"
+                                href="#symlink-security-following-vs-creating">Symlink Security: Following vs
+                                Creating</a></h2>
+                        <p><strong>Status:</strong> Resolved</p>
+                        <h3 id="decision-v1"><a class="header" href="#decision-v1">Decision (v1)</a></h3>
+                        <ul>
+                            <li>Symlink support is a backend capability (via <code>FsLink</code>). There is no runtime
+                                toggle to disable following.</li>
+                            <li><code>FileStorage</code> resolves paths for non-<code>SelfResolving</code> backends;
+                                symlink following is inherent in that resolution.</li>
+                            <li><code>SelfResolving</code> backends delegate to the OS. <code>strict-path</code>
+                                prevents escapes but cannot disable following.</li>
+                        </ul>
+                        <h3 id="implications"><a class="header" href="#implications">Implications</a></h3>
+                        <ul>
+                            <li>If you need symlink-free semantics, use a backend that does not implement
+                                <code>FsLink</code> or block symlink creation and ensure no preexisting symlinks exist.
+                            </li>
+                            <li><code>Restrictions</code> only controls creation, not resolution.</li>
+                        </ul>
+                        <h3 id="why"><a class="header" href="#why">Why</a></h3>
+                        <ul>
+                            <li>Virtual backends have no host filesystem to escape to; symlink resolution stays inside
+                                the virtual structure.</li>
+                            <li>OS-backed backends cannot reliably disable symlink following without TOCTOU risks or
+                                platform-specific hacks.</li>
+                        </ul>
+                        <hr>
+                        <h2 id="virtual-vs-real-backends-path-resolution"><a class="header"
+                                href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path
+                                Resolution</a></h2>
+                        <p><strong>Status:</strong> Resolved</p>
+                        <p><strong>Question:</strong> Should path resolution logic be different for virtual backends
+                            (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?</p>
+                        <p><strong>Resolution:</strong> <code>FileStorage</code> handles symlink-aware path resolution
+                            for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to
+                            the OS, so FileStorage does not pre-resolve paths for them.</p>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Backend Type</th>
+                                        <th>Path Resolution</th>
+                                        <th>Symlink Handling</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>MemoryBackend</td>
+                                        <td><strong>FileStorage</strong> (symlink-aware)</td>
+                                        <td>FileStorage follows symlinks</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SqliteBackend</td>
+                                        <td><strong>FileStorage</strong> (symlink-aware)</td>
+                                        <td>FileStorage follows symlinks</td>
+                                    </tr>
+                                    <tr>
+                                        <td>VRootFsBackend</td>
+                                        <td><strong>OS</strong> (implements <code>SelfResolving</code>)</td>
+                                        <td>OS follows symlinks (strict-path prevents escapes)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Key design decision:</strong> Backends that wrap a real filesystem implement the
+                            <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:
+                        </p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-<p>This ensures consistent behavior: all virtual backends get symlink-aware resolution from <code>FileStorage</code>, while real filesystem backends delegate to the OS.</p>
-<hr>
-<h2 id="compression-and-encryption"><a class="header" href="#compression-and-encryption">Compression and Encryption</a></h2>
-<p><strong>Question:</strong> Does the current design allow backends to compress/decompress or encrypt/decrypt files transparently?</p>
-<p><strong>Answer:</strong> Yes. The backend receives the data and stores it however it wants. A backend could:</p>
-<ul>
-<li>Compress data before writing to SQLite</li>
-<li>Encrypt blobs with a user-provided key</li>
-<li>Use a remote object store with encryption at rest</li>
-</ul>
-<p>This is an implementation detail of the backend, not visible to the <code>FileStorage</code> API.</p>
-<hr>
-<h2 id="hooks-and-callbacks"><a class="header" href="#hooks-and-callbacks">Hooks and Callbacks</a></h2>
-<p><strong>Question:</strong> Should AnyFS support hooks or callbacks for file operations (e.g., audit logging, validation)?</p>
-<p><strong>Considerations:</strong></p>
-<ul>
-<li>AgentFS (see comparison below) provides audit logging as a core feature</li>
-<li>Hooks add complexity but enable powerful use cases</li>
-<li>Could be implemented as a middleware pattern around FileStorage</li>
-</ul>
-<p><strong>Resolution:</strong> Implemented via <code>Tracing</code> middleware. Users can also wrap <code>FileStorage</code> or backends for custom hooks.</p>
-<hr>
-<h2 id="agentfs-comparison"><a class="header" href="#agentfs-comparison">AgentFS Comparison</a></h2>
-<p><strong>Note:</strong> There are two projects named “AgentFS”:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Project</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><a href="https://github.com/tursodatabase/agentfs">tursodatabase/agentfs</a></td><td>Full AI agent runtime (Turso/libSQL)</td></tr>
-<tr><td><a href="https://github.com/cryptopatrick/agentfs">cryptopatrick/agentfs</a></td><td>Related to <a href="https://lib.rs/crates/agentdb">AgentDB</a> abstraction layer</td></tr>
-</tbody>
-</table>
-</div>
-<p>This section focuses on <strong>Turso’s AgentFS</strong>, which has a <a href="https://github.com/tursodatabase/agentfs/blob/main/SPEC.md">published spec</a>.</p>
-<h3 id="what-agentfs-provides"><a class="header" href="#what-agentfs-provides">What AgentFS Provides</a></h3>
-<p>AgentFS is an <strong>agent runtime</strong>, not just a filesystem. It provides three integrated subsystems:</p>
-<ol>
-<li><strong>Virtual Filesystem</strong> - POSIX-like, inode-based, chunked storage in SQLite</li>
-<li><strong>Key-Value Store</strong> - Agent state and context storage</li>
-<li><strong>Tool Call Audit Trail</strong> - Records all tool invocations for debugging/compliance</li>
-</ol>
-<h3 id="anyfs-vs-agentfs-different-abstractions"><a class="header" href="#anyfs-vs-agentfs-different-abstractions">AnyFS vs AgentFS: Different Abstractions</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Concern</th><th>AnyFS</th><th>AgentFS</th></tr>
-</thead>
-<tbody>
-<tr><td><strong>Scope</strong></td><td>Filesystem abstraction</td><td>Agent runtime</td></tr>
-<tr><td><strong>Filesystem</strong></td><td>Full</td><td>Full</td></tr>
-<tr><td><strong>Key-Value store</strong></td><td>Not our domain</td><td>Included</td></tr>
-<tr><td><strong>Tool auditing</strong></td><td><code>Tracing</code> middleware</td><td>Built-in</td></tr>
-<tr><td><strong>Backends</strong></td><td>Memory, SQLite, VRootFs, custom</td><td>SQLite only (spec)</td></tr>
-<tr><td><strong>Middleware</strong></td><td>Composable layers</td><td>Monolithic</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="relationship-options"><a class="header" href="#relationship-options">Relationship Options</a></h3>
-<p><strong>AnyFS could be used BY AgentFS:</strong></p>
-<ul>
-<li>AgentFS could implement its filesystem portion using <code>Fs</code> trait</li>
-<li>Our middleware (Quota, PathFilter, etc.) would work with their system</li>
-</ul>
-<p><strong>AgentFS-compatible backend for AnyFS:</strong></p>
-<ul>
-<li>Someone could implement <code>Fs</code> using AgentFS’s SQLite schema</li>
-<li>Would enable interop with AgentFS tooling</li>
-</ul>
-<p><strong>What we should NOT do:</strong></p>
-<ul>
-<li>Add KV store to <code>Fs</code> (different abstraction, scope creep)</li>
-<li>Add tool call auditing to core trait (that’s what <code>Tracing</code> middleware is for)</li>
-</ul>
-<h3 id="when-to-use-which"><a class="header" href="#when-to-use-which">When to Use Which</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Use Case</th><th>Recommendation</th></tr>
-</thead>
-<tbody>
-<tr><td>Need just filesystem operations</td><td><strong>AnyFS</strong></td></tr>
-<tr><td>Need composable middleware (quota, sandboxing)</td><td><strong>AnyFS</strong></td></tr>
-<tr><td>Need full agent runtime (FS + KV + auditing)</td><td><strong>AgentFS</strong></td></tr>
-<tr><td>Need multiple backend types (memory, real FS)</td><td><strong>AnyFS</strong></td></tr>
-<tr><td>Need AgentFS-compatible SQLite format</td><td><strong>AgentFS</strong> or custom AnyFS backend</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="takeaway"><a class="header" href="#takeaway">Takeaway</a></h3>
-<p>AnyFS and AgentFS solve different problems at different layers:</p>
-<ul>
-<li><strong>AnyFS</strong> = filesystem abstraction with composable middleware</li>
-<li><strong>AgentFS</strong> = complete agent runtime with integrated storage</li>
-</ul>
-<p>They can complement each other rather than compete.</p>
-<hr>
-<h2 id="vfs-crate-comparison"><a class="header" href="#vfs-crate-comparison">VFS Crate Comparison</a></h2>
-<p>The <a href="https://docs.rs/vfs/">vfs crate</a> provides virtual filesystem abstractions with:</p>
-<ul>
-<li><strong>PhysicalFS</strong>: Host filesystem access</li>
-<li><strong>MemoryFS</strong>: In-memory storage</li>
-<li><strong>AltrootFS</strong>: Rooted filesystem (similar to our VRootFsBackend)</li>
-<li><strong>OverlayFS</strong>: Layered filesystem</li>
-<li><strong>EmbeddedFS</strong>: Compile resources into binary</li>
-</ul>
-<p><strong>Similarities with AnyFS:</strong></p>
-<ul>
-<li>Trait-based abstraction over storage</li>
-<li>Memory and physical filesystem backends</li>
-</ul>
-<p><strong>Differences:</strong></p>
-<ul>
-<li>VFS doesn’t have SQLite backend</li>
-<li>VFS doesn’t have policy/quota layer</li>
-<li>AnyFS focuses on isolation and limits</li>
-</ul>
-<p><strong>Why not use VFS?</strong> VFS is a good library, but AnyFS’s design goals differ:</p>
-<ol>
-<li>We want SQLite as a first-class backend</li>
-<li>We need quota/limit enforcement</li>
-<li>We want feature whitelisting (least privilege)</li>
-</ol>
-<hr>
-<h2 id="fuse-mount-support"><a class="header" href="#fuse-mount-support">FUSE Mount Support</a></h2>
-<p><strong>Status:</strong> Planned - Roadmap and API shape documented in <code>anyfs-mount</code> guide</p>
-<p><strong>What is FUSE?</strong>
-<a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE (Filesystem in Userspace)</a> allows implementing filesystems in userspace rather than kernel code. It enables:</p>
-<ul>
-<li>Mounting any backend as a real filesystem</li>
-<li>Using standard Unix tools (ls, cat, etc.) on AnyFS containers</li>
-<li>Integration with existing workflows</li>
-</ul>
-<p><strong>Resolution:</strong> Planned via an optional <code>anyfs-mount</code> companion crate with cross-platform support:</p>
-<ul>
-<li>Linux: FUSE (native)</li>
-<li>macOS: macFUSE</li>
-<li>Windows: WinFsp</li>
-</ul>
-<p>See <a href="../guides/mounting.html">Cross-Platform Mounting</a> for full details.</p>
-<hr>
-<h2 id="type-system-protection-for-cross-container-operations"><a class="header" href="#type-system-protection-for-cross-container-operations">Type-System Protection for Cross-Container Operations</a></h2>
-<p><strong>Status:</strong> Resolved - Implemented via marker types</p>
-<p><strong>Question:</strong> Should we use the type system to prevent accidentally mixing data between containers?</p>
-<p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, M&gt;</code> where <code>M</code> is a marker type:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <p>This ensures consistent behavior: all virtual backends get symlink-aware resolution from
+                            <code>FileStorage</code>, while real filesystem backends delegate to the OS.</p>
+                        <hr>
+                        <h2 id="compression-and-encryption"><a class="header"
+                                href="#compression-and-encryption">Compression and Encryption</a></h2>
+                        <p><strong>Question:</strong> Does the current design allow backends to compress/decompress or
+                            encrypt/decrypt files transparently?</p>
+                        <p><strong>Answer:</strong> Yes. The backend receives the data and stores it however it wants. A
+                            backend could:</p>
+                        <ul>
+                            <li>Compress data before writing to SQLite</li>
+                            <li>Encrypt blobs with a user-provided key</li>
+                            <li>Use a remote object store with encryption at rest</li>
+                        </ul>
+                        <p>This is an implementation detail of the backend, not visible to the <code>FileStorage</code>
+                            API.</p>
+                        <hr>
+                        <h2 id="hooks-and-callbacks"><a class="header" href="#hooks-and-callbacks">Hooks and
+                                Callbacks</a></h2>
+                        <p><strong>Question:</strong> Should AnyFS support hooks or callbacks for file operations (e.g.,
+                            audit logging, validation)?</p>
+                        <p><strong>Considerations:</strong></p>
+                        <ul>
+                            <li>AgentFS (see comparison below) provides audit logging as a core feature</li>
+                            <li>Hooks add complexity but enable powerful use cases</li>
+                            <li>Could be implemented as a middleware pattern around FileStorage</li>
+                        </ul>
+                        <p><strong>Resolution:</strong> Implemented via <code>Tracing</code> middleware. Users can also
+                            wrap <code>FileStorage</code> or backends for custom hooks.</p>
+                        <hr>
+                        <h2 id="agentfs-comparison"><a class="header" href="#agentfs-comparison">AgentFS Comparison</a>
+                        </h2>
+                        <p><strong>Note:</strong> There are two projects named “AgentFS”:</p>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><a href="https://github.com/tursodatabase/agentfs">tursodatabase/agentfs</a>
+                                        </td>
+                                        <td>Full AI agent runtime (Turso/libSQL)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="https://github.com/cryptopatrick/agentfs">cryptopatrick/agentfs</a>
+                                        </td>
+                                        <td>Related to <a href="https://lib.rs/crates/agentdb">AgentDB</a> abstraction
+                                            layer</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>This section focuses on <strong>Turso’s AgentFS</strong>, which has a <a
+                                href="https://github.com/tursodatabase/agentfs/blob/main/SPEC.md">published spec</a>.
+                        </p>
+                        <h3 id="what-agentfs-provides"><a class="header" href="#what-agentfs-provides">What AgentFS
+                                Provides</a></h3>
+                        <p>AgentFS is an <strong>agent runtime</strong>, not just a filesystem. It provides three
+                            integrated subsystems:</p>
+                        <ol>
+                            <li><strong>Virtual Filesystem</strong> - POSIX-like, inode-based, chunked storage in SQLite
+                            </li>
+                            <li><strong>Key-Value Store</strong> - Agent state and context storage</li>
+                            <li><strong>Tool Call Audit Trail</strong> - Records all tool invocations for
+                                debugging/compliance</li>
+                        </ol>
+                        <h3 id="anyfs-vs-agentfs-different-abstractions"><a class="header"
+                                href="#anyfs-vs-agentfs-different-abstractions">AnyFS vs AgentFS: Different
+                                Abstractions</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Concern</th>
+                                        <th>AnyFS</th>
+                                        <th>AgentFS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Scope</strong></td>
+                                        <td>Filesystem abstraction</td>
+                                        <td>Agent runtime</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Filesystem</strong></td>
+                                        <td>Full</td>
+                                        <td>Full</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Key-Value store</strong></td>
+                                        <td>Not our domain</td>
+                                        <td>Included</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tool auditing</strong></td>
+                                        <td><code>Tracing</code> middleware</td>
+                                        <td>Built-in</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Backends</strong></td>
+                                        <td>Memory, SQLite, VRootFs, custom</td>
+                                        <td>SQLite only (spec)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Middleware</strong></td>
+                                        <td>Composable layers</td>
+                                        <td>Monolithic</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h3 id="relationship-options"><a class="header" href="#relationship-options">Relationship
+                                Options</a></h3>
+                        <p><strong>AnyFS could be used BY AgentFS:</strong></p>
+                        <ul>
+                            <li>AgentFS could implement its filesystem portion using <code>Fs</code> trait</li>
+                            <li>Our middleware (Quota, PathFilter, etc.) would work with their system</li>
+                        </ul>
+                        <p><strong>AgentFS-compatible backend for AnyFS:</strong></p>
+                        <ul>
+                            <li>Someone could implement <code>Fs</code> using AgentFS’s SQLite schema</li>
+                            <li>Would enable interop with AgentFS tooling</li>
+                        </ul>
+                        <p><strong>What we should NOT do:</strong></p>
+                        <ul>
+                            <li>Add KV store to <code>Fs</code> (different abstraction, scope creep)</li>
+                            <li>Add tool call auditing to core trait (that’s what <code>Tracing</code> middleware is
+                                for)</li>
+                        </ul>
+                        <h3 id="when-to-use-which"><a class="header" href="#when-to-use-which">When to Use Which</a>
+                        </h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Use Case</th>
+                                        <th>Recommendation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Need just filesystem operations</td>
+                                        <td><strong>AnyFS</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Need composable middleware (quota, sandboxing)</td>
+                                        <td><strong>AnyFS</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Need full agent runtime (FS + KV + auditing)</td>
+                                        <td><strong>AgentFS</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Need multiple backend types (memory, real FS)</td>
+                                        <td><strong>AnyFS</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Need AgentFS-compatible SQLite format</td>
+                                        <td><strong>AgentFS</strong> or custom AnyFS backend</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h3 id="takeaway"><a class="header" href="#takeaway">Takeaway</a></h3>
+                        <p>AnyFS and AgentFS solve different problems at different layers:</p>
+                        <ul>
+                            <li><strong>AnyFS</strong> = filesystem abstraction with composable middleware</li>
+                            <li><strong>AgentFS</strong> = complete agent runtime with integrated storage</li>
+                        </ul>
+                        <p>They can complement each other rather than compete.</p>
+                        <hr>
+                        <h2 id="vfs-crate-comparison"><a class="header" href="#vfs-crate-comparison">VFS Crate
+                                Comparison</a></h2>
+                        <p>The <a href="https://docs.rs/vfs/">vfs crate</a> provides virtual filesystem abstractions
+                            with:</p>
+                        <ul>
+                            <li><strong>PhysicalFS</strong>: Host filesystem access</li>
+                            <li><strong>MemoryFS</strong>: In-memory storage</li>
+                            <li><strong>AltrootFS</strong>: Rooted filesystem (similar to our VRootFsBackend)</li>
+                            <li><strong>OverlayFS</strong>: Layered filesystem</li>
+                            <li><strong>EmbeddedFS</strong>: Compile resources into binary</li>
+                        </ul>
+                        <p><strong>Similarities with AnyFS:</strong></p>
+                        <ul>
+                            <li>Trait-based abstraction over storage</li>
+                            <li>Memory and physical filesystem backends</li>
+                        </ul>
+                        <p><strong>Differences:</strong></p>
+                        <ul>
+                            <li>VFS doesn’t have SQLite backend</li>
+                            <li>VFS doesn’t have policy/quota layer</li>
+                            <li>AnyFS focuses on isolation and limits</li>
+                        </ul>
+                        <p><strong>Why not use VFS?</strong> VFS is a good library, but AnyFS’s design goals differ:</p>
+                        <ol>
+                            <li>We want SQLite as a first-class backend</li>
+                            <li>We need quota/limit enforcement</li>
+                            <li>We want feature whitelisting (least privilege)</li>
+                        </ol>
+                        <hr>
+                        <h2 id="fuse-mount-support"><a class="header" href="#fuse-mount-support">FUSE Mount Support</a>
+                        </h2>
+                        <p><strong>Status:</strong> Planned - Roadmap and API shape documented in
+                            <code>anyfs-mount</code> guide</p>
+                        <p><strong>What is FUSE?</strong>
+                            <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE (Filesystem in
+                                Userspace)</a> allows implementing filesystems in userspace rather than kernel code. It
+                            enables:
+                        </p>
+                        <ul>
+                            <li>Mounting any backend as a real filesystem</li>
+                            <li>Using standard Unix tools (ls, cat, etc.) on AnyFS containers</li>
+                            <li>Integration with existing workflows</li>
+                        </ul>
+                        <p><strong>Resolution:</strong> Planned via an optional <code>anyfs-mount</code> companion crate
+                            with cross-platform support:</p>
+                        <ul>
+                            <li>Linux: FUSE (native)</li>
+                            <li>macOS: macFUSE</li>
+                            <li>Windows: WinFsp</li>
+                        </ul>
+                        <p>See <a href="../guides/mounting.html">Cross-Platform Mounting</a> for full details.</p>
+                        <hr>
+                        <h2 id="type-system-protection-for-cross-container-operations"><a class="header"
+                                href="#type-system-protection-for-cross-container-operations">Type-System Protection for
+                                Cross-Container Operations</a></h2>
+                        <p><strong>Status:</strong> Resolved - Implemented via marker types</p>
+                        <p><strong>Question:</strong> Should we use the type system to prevent accidentally mixing data
+                            between containers?</p>
+                        <p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, M&gt;</code> where
+                            <code>M</code> is a marker type:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>struct Sandbox;
 struct UserData;
@@ -388,101 +561,204 @@ fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { /* only accep
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error!
 <span class="boring">}</span></code></pre>
-<p>See <a href="../traits/files-container.html">FileStorage&lt;B, M&gt;</a> for details.</p>
-<hr>
-<h2 id="naming-considerations"><a class="header" href="#naming-considerations">Naming Considerations</a></h2>
-<p>Based on review feedback, the following naming concerns were raised:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Current Name</th><th>Concern</th><th>Alternatives Considered</th></tr>
-</thead>
-<tbody>
-<tr><td><code>anyfs-traits</code></td><td>“traits” is vague</td><td><code>anyfs-backend</code> (adopted)</td></tr>
-<tr><td><code>anyfs-container</code></td><td>Could imply Docker</td><td>Merged into <code>anyfs</code> (adopted)</td></tr>
-<tr><td><code>anyfs</code></td><td>Sounds like Hebrew “ani efes” (I am zero)</td><td><code>anyfs</code> retained for simplicity</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Decision:</strong> Renamed <code>anyfs-traits</code> to <code>anyfs-backend</code>. Merged <code>anyfs-container</code> into <code>anyfs</code>.</p>
-<hr>
-<h2 id="posix-behavior"><a class="header" href="#posix-behavior">POSIX Behavior</a></h2>
-<p><strong>Question:</strong> How POSIX-compatible should AnyFS be?</p>
-<p><strong>Answer:</strong> AnyFS is <strong>not</strong> a POSIX emulator. We use <code>std::fs</code>-like naming and semantics for familiarity, but we don’t aim for full POSIX compliance. Specific differences:</p>
-<ul>
-<li>Symlink-aware path resolution (FileStorage walks the virtual structure using <code>metadata()</code> and <code>read_link()</code>)</li>
-<li>No file descriptors or open file handles in the basic API</li>
-<li>Simplified permissions model</li>
-<li>No device files, FIFOs, or sockets</li>
-</ul>
-<hr>
-<h2 id="async-support"><a class="header" href="#async-support">Async Support</a></h2>
-<p><strong>Question:</strong> Should <code>Fs</code> traits be async?</p>
-<p><strong>Decision:</strong> Sync-first, async-ready (see ADR-010).</p>
-<p><strong>Rationale:</strong></p>
-<ul>
-<li>All built-in backends are naturally synchronous (rusqlite, std::fs, memory)</li>
-<li>No runtime dependency (tokio/async-std) required</li>
-<li>Rust 1.75+ has native async traits, so adding later is low-cost</li>
-</ul>
-<p><strong>Async-ready design:</strong></p>
-<ul>
-<li>Traits require <code>Send</code> - compatible with async executors</li>
-<li>Return types are <code>Result&lt;T, FsError&gt;</code> - works with async</li>
-<li>No hidden blocking state</li>
-<li>Methods are stateless per-call</li>
-</ul>
-<p><strong>Future path:</strong> When needed (e.g., S3/network backends), add parallel <code>AsyncFs</code> trait:</p>
-<ul>
-<li>Separate trait, not replacing <code>Fs</code></li>
-<li>Blanket impl possible via <code>spawn_blocking</code></li>
-<li>No breaking changes to existing sync API</li>
-</ul>
-<hr>
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Topic</th><th>v1 Decision</th></tr>
-</thead>
-<tbody>
-<tr><td>Symlink security</td><td>Backend-defined (<code>FsLink</code>); VRootFsBackend uses <code>strict-path</code> for containment</td></tr>
-<tr><td>Path resolution</td><td>FileStorage (symlink-aware); VRootFs = OS via <code>SelfResolving</code></td></tr>
-<tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
-<tr><td>Hooks/callbacks</td><td><code>Tracing</code> middleware</td></tr>
-<tr><td>FUSE mount</td><td>Planned <code>anyfs-mount</code> companion crate (cross-platform)</td></tr>
-<tr><td>Type-system protection</td><td><code>FileStorage&lt;B, M&gt;</code> marker types</td></tr>
-<tr><td>POSIX compatibility</td><td>Not a goal</td></tr>
-<tr><td><code>truncate</code></td><td>Added to <code>FsWrite</code></td></tr>
-<tr><td><code>sync</code> / <code>fsync</code></td><td>Added to <code>FsSync</code></td></tr>
-<tr><td>Async support</td><td>Sync-first, async-ready (ADR-010)</td></tr>
-<tr><td>Layer trait</td><td>Tower-style composition (ADR-011)</td></tr>
-<tr><td>Logging</td><td>Tracing with tracing ecosystem (ADR-012)</td></tr>
-<tr><td>Extension methods</td><td><code>FsExt</code> (ADR-013)</td></tr>
-<tr><td>Zero-copy bytes</td><td>Optional <code>bytes</code> feature (ADR-014)</td></tr>
-<tr><td>Error context</td><td>Contextual <code>FsError</code> (ADR-015)</td></tr>
-<tr><td>BackendStack builder</td><td>Fluent API via <code>.layer()</code></td></tr>
-<tr><td>Path-based access control</td><td><code>PathFilter</code> middleware (ADR-016)</td></tr>
-<tr><td>Read-only mode</td><td><code>ReadOnly</code> middleware (ADR-017)</td></tr>
-<tr><td>Rate limiting</td><td><code>RateLimit</code> middleware (ADR-018)</td></tr>
-<tr><td>Dry-run testing</td><td><code>DryRun</code> middleware (ADR-019)</td></tr>
-<tr><td>Read caching</td><td><code>Cache</code> middleware (ADR-020)</td></tr>
-<tr><td>Union filesystem</td><td><code>Overlay</code> middleware (ADR-021)</td></tr>
-</tbody>
-</table>
-</div>
+                        <p>See <a href="../traits/files-container.html">FileStorage&lt;B, M&gt;</a> for details.</p>
+                        <hr>
+                        <h2 id="naming-considerations"><a class="header" href="#naming-considerations">Naming
+                                Considerations</a></h2>
+                        <p>Based on review feedback, the following naming concerns were raised:</p>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Current Name</th>
+                                        <th>Concern</th>
+                                        <th>Alternatives Considered</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>anyfs-traits</code></td>
+                                        <td>“traits” is vague</td>
+                                        <td><code>anyfs-backend</code> (adopted)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>anyfs-container</code></td>
+                                        <td>Could imply Docker</td>
+                                        <td>Merged into <code>anyfs</code> (adopted)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>anyfs</code></td>
+                                        <td>Sounds like Hebrew “ani efes” (I am zero)</td>
+                                        <td><code>anyfs</code> retained for simplicity</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Decision:</strong> Renamed <code>anyfs-traits</code> to <code>anyfs-backend</code>.
+                            Merged <code>anyfs-container</code> into <code>anyfs</code>.</p>
+                        <hr>
+                        <h2 id="posix-behavior"><a class="header" href="#posix-behavior">POSIX Behavior</a></h2>
+                        <p><strong>Question:</strong> How POSIX-compatible should AnyFS be?</p>
+                        <p><strong>Answer:</strong> AnyFS is <strong>not</strong> a POSIX emulator. We use
+                            <code>std::fs</code>-like naming and semantics for familiarity, but we don’t aim for full
+                            POSIX compliance. Specific differences:</p>
+                        <ul>
+                            <li>Symlink-aware path resolution (FileStorage walks the virtual structure using
+                                <code>metadata()</code> and <code>read_link()</code>)</li>
+                            <li>No file descriptors or open file handles in the basic API</li>
+                            <li>Simplified permissions model</li>
+                            <li>No device files, FIFOs, or sockets</li>
+                        </ul>
+                        <hr>
+                        <h2 id="async-support"><a class="header" href="#async-support">Async Support</a></h2>
+                        <p><strong>Question:</strong> Should <code>Fs</code> traits be async?</p>
+                        <p><strong>Decision:</strong> Sync-first, async-ready (see ADR-010).</p>
+                        <p><strong>Rationale:</strong></p>
+                        <ul>
+                            <li>All built-in backends are naturally synchronous (rusqlite, std::fs, memory)</li>
+                            <li>No runtime dependency (tokio/async-std) required</li>
+                            <li>Rust 1.75+ has native async traits, so adding later is low-cost</li>
+                        </ul>
+                        <p><strong>Async-ready design:</strong></p>
+                        <ul>
+                            <li>Traits require <code>Send</code> - compatible with async executors</li>
+                            <li>Return types are <code>Result&lt;T, FsError&gt;</code> - works with async</li>
+                            <li>No hidden blocking state</li>
+                            <li>Methods are stateless per-call</li>
+                        </ul>
+                        <p><strong>Future path:</strong> When needed (e.g., S3/network backends), add parallel
+                            <code>AsyncFs</code> trait:</p>
+                        <ul>
+                            <li>Separate trait, not replacing <code>Fs</code></li>
+                            <li>Blanket impl possible via <code>spawn_blocking</code></li>
+                            <li>No breaking changes to existing sync API</li>
+                        </ul>
+                        <hr>
+                        <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Topic</th>
+                                        <th>v1 Decision</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Symlink security</td>
+                                        <td>Backend-defined (<code>FsLink</code>); VRootFsBackend uses
+                                            <code>strict-path</code> for containment</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Path resolution</td>
+                                        <td>FileStorage (symlink-aware); VRootFs = OS via <code>SelfResolving</code>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Compression/encryption</td>
+                                        <td>Backend responsibility</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Hooks/callbacks</td>
+                                        <td><code>Tracing</code> middleware</td>
+                                    </tr>
+                                    <tr>
+                                        <td>FUSE mount</td>
+                                        <td>Planned <code>anyfs-mount</code> companion crate (cross-platform)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Type-system protection</td>
+                                        <td><code>FileStorage&lt;B, M&gt;</code> marker types</td>
+                                    </tr>
+                                    <tr>
+                                        <td>POSIX compatibility</td>
+                                        <td>Not a goal</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>truncate</code></td>
+                                        <td>Added to <code>FsWrite</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sync</code> / <code>fsync</code></td>
+                                        <td>Added to <code>FsSync</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Async support</td>
+                                        <td>Sync-first, async-ready (ADR-010)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Layer trait</td>
+                                        <td>Tower-style composition (ADR-011)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Logging</td>
+                                        <td>Tracing with tracing ecosystem (ADR-012)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Extension methods</td>
+                                        <td><code>FsExt</code> (ADR-013)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Zero-copy bytes</td>
+                                        <td>Optional <code>bytes</code> feature (ADR-014)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Error context</td>
+                                        <td>Contextual <code>FsError</code> (ADR-015)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>BackendStack builder</td>
+                                        <td>Fluent API via <code>.layer()</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Path-based access control</td>
+                                        <td><code>PathFilter</code> middleware (ADR-016)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Read-only mode</td>
+                                        <td><code>ReadOnly</code> middleware (ADR-017)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Rate limiting</td>
+                                        <td><code>RateLimit</code> middleware (ADR-018)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Dry-run testing</td>
+                                        <td><code>DryRun</code> middleware (ADR-019)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Read caching</td>
+                                        <td><code>Cache</code> middleware (ADR-020)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Union filesystem</td>
+                                        <td><code>Overlay</code> middleware (ADR-021)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../implementation/lessons-learned.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
-                            </a>
+                        <a rel="prev" href="../implementation/lessons-learned.html" class="mobile-nav-chapters previous"
+                            title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
+                                </svg></span>
+                        </a>
 
-                            <a rel="next prefetch" href="../review/design-review.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                            </a>
+                        <a rel="next prefetch" href="../review/design-review.html" class="mobile-nav-chapters next"
+                            title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
+                                </svg></span>
+                        </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -490,22 +766,52 @@ process_sandbox(&amp;userdata);  // Compile error!
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../implementation/lessons-learned.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
-                    </a>
+                <a rel="prev" href="../implementation/lessons-learned.html" class="nav-chapters previous"
+                    title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                            <path
+                                d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
+                        </svg></span>
+                </a>
 
-                    <a rel="next prefetch" href="../review/design-review.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                    </a>
+                <a rel="next prefetch" href="../review/design-review.html" class="nav-chapters next"
+                    title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                            <path
+                                d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
+                        </svg></span>
+                </a>
             </nav>
 
         </div>
 
-        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
-        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
-        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
-        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
-        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z" />
+                </svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z" />
+                </svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z" />
+                </svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                </svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z" />
+                </svg></span></template>
 
 
         <script>
@@ -535,5 +841,6 @@ process_sandbox(&amp;userdata);  // Compile error!
 
 
     </div>
-    </body>
+</body>
+
 </html>

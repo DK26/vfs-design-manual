@@ -1,6 +1,6 @@
-# Update Instructions: vfs-design-manual Repository
+# Update Instructions: anyfs-design-manual Repository
 
-**Repository:** https://github.com/DK26/vfs-design-manual  
+**Repository:** https://github.com/DK26/anyfs-design-manual  
 **Date:** 2024-12-23  
 **Purpose:** Step-by-step instructions to update documentation with new two-layer API design
 
@@ -10,10 +10,10 @@
 
 The key architectural insight is **layer separation**:
 
-| Layer | Crate | API Style | Target User |
-|-------|-------|-----------|-------------|
-| **Low-level** | `anyfs` | Filesystem-like (inodes) | Backend implementers |
-| **High-level** | `anyfs-container` | `std::fs`-like (paths) | Application developers |
+| Layer          | Crate             | API Style                | Target User            |
+| -------------- | ----------------- | ------------------------ | ---------------------- |
+| **Low-level**  | `anyfs`           | Filesystem-like (inodes) | Backend implementers   |
+| **High-level** | `anyfs-container` | `std::fs`-like (paths)   | Application developers |
 
 This document provides exact instructions for updating each file in the repository.
 
@@ -64,12 +64,12 @@ This document provides exact instructions for updating each file in the reposito
 
 ### 1.2 Why This Matters
 
-| Concern | Handled By |
-|---------|------------|
-| How to store inodes/content | `anyfs` (Vfs trait) |
-| How to interpret paths | `anyfs-container` (FsSemantics) |
-| Capacity limits | `anyfs-container` (FilesContainer) |
-| User-facing API | `anyfs-container` (std::fs-like) |
+| Concern                     | Handled By                         |
+| --------------------------- | ---------------------------------- |
+| How to store inodes/content | `anyfs` (Vfs trait)                |
+| How to interpret paths      | `anyfs-container` (FsSemantics)    |
+| Capacity limits             | `anyfs-container` (FilesContainer) |
+| User-facing API             | `anyfs-container` (std::fs-like)   |
 
 ### 1.3 The Traits
 
@@ -143,11 +143,11 @@ impl<V: Vfs, S: FsSemantics> FilesContainer<V, S> {
 
 This is the **VFS Ecosystem** — three Rust crates for virtual filesystem abstraction:
 
-| Crate | Purpose |
-|-------|---------|
-| `anyfs-traits` | Minimal crate — trait definition, types, re-exports `VirtualPath` |
-| `anyfs` | Core VFS — re-exports traits, provides built-in backends (optional features) |
-| `anyfs-container` | Higher-level wrapper — capacity limits, tenant isolation |
+| Crate             | Purpose                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `anyfs-traits`    | Minimal crate — trait definition, types, re-exports `VirtualPath`            |
+| `anyfs`           | Core VFS — re-exports traits, provides built-in backends (optional features) |
+| `anyfs-container` | Higher-level wrapper — capacity limits, tenant isolation                     |
 ```
 
 **Replace with:**
@@ -159,20 +159,20 @@ This is the **VFS Ecosystem** — a two-layer architecture for virtual filesyste
 
 ### Layer 1: anyfs (Low-Level)
 
-| Crate | Purpose | Target User |
-|-------|---------|-------------|
+| Crate   | Purpose                                        | Target User          |
+| ------- | ---------------------------------------------- | -------------------- |
 | `anyfs` | Filesystem-like `Vfs` trait (inode operations) | Backend implementers |
 
 ### Layer 2: anyfs-container (High-Level)
 
-| Crate | Purpose | Target User |
-|-------|---------|-------------|
+| Crate             | Purpose                                 | Target User            |
+| ----------------- | --------------------------------------- | ---------------------- |
 | `anyfs-container` | `std::fs`-like API with capacity limits | Application developers |
 
 ### Supporting Crates
 
-| Crate | Purpose |
-|-------|---------|
+| Crate             | Purpose                                        |
+| ----------------- | ---------------------------------------------- |
 | `anyfs-semantics` | Path resolution rules (Linux, Windows, Simple) |
 
 ### Key Insight
@@ -385,17 +385,17 @@ impl<V: Vfs, S: FsSemantics> FilesContainer<V, S> {
 ```markdown
 ## Quick Reference
 
-| Question | Answer |
-|----------|--------|
-| How many layers? | Two: `anyfs` (low-level) and `anyfs-container` (high-level) |
-| What trait do backends implement? | `Vfs` (in `anyfs`) |
-| What do applications use? | `FilesContainer` (in `anyfs-container`) |
-| Does Vfs handle paths? | **No** — it uses `InodeId` only |
-| Does FilesContainer handle paths? | **Yes** — it uses `impl AsRef<Path>` |
-| Which API matches std::fs? | `FilesContainer` methods |
-| Where is path resolution? | `FsSemantics` trait, used by `FilesContainer` |
-| Where are capacity limits? | `FilesContainer` only |
-| What implements Vfs? | `MemoryVfs`, `SqliteVfs`, `RealFsVfs` |
+| Question                          | Answer                                                      |
+| --------------------------------- | ----------------------------------------------------------- |
+| How many layers?                  | Two: `anyfs` (low-level) and `anyfs-container` (high-level) |
+| What trait do backends implement? | `Vfs` (in `anyfs`)                                          |
+| What do applications use?         | `FilesContainer` (in `anyfs-container`)                     |
+| Does Vfs handle paths?            | **No** — it uses `InodeId` only                             |
+| Does FilesContainer handle paths? | **Yes** — it uses `impl AsRef<Path>`                        |
+| Which API matches std::fs?        | `FilesContainer` methods                                    |
+| Where is path resolution?         | `FsSemantics` trait, used by `FilesContainer`               |
+| Where are capacity limits?        | `FilesContainer` only                                       |
+| What implements Vfs?              | `MemoryVfs`, `SqliteVfs`, `RealFsVfs`                       |
 ```
 
 ### 2.5 Add Common Mistakes Section
@@ -471,10 +471,10 @@ impl Vfs for MyBackend {
 
 A two-layer virtual filesystem abstraction for Rust:
 
-| Layer | Crate | API Style | For |
-|-------|-------|-----------|-----|
-| Low-level | `anyfs` | Filesystem-like (inodes) | Backend implementers |
-| High-level | `anyfs-container` | `std::fs`-like (paths) | Application developers |
+| Layer      | Crate             | API Style                | For                    |
+| ---------- | ----------------- | ------------------------ | ---------------------- |
+| Low-level  | `anyfs`           | Filesystem-like (inodes) | Backend implementers   |
+| High-level | `anyfs-container` | `std::fs`-like (paths)   | Application developers |
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -563,12 +563,12 @@ The anyfs ecosystem separates concerns into two layers:
 
 ## Why Two Layers?
 
-| Concern | Layer |
-|---------|-------|
-| How to store data | anyfs (Vfs trait) |
+| Concern                | Layer                         |
+| ---------------------- | ----------------------------- |
+| How to store data      | anyfs (Vfs trait)             |
 | How to interpret paths | anyfs-container (FsSemantics) |
-| Capacity limits | anyfs-container |
-| User-facing API | anyfs-container |
+| Capacity limits        | anyfs-container               |
+| User-facing API        | anyfs-container               |
 
 ## Layer 1: anyfs
 
@@ -631,11 +631,11 @@ The `Vfs` trait is the **low-level** filesystem interface.
 
 ## Key Characteristics
 
-| Aspect | Description |
-|--------|-------------|
-| Path handling | **None** — uses `InodeId` |
-| Semantics | **None** — raw operations |
-| Capacity limits | **None** — just storage |
+| Aspect          | Description               |
+| --------------- | ------------------------- |
+| Path handling   | **None** — uses `InodeId` |
+| Semantics       | **None** — raw operations |
+| Capacity limits | **None** — just storage   |
 
 ## Trait Definition
 
@@ -678,35 +678,35 @@ See [Backend Implementer's Guide](../guides/backend-implementer.md).
 
 ## Key Characteristics
 
-| Aspect | Description |
-|--------|-------------|
-| Path handling | `impl AsRef<Path>` — accepts `&str`, `String`, `PathBuf`, etc. |
-| Semantics | Pluggable via `FsSemantics` |
-| Capacity limits | Enforced before operations |
-| API style | Matches `std::fs` method names |
+| Aspect          | Description                                                    |
+| --------------- | -------------------------------------------------------------- |
+| Path handling   | `impl AsRef<Path>` — accepts `&str`, `String`, `PathBuf`, etc. |
+| Semantics       | Pluggable via `FsSemantics`                                    |
+| Capacity limits | Enforced before operations                                     |
+| API style       | Matches `std::fs` method names                                 |
 
 ## Method Mapping to std::fs
 
-| FilesContainer | std::fs |
-|----------------|---------|
-| `read()` | `std::fs::read` |
-| `read_to_string()` | `std::fs::read_to_string` |
-| `write()` | `std::fs::write` |
-| `read_dir()` | `std::fs::read_dir` |
-| `create_dir()` | `std::fs::create_dir` |
-| `create_dir_all()` | `std::fs::create_dir_all` |
-| `remove_file()` | `std::fs::remove_file` |
-| `remove_dir()` | `std::fs::remove_dir` |
-| `remove_dir_all()` | `std::fs::remove_dir_all` |
-| `rename()` | `std::fs::rename` |
-| `copy()` | `std::fs::copy` |
-| `metadata()` | `std::fs::metadata` |
-| `symlink_metadata()` | `std::fs::symlink_metadata` |
-| `symlink()` | `std::os::unix::fs::symlink` |
-| `hard_link()` | `std::fs::hard_link` |
-| `read_link()` | `std::fs::read_link` |
-| `set_permissions()` | `std::fs::set_permissions` |
-| `exists()` | `Path::exists` |
+| FilesContainer       | std::fs                      |
+| -------------------- | ---------------------------- |
+| `read()`             | `std::fs::read`              |
+| `read_to_string()`   | `std::fs::read_to_string`    |
+| `write()`            | `std::fs::write`             |
+| `read_dir()`         | `std::fs::read_dir`          |
+| `create_dir()`       | `std::fs::create_dir`        |
+| `create_dir_all()`   | `std::fs::create_dir_all`    |
+| `remove_file()`      | `std::fs::remove_file`       |
+| `remove_dir()`       | `std::fs::remove_dir`        |
+| `remove_dir_all()`   | `std::fs::remove_dir_all`    |
+| `rename()`           | `std::fs::rename`            |
+| `copy()`             | `std::fs::copy`              |
+| `metadata()`         | `std::fs::metadata`          |
+| `symlink_metadata()` | `std::fs::symlink_metadata`  |
+| `symlink()`          | `std::os::unix::fs::symlink` |
+| `hard_link()`        | `std::fs::hard_link`         |
+| `read_link()`        | `std::fs::read_link`         |
+| `set_permissions()`  | `std::fs::set_permissions`   |
+| `exists()`           | `Path::exists`               |
 
 ## Usage Example
 
@@ -757,13 +757,13 @@ Are you building an application?
 
 ## Examples
 
-| Use Case | Layer | Crate |
-|----------|-------|-------|
-| Building a web app with file storage | High | `anyfs-container` |
-| Creating an S3-backed storage | Low | `anyfs` (implement Vfs) |
-| Adding Windows path support | Semantics | `anyfs-semantics` |
-| Testing file operations | High | `anyfs-container` + `MemoryVfs` |
-| Building a FUSE adapter | Low | `anyfs` (use Vfs directly) |
+| Use Case                             | Layer     | Crate                           |
+| ------------------------------------ | --------- | ------------------------------- |
+| Building a web app with file storage | High      | `anyfs-container`               |
+| Creating an S3-backed storage        | Low       | `anyfs` (implement Vfs)         |
+| Adding Windows path support          | Semantics | `anyfs-semantics`               |
+| Testing file operations              | High      | `anyfs-container` + `MemoryVfs` |
+| Building a FUSE adapter              | Low       | `anyfs` (use Vfs directly)      |
 ```
 
 ---
@@ -819,15 +819,15 @@ Add new sections:
 
 Search for and replace:
 
-| Find | Replace With |
-|------|--------------|
-| `VfsBackend` | `Vfs` (if referring to low-level trait) |
-| `VfsBackend` | `FilesContainer` (if referring to user-facing API) |
-| `list(` | `read_dir(` |
-| `mkdir(` | `create_dir(` |
-| `mkdir_all(` | `create_dir_all(` |
-| `remove(` | `remove_file(` or `remove_dir(` |
-| `remove_all(` | `remove_dir_all(` |
+| Find          | Replace With                                       |
+| ------------- | -------------------------------------------------- |
+| `VfsBackend`  | `Vfs` (if referring to low-level trait)            |
+| `VfsBackend`  | `FilesContainer` (if referring to user-facing API) |
+| `list(`       | `read_dir(`                                        |
+| `mkdir(`      | `create_dir(`                                      |
+| `mkdir_all(`  | `create_dir_all(`                                  |
+| `remove(`     | `remove_file(` or `remove_dir(`                    |
+| `remove_all(` | `remove_dir_all(`                                  |
 
 ---
 
@@ -1020,10 +1020,10 @@ container.write("/data/file.txt", b"hello")
 
 The key change is recognizing the **two-layer API design**:
 
-| Layer | Trait/Struct | API Style | Works With | Target |
-|-------|--------------|-----------|------------|--------|
-| **Low** | `Vfs` | Filesystem-like | `InodeId` | Backend implementers |
-| **High** | `FilesContainer` | `std::fs`-like | `impl AsRef<Path>` | App developers |
+| Layer    | Trait/Struct     | API Style       | Works With         | Target               |
+| -------- | ---------------- | --------------- | ------------------ | -------------------- |
+| **Low**  | `Vfs`            | Filesystem-like | `InodeId`          | Backend implementers |
+| **High** | `FilesContainer` | `std::fs`-like  | `impl AsRef<Path>` | App developers       |
 
 This separation means:
 - Backend implementers never deal with paths

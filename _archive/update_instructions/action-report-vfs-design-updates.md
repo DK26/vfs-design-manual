@@ -1,7 +1,7 @@
 # Action Report: VFS Design Manual Updates
 
 **Date:** 2024-12-22  
-**Purpose:** Comprehensive changes required for `https://github.com/DK26/vfs-design-manual`  
+**Purpose:** Comprehensive changes required for `https://github.com/DK26/anyfs-design-manual`  
 **Status:** Ready for implementation
 
 ---

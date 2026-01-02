@@ -1,46 +1,49 @@
 <!DOCTYPE HTML>
 <html lang="en" class="rust sidebar-visible" dir="ltr">
-    <head>
-        <!-- Book generated using mdBook -->
-        <meta charset="UTF-8">
-        <title>Zero-Cost Alternatives - AnyFS Ecosystem Manual</title>
+
+<head>
+    <!-- Book generated using mdBook -->
+    <meta charset="UTF-8">
+    <title>Zero-Cost Alternatives - AnyFS Ecosystem Manual</title>
 
 
-        <!-- Custom HTML head -->
+    <!-- Custom HTML head -->
 
-        <meta name="description" content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff">
+    <meta name="description"
+        content="Documentation for AnyFS: pluggable virtual filesystem backends + container layer for Rust">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="../favicon-de23e50b.svg">
-        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
-        <link rel="stylesheet" href="../css/variables-8adf115d.css">
-        <link rel="stylesheet" href="../css/general-2459343d.css">
-        <link rel="stylesheet" href="../css/chrome-ae938929.css">
-        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+    <link rel="icon" href="../favicon-de23e50b.svg">
+    <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+    <link rel="stylesheet" href="../css/variables-8adf115d.css">
+    <link rel="stylesheet" href="../css/general-2459343d.css">
+    <link rel="stylesheet" href="../css/chrome-ae938929.css">
+    <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
 
-        <!-- Fonts -->
-        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+    <!-- Fonts -->
+    <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
 
-        <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
-        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
-        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+    <!-- Highlight.js Stylesheets -->
+    <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
 
-        <!-- Custom theme stylesheets -->
+    <!-- Custom theme stylesheets -->
 
 
-        <!-- Provide site root and default themes to javascript -->
-        <script>
-            const path_to_root = "../";
-            const default_light_theme = "rust";
-            const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
-        </script>
-        <!-- Start loading toc.js asap -->
-        <script src="../toc-30b1f61e.js"></script>
-    </head>
-    <body>
+    <!-- Provide site root and default themes to javascript -->
+    <script>
+        const path_to_root = "../";
+        const default_light_theme = "rust";
+        const default_dark_theme = "coal";
+        window.path_to_searchindex_js = "../searchindex-4dbe27ad.js";
+    </script>
+    <!-- Start loading toc.js asap -->
+    <script src="../toc-30b1f61e.js"></script>
+</head>
+
+<body>
     <div id="mdbook-help-container">
         <div id="mdbook-help-popup">
             <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
@@ -73,7 +76,7 @@
         <script>
             const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
             let theme;
-            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
             html.classList.remove('rust')
@@ -88,7 +91,7 @@
             let sidebar = null;
             const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
-                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
@@ -118,22 +121,46 @@
                 <div id="mdbook-menu-bar-hover-placeholder"></div>
                 <div id="mdbook-menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor"
+                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
+                            aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z" />
+                                </svg></span>
                         </label>
-                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme"
+                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
+                            aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z" />
+                                </svg></span>
                         </button>
                         <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
-                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme"
+                                    id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button>
+                            </li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button>
+                            </li>
                         </ul>
-                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)"
+                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s"
+                            aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z" />
+                                </svg></span>
                         </button>
                     </div>
 
@@ -141,13 +168,27 @@
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
-                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z" />
+                                </svg></span>
                         </a>
-                        <a href="https://github.com/DK26/vfs-design-manual" title="Git repository" aria-label="Git repository">
-                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual" title="Git repository"
+                            aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z" />
+                                </svg></span>
                         </a>
-                        <a href="https://github.com/DK26/vfs-design-manual/edit/main/src/architecture/zero-cost-alternatives.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
-                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        <a href="https://github.com/DK26/anyfs-design-manual/edit/main/src/architecture/zero-cost-alternatives.md"
+                            title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z" />
+                                </svg></span>
                         </a>
 
                     </div>
@@ -156,9 +197,15 @@
                 <div id="mdbook-search-wrapper" class="hidden">
                     <form id="mdbook-searchbar-outer" class="searchbar-outer">
                         <div class="search-wrapper">
-                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <input type="search" id="mdbook-searchbar" name="searchbar"
+                                placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer"
+                                aria-describedby="searchresults-header">
                             <div class="spinner-wrapper">
-                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                        <path
+                                            d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z" />
+                                    </svg></span>
                             </div>
                         </div>
                     </form>
@@ -173,22 +220,31 @@
                 <script>
                     document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
-                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function (link) {
                         link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
                     });
                 </script>
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="zero-cost-alternatives-for-io-operations"><a class="header" href="#zero-cost-alternatives-for-io-operations">Zero-Cost Alternatives for I/O Operations</a></h1>
-<p>This document analyzes alternatives to dynamic dispatch (<code>Box&lt;dyn Trait&gt;</code>) for streaming I/O and directory iteration.</p>
-<blockquote>
-<p><strong>Decision:</strong> See <a href="./adrs.html#adr-025-strategic-boxing-tower-style">ADR-025: Strategic Boxing</a> for the formal decision.</p>
-<p><strong>TL;DR:</strong> We follow Tower/Axum’s approach - zero-cost on hot path (<code>read()</code>, <code>write()</code>), box at cold path boundaries (<code>open_read()</code>, <code>read_dir()</code>). We avoid heap allocations and dynamic dispatch unless they buy flexibility with negligible performance impact.</p>
-</blockquote>
-<hr>
-<h2 id="current-design-dynamic-dispatch"><a class="header" href="#current-design-dynamic-dispatch">Current Design (Dynamic Dispatch)</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h1 id="zero-cost-alternatives-for-io-operations"><a class="header"
+                                href="#zero-cost-alternatives-for-io-operations">Zero-Cost Alternatives for I/O
+                                Operations</a></h1>
+                        <p>This document analyzes alternatives to dynamic dispatch (<code>Box&lt;dyn Trait&gt;</code>)
+                            for streaming I/O and directory iteration.</p>
+                        <blockquote>
+                            <p><strong>Decision:</strong> See <a
+                                    href="./adrs.html#adr-025-strategic-boxing-tower-style">ADR-025: Strategic
+                                    Boxing</a> for the formal decision.</p>
+                            <p><strong>TL;DR:</strong> We follow Tower/Axum’s approach - zero-cost on hot path
+                                (<code>read()</code>, <code>write()</code>), box at cold path boundaries
+                                (<code>open_read()</code>, <code>read_dir()</code>). We avoid heap allocations and
+                                dynamic dispatch unless they buy flexibility with negligible performance impact.</p>
+                        </blockquote>
+                        <hr>
+                        <h2 id="current-design-dynamic-dispatch"><a class="header"
+                                href="#current-design-dynamic-dispatch">Current Design (Dynamic Dispatch)</a></h2>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
@@ -201,10 +257,13 @@ pub trait FsDir: Send + Sync {
 // Where ReadDirIter is:
 pub struct ReadDirIter(Box&lt;dyn Iterator&lt;Item = Result&lt;DirEntry, FsError&gt;&gt; + Send&gt;);
 <span class="boring">}</span></code></pre>
-<p><strong>Cost:</strong> One heap allocation per <code>open_read()</code>, <code>open_write()</code>, or <code>read_dir()</code> call.</p>
-<hr>
-<h2 id="option-1-associated-types-classic-approach"><a class="header" href="#option-1-associated-types-classic-approach">Option 1: Associated Types (Classic Approach)</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <p><strong>Cost:</strong> One heap allocation per <code>open_read()</code>,
+                            <code>open_write()</code>, or <code>read_dir()</code> call.</p>
+                        <hr>
+                        <h2 id="option-1-associated-types-classic-approach"><a class="header"
+                                href="#option-1-associated-types-classic-approach">Option 1: Associated Types (Classic
+                                Approach)</a></h2>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     type Reader: Read + Send;
@@ -218,8 +277,8 @@ pub trait FsDir: Send + Sync {
     fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::DirIter, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="implementation"><a class="header" href="#implementation">Implementation</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="implementation"><a class="header" href="#implementation">Implementation</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MemoryBackend {
     type Reader = std::io::Cursor&lt;Vec&lt;u8&gt;&gt;;
@@ -239,8 +298,9 @@ impl FsDir for MemoryBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="middleware-propagation-problem"><a class="header" href="#middleware-propagation-problem">Middleware Propagation Problem</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="middleware-propagation-problem"><a class="header"
+                                href="#middleware-propagation-problem">Middleware Propagation Problem</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: FsRead&gt; FsRead for Quota&lt;B&gt; {
     // Must define our own Reader type that wraps B::Reader
@@ -265,33 +325,54 @@ impl&lt;R: Read&gt; Read for QuotaReader&lt;R&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="the-type-explosion"><a class="header" href="#the-type-explosion">The Type Explosion</a></h3>
-<p>With a middleware stack like <code>Quota&lt;PathFilter&lt;Tracing&lt;MemoryBackend&gt;&gt;&gt;</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="the-type-explosion"><a class="header" href="#the-type-explosion">The Type Explosion</a>
+                        </h3>
+                        <p>With a middleware stack like
+                            <code>Quota&lt;PathFilter&lt;Tracing&lt;MemoryBackend&gt;&gt;&gt;</code>:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>type FinalReader = QuotaReader&lt;PathFilterReader&lt;TracingReader&lt;Cursor&lt;Vec&lt;u8&gt;&gt;&gt;&gt;&gt;;
 type FinalDirIter = QuotaIter&lt;PathFilterIter&lt;TracingIter&lt;IntoIter&lt;Result&lt;DirEntry, FsError&gt;&gt;&gt;&gt;&gt;;
 <span class="boring">}</span></code></pre>
-<h3 id="verdict"><a class="header" href="#verdict">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>✅ None</td></tr>
-<tr><td>Type complexity</td><td>❌ Exponential growth</td></tr>
-<tr><td>Middleware authoring</td><td>❌ Every middleware needs wrapper types</td></tr>
-<tr><td>User ergonomics</td><td>⚠️ Type annotations become unwieldy</td></tr>
-<tr><td>Compile times</td><td>❌ Longer due to monomorphization</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Not recommended</strong> as the primary API due to complexity explosion.</p>
-<hr>
-<h2 id="option-2-rpitit-rust-175"><a class="header" href="#option-2-rpitit-rust-175">Option 2: RPITIT (Rust 1.75+)</a></h2>
-<p>Return Position Impl Trait in Traits allows:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="verdict"><a class="header" href="#verdict">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>✅ None</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Type complexity</td>
+                                        <td>❌ Exponential growth</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Middleware authoring</td>
+                                        <td>❌ Every middleware needs wrapper types</td>
+                                    </tr>
+                                    <tr>
+                                        <td>User ergonomics</td>
+                                        <td>⚠️ Type annotations become unwieldy</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Compile times</td>
+                                        <td>❌ Longer due to monomorphization</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Not recommended</strong> as the primary API due to complexity explosion.</p>
+                        <hr>
+                        <h2 id="option-2-rpitit-rust-175"><a class="header" href="#option-2-rpitit-rust-175">Option 2:
+                                RPITIT (Rust 1.75+)</a></h2>
+                        <p>Return Position Impl Trait in Traits allows:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt;;
@@ -302,9 +383,9 @@ pub trait FsDir: Send + Sync {
         -&gt; Result&lt;impl Iterator&lt;Item = Result&lt;DirEntry, FsError&gt;&gt; + Send, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h3>
-<p>The compiler infers a unique anonymous type for each implementor:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h3>
+                        <p>The compiler infers a unique anonymous type for each implementor:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MemoryBackend {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt; {
@@ -319,8 +400,9 @@ impl FsRead for SqliteBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="middleware-still-works"><a class="header" href="#middleware-still-works">Middleware Still Works</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="middleware-still-works"><a class="header" href="#middleware-still-works">Middleware
+                                Still Works</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl&lt;B: FsRead&gt; FsRead for Tracing&lt;B&gt; {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt; {
@@ -330,34 +412,59 @@ impl FsRead for SqliteBackend {
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="the-catch-object-safety"><a class="header" href="#the-catch-object-safety">The Catch: Object Safety</a></h3>
-<p><strong>RPITIT makes traits non-object-safe.</strong> You cannot do:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="the-catch-object-safety"><a class="header" href="#the-catch-object-safety">The Catch:
+                                Object Safety</a></h3>
+                        <p><strong>RPITIT makes traits non-object-safe.</strong> You cannot do:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// This won't compile with RPITIT
 let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
 <span class="boring">}</span></code></pre>
-<h3 id="verdict-1"><a class="header" href="#verdict-1">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>✅ None</td></tr>
-<tr><td>Type complexity</td><td>✅ Hidden behind <code>impl Trait</code></td></tr>
-<tr><td>Middleware authoring</td><td>✅ Simple forwarding</td></tr>
-<tr><td>User ergonomics</td><td>✅ Clean API</td></tr>
-<tr><td>Object safety</td><td>❌ Lost - can’t use <code>dyn FsRead</code></td></tr>
-<tr><td>Rust version</td><td>⚠️ Requires 1.75+</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Good for performance-critical paths</strong> but sacrifices <code>dyn</code> usage.</p>
-<hr>
-<h2 id="option-3-generic-associated-types-gats"><a class="header" href="#option-3-generic-associated-types-gats">Option 3: Generic Associated Types (GATs)</a></h2>
-<p>For readers that borrow from the backend:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="verdict-1"><a class="header" href="#verdict-1">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>✅ None</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Type complexity</td>
+                                        <td>✅ Hidden behind <code>impl Trait</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Middleware authoring</td>
+                                        <td>✅ Simple forwarding</td>
+                                    </tr>
+                                    <tr>
+                                        <td>User ergonomics</td>
+                                        <td>✅ Clean API</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Object safety</td>
+                                        <td>❌ Lost - can’t use <code>dyn FsRead</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Rust version</td>
+                                        <td>⚠️ Requires 1.75+</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Good for performance-critical paths</strong> but sacrifices <code>dyn</code> usage.
+                        </p>
+                        <hr>
+                        <h2 id="option-3-generic-associated-types-gats"><a class="header"
+                                href="#option-3-generic-associated-types-gats">Option 3: Generic Associated Types
+                                (GATs)</a></h2>
+                        <p>For readers that borrow from the backend:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     type Reader&lt;'a&gt;: Read + Send where Self: 'a;
@@ -365,8 +472,9 @@ let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader&lt;'_&gt;, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="use-case-zero-copy-reads"><a class="header" href="#use-case-zero-copy-reads">Use Case: Zero-Copy Reads</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="use-case-zero-copy-reads"><a class="header" href="#use-case-zero-copy-reads">Use Case:
+                                Zero-Copy Reads</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl FsRead for MemoryBackend {
     type Reader&lt;'a&gt; = &amp;'a [u8];  // Borrow directly from internal storage!
@@ -379,32 +487,50 @@ let backends: Vec&lt;Box&lt;dyn FsRead&gt;&gt; = vec![...];
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="complexity"><a class="header" href="#complexity">Complexity</a></h3>
-<p>GATs are powerful but add significant complexity:</p>
-<ul>
-<li>Lifetime parameters propagate through middleware</li>
-<li>Not all backends can provide borrowed data (SQLite must copy)</li>
-<li>Makes trait definitions harder to understand</li>
-</ul>
-<h3 id="verdict-2"><a class="header" href="#verdict-2">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>✅ Can be zero-copy</td></tr>
-<tr><td>Type complexity</td><td>❌ High (lifetimes everywhere)</td></tr>
-<tr><td>Middleware authoring</td><td>❌ Complex lifetime handling</td></tr>
-<tr><td>Use case fit</td><td>⚠️ Only benefits backends with owned data</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Overkill for most use cases.</strong> Consider only for specialized zero-copy scenarios.</p>
-<hr>
-<h2 id="option-4-hybrid-approach-recommended"><a class="header" href="#option-4-hybrid-approach-recommended">Option 4: Hybrid Approach (Recommended)</a></h2>
-<p>Provide <strong>both</strong> dynamic and static APIs:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="complexity"><a class="header" href="#complexity">Complexity</a></h3>
+                        <p>GATs are powerful but add significant complexity:</p>
+                        <ul>
+                            <li>Lifetime parameters propagate through middleware</li>
+                            <li>Not all backends can provide borrowed data (SQLite must copy)</li>
+                            <li>Makes trait definitions harder to understand</li>
+                        </ul>
+                        <h3 id="verdict-2"><a class="header" href="#verdict-2">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>✅ Can be zero-copy</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Type complexity</td>
+                                        <td>❌ High (lifetimes everywhere)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Middleware authoring</td>
+                                        <td>❌ Complex lifetime handling</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Use case fit</td>
+                                        <td>⚠️ Only benefits backends with owned data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Overkill for most use cases.</strong> Consider only for specialized zero-copy
+                            scenarios.</p>
+                        <hr>
+                        <h2 id="option-4-hybrid-approach-recommended"><a class="header"
+                                href="#option-4-hybrid-approach-recommended">Option 4: Hybrid Approach (Recommended)</a>
+                        </h2>
+                        <p>Provide <strong>both</strong> dynamic and static APIs:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     /// Dynamic dispatch version (simple, flexible)
@@ -426,8 +552,8 @@ impl&lt;T: FsReadTyped&gt; FsRead for T {
     }
 }
 <span class="boring">}</span></code></pre>
-<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Default: dynamic dispatch (works everywhere)
 let reader = fs.open_read("/file.txt")?;
@@ -435,26 +561,45 @@ let reader = fs.open_read("/file.txt")?;
 // Performance-critical: static dispatch
 let reader: MemoryReader = fs.open_read_typed("/file.txt")?;
 <span class="boring">}</span></code></pre>
-<h3 id="verdict-3"><a class="header" href="#verdict-3">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>✅ Optional (use <code>_typed</code> to avoid)</td></tr>
-<tr><td>Type complexity</td><td>✅ Hidden unless you opt-in</td></tr>
-<tr><td>Middleware authoring</td><td>✅ Only implement base trait</td></tr>
-<tr><td>User ergonomics</td><td>✅ Simple default, power when needed</td></tr>
-<tr><td>Object safety</td><td>✅ Base trait remains object-safe</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Best of both worlds</strong> - simple default, zero-cost opt-in.</p>
-<hr>
-<h2 id="option-5-callback-based-iteration"><a class="header" href="#option-5-callback-based-iteration">Option 5: Callback-Based Iteration</a></h2>
-<p>Avoid returning iterators entirely:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="verdict-3"><a class="header" href="#verdict-3">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>✅ Optional (use <code>_typed</code> to avoid)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Type complexity</td>
+                                        <td>✅ Hidden unless you opt-in</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Middleware authoring</td>
+                                        <td>✅ Only implement base trait</td>
+                                    </tr>
+                                    <tr>
+                                        <td>User ergonomics</td>
+                                        <td>✅ Simple default, power when needed</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Object safety</td>
+                                        <td>✅ Base trait remains object-safe</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Best of both worlds</strong> - simple default, zero-cost opt-in.</p>
+                        <hr>
+                        <h2 id="option-5-callback-based-iteration"><a class="header"
+                                href="#option-5-callback-based-iteration">Option 5: Callback-Based Iteration</a></h2>
+                        <p>Avoid returning iterators entirely:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsDir: Send + Sync {
     fn for_each_entry&lt;F&gt;(&amp;self, path: &amp;Path, f: F) -&gt; Result&lt;(), FsError&gt;
@@ -462,33 +607,50 @@ let reader: MemoryReader = fs.open_read_typed("/file.txt")?;
         F: FnMut(DirEntry) -&gt; ControlFlow&lt;(), ()&gt;;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="usage-1"><a class="header" href="#usage-1">Usage</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fs.for_each_entry("/dir", |entry| {
     println!("{}", entry.name);
     ControlFlow::Continue(())
 })?;
 <span class="boring">}</span></code></pre>
-<h3 id="verdict-4"><a class="header" href="#verdict-4">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>✅ None</td></tr>
-<tr><td>Ergonomics</td><td>❌ Callbacks are awkward</td></tr>
-<tr><td>Early exit</td><td>✅ Via <code>ControlFlow::Break</code></td></tr>
-<tr><td>Composability</td><td>❌ Can’t chain iterator methods</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Not recommended</strong> as primary API. Could be added as optimization option.</p>
-<hr>
-<h2 id="option-6-stack-allocated-small-buffer"><a class="header" href="#option-6-stack-allocated-small-buffer">Option 6: Stack-Allocated Small Buffer</a></h2>
-<p>For directory iteration, most directories are small:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="verdict-4"><a class="header" href="#verdict-4">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>✅ None</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ergonomics</td>
+                                        <td>❌ Callbacks are awkward</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Early exit</td>
+                                        <td>✅ Via <code>ControlFlow::Break</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Composability</td>
+                                        <td>❌ Can’t chain iterator methods</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Not recommended</strong> as primary API. Could be added as optimization option.</p>
+                        <hr>
+                        <h2 id="option-6-stack-allocated-small-buffer"><a class="header"
+                                href="#option-6-stack-allocated-small-buffer">Option 6: Stack-Allocated Small Buffer</a>
+                        </h2>
+                        <p>For directory iteration, most directories are small:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use smallvec::SmallVec;
 
@@ -498,24 +660,37 @@ pub struct ReadDirIter {
     index: usize,
 }
 <span class="boring">}</span></code></pre>
-<h3 id="verdict-5"><a class="header" href="#verdict-5">Verdict</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Aspect</th><th>Assessment</th></tr>
-</thead>
-<tbody>
-<tr><td>Heap allocations</td><td>⚠️ Avoided for small directories</td></tr>
-<tr><td>Memory overhead</td><td>⚠️ Larger stack frames</td></tr>
-<tr><td>Dependencies</td><td>⚠️ Adds <code>smallvec</code> crate</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Reasonable optimization</strong> for directory iteration specifically.</p>
-<hr>
-<h2 id="recommendation"><a class="header" href="#recommendation">Recommendation</a></h2>
-<h3 id="primary-api-keep-dynamic-dispatch"><a class="header" href="#primary-api-keep-dynamic-dispatch">Primary API: Keep Dynamic Dispatch</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="verdict-5"><a class="header" href="#verdict-5">Verdict</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Aspect</th>
+                                        <th>Assessment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Heap allocations</td>
+                                        <td>⚠️ Avoided for small directories</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Memory overhead</td>
+                                        <td>⚠️ Larger stack frames</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Dependencies</td>
+                                        <td>⚠️ Adds <code>smallvec</code> crate</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>Reasonable optimization</strong> for directory iteration specifically.</p>
+                        <hr>
+                        <h2 id="recommendation"><a class="header" href="#recommendation">Recommendation</a></h2>
+                        <h3 id="primary-api-keep-dynamic-dispatch"><a class="header"
+                                href="#primary-api-keep-dynamic-dispatch">Primary API: Keep Dynamic Dispatch</a></h3>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsRead: Send + Sync {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn Read + Send&gt;, FsError&gt;;
@@ -525,93 +700,206 @@ pub trait FsDir: Send + Sync {
     fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Why:</strong></p>
-<ol>
-<li><strong>Simplicity</strong> - One type to learn, one API</li>
-<li><strong>Object safety</strong> - Can use <code>Box&lt;dyn Fs&gt;</code> for runtime polymorphism</li>
-<li><strong>Middleware simplicity</strong> - No wrapper types needed</li>
-<li><strong>Actual cost is low</strong> - One allocation per stream open, not per read</li>
-</ol>
-<h3 id="optional-static-dispatch-extension-fast-path"><a class="header" href="#optional-static-dispatch-extension-fast-path">Optional: Static Dispatch Extension (Fast Path)</a></h3>
-<p>For performance-critical code, offer typed variants. This is the <strong>first-class fast path</strong> for hot loops when the backend type is known:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <p><strong>Why:</strong></p>
+                        <ol>
+                            <li><strong>Simplicity</strong> - One type to learn, one API</li>
+                            <li><strong>Object safety</strong> - Can use <code>Box&lt;dyn Fs&gt;</code> for runtime
+                                polymorphism</li>
+                            <li><strong>Middleware simplicity</strong> - No wrapper types needed</li>
+                            <li><strong>Actual cost is low</strong> - One allocation per stream open, not per read</li>
+                        </ol>
+                        <h3 id="optional-static-dispatch-extension-fast-path"><a class="header"
+                                href="#optional-static-dispatch-extension-fast-path">Optional: Static Dispatch Extension
+                                (Fast Path)</a></h3>
+                        <p>For performance-critical code, offer typed variants. This is the <strong>first-class fast
+                                path</strong> for hot loops when the backend type is known:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsReadTyped: FsRead {
     type Reader: Read + Send;
     fn open_read_typed(&amp;self, path: &amp;Path) -&gt; Result&lt;Self::Reader, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<h3 id="future-rpitit-when-object-safety-not-needed"><a class="header" href="#future-rpitit-when-object-safety-not-needed">Future: RPITIT When Object Safety Not Needed</a></h3>
-<p>If a user doesn’t need <code>dyn Fs</code>, they can define their own trait:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+                        <h3 id="future-rpitit-when-object-safety-not-needed"><a class="header"
+                                href="#future-rpitit-when-object-safety-not-needed">Future: RPITIT When Object Safety
+                                Not Needed</a></h3>
+                        <p>If a user doesn’t need <code>dyn Fs</code>, they can define their own trait:</p>
+                        <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub trait FsReadStatic: Send + Sync {
     fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;impl Read + Send, FsError&gt;;
 }
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="cost-analysis-is-it-actually-a-problem"><a class="header" href="#cost-analysis-is-it-actually-a-problem">Cost Analysis: Is It Actually a Problem?</a></h2>
-<h3 id="heap-allocation-cost"><a class="header" href="#heap-allocation-cost">Heap Allocation Cost</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Operation</th><th>Allocations</th><th>Typical Size</th><th>Cost</th></tr>
-</thead>
-<tbody>
-<tr><td><code>open_read()</code></td><td>1</td><td>~24-48 bytes (vtable + pointer)</td><td>~20-50ns</td></tr>
-<tr><td><code>read()</code> (data)</td><td>0-1</td><td>File size</td><td>Dominates</td></tr>
-<tr><td><code>read_dir()</code></td><td>1</td><td>~24-48 bytes</td><td>~20-50ns</td></tr>
-<tr><td>Iteration</td><td>0</td><td>-</td><td>-</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>The allocation is dwarfed by actual I/O time.</strong> For a 4KB file read from SQLite or disk, the Box allocation is &lt;0.1% of total time.</p>
-<h3 id="when-it-matters"><a class="header" href="#when-it-matters">When It Matters</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Scenario</th><th>Matters?</th></tr>
-</thead>
-<tbody>
-<tr><td>Reading large files</td><td>No - I/O dominates</td></tr>
-<tr><td>Reading many small files</td><td>Maybe - consider batching</td></tr>
-<tr><td>Hot loop micro-benchmarks</td><td>Yes</td></tr>
-<tr><td>Real-world applications</td><td>Rarely</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
-<p><strong>Dynamic dispatch is the right default.</strong> The cost is negligible for real workloads, and the ergonomic benefits are substantial. Offer static dispatch as an opt-in escape hatch for the rare cases where it matters.</p>
-<hr>
-<h2 id="summary-decision-matrix"><a class="header" href="#summary-decision-matrix">Summary Decision Matrix</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Approach</th><th>Alloc-Free</th><th>Simple</th><th>Object-Safe</th><th>Recommended</th></tr>
-</thead>
-<tbody>
-<tr><td>Current (<code>Box&lt;dyn&gt;</code>)</td><td>❌</td><td>✅</td><td>✅</td><td>✅ Default</td></tr>
-<tr><td>Associated Types</td><td>✅</td><td>❌</td><td>✅</td><td>❌ Too complex</td></tr>
-<tr><td>RPITIT</td><td>✅</td><td>✅</td><td>❌</td><td>⚠️ When no dyn needed</td></tr>
-<tr><td>GATs</td><td>✅</td><td>❌</td><td>❌</td><td>❌ Overkill</td></tr>
-<tr><td>Hybrid</td><td>✅ opt-in</td><td>✅</td><td>✅</td><td>✅ Best of both</td></tr>
-<tr><td>Callbacks</td><td>✅</td><td>❌</td><td>✅</td><td>❌ Awkward API</td></tr>
-<tr><td>SmallVec</td><td>⚠️</td><td>✅</td><td>✅</td><td>⚠️ For ReadDirIter</td></tr>
-</tbody>
-</table>
-</div>
+                        <hr>
+                        <h2 id="cost-analysis-is-it-actually-a-problem"><a class="header"
+                                href="#cost-analysis-is-it-actually-a-problem">Cost Analysis: Is It Actually a
+                                Problem?</a></h2>
+                        <h3 id="heap-allocation-cost"><a class="header" href="#heap-allocation-cost">Heap Allocation
+                                Cost</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Operation</th>
+                                        <th>Allocations</th>
+                                        <th>Typical Size</th>
+                                        <th>Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>open_read()</code></td>
+                                        <td>1</td>
+                                        <td>~24-48 bytes (vtable + pointer)</td>
+                                        <td>~20-50ns</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>read()</code> (data)</td>
+                                        <td>0-1</td>
+                                        <td>File size</td>
+                                        <td>Dominates</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>read_dir()</code></td>
+                                        <td>1</td>
+                                        <td>~24-48 bytes</td>
+                                        <td>~20-50ns</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Iteration</td>
+                                        <td>0</td>
+                                        <td>-</td>
+                                        <td>-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p><strong>The allocation is dwarfed by actual I/O time.</strong> For a 4KB file read from
+                            SQLite or disk, the Box allocation is &lt;0.1% of total time.</p>
+                        <h3 id="when-it-matters"><a class="header" href="#when-it-matters">When It Matters</a></h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Scenario</th>
+                                        <th>Matters?</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Reading large files</td>
+                                        <td>No - I/O dominates</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Reading many small files</td>
+                                        <td>Maybe - consider batching</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Hot loop micro-benchmarks</td>
+                                        <td>Yes</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Real-world applications</td>
+                                        <td>Rarely</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+                        <p><strong>Dynamic dispatch is the right default.</strong> The cost is negligible for real
+                            workloads, and the ergonomic benefits are substantial. Offer static dispatch as an opt-in
+                            escape hatch for the rare cases where it matters.</p>
+                        <hr>
+                        <h2 id="summary-decision-matrix"><a class="header" href="#summary-decision-matrix">Summary
+                                Decision Matrix</a></h2>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Approach</th>
+                                        <th>Alloc-Free</th>
+                                        <th>Simple</th>
+                                        <th>Object-Safe</th>
+                                        <th>Recommended</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Current (<code>Box&lt;dyn&gt;</code>)</td>
+                                        <td>❌</td>
+                                        <td>✅</td>
+                                        <td>✅</td>
+                                        <td>✅ Default</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Associated Types</td>
+                                        <td>✅</td>
+                                        <td>❌</td>
+                                        <td>✅</td>
+                                        <td>❌ Too complex</td>
+                                    </tr>
+                                    <tr>
+                                        <td>RPITIT</td>
+                                        <td>✅</td>
+                                        <td>✅</td>
+                                        <td>❌</td>
+                                        <td>⚠️ When no dyn needed</td>
+                                    </tr>
+                                    <tr>
+                                        <td>GATs</td>
+                                        <td>✅</td>
+                                        <td>❌</td>
+                                        <td>❌</td>
+                                        <td>❌ Overkill</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Hybrid</td>
+                                        <td>✅ opt-in</td>
+                                        <td>✅</td>
+                                        <td>✅</td>
+                                        <td>✅ Best of both</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Callbacks</td>
+                                        <td>✅</td>
+                                        <td>❌</td>
+                                        <td>✅</td>
+                                        <td>❌ Awkward API</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SmallVec</td>
+                                        <td>⚠️</td>
+                                        <td>✅</td>
+                                        <td>✅</td>
+                                        <td>⚠️ For ReadDirIter</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../architecture/hybrid-backend-design.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
-                            </a>
+                        <a rel="prev" href="../architecture/hybrid-backend-design.html"
+                            class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter"
+                            aria-keyshortcuts="Left">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
+                                </svg></span>
+                        </a>
 
-                            <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                            </a>
+                        <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html"
+                            class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter"
+                            aria-keyshortcuts="Right">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                                    <path
+                                        d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
+                                </svg></span>
+                        </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -619,22 +907,52 @@ pub trait FsDir: Send + Sync {
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../architecture/hybrid-backend-design.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
-                    </a>
+                <a rel="prev" href="../architecture/hybrid-backend-design.html" class="nav-chapters previous"
+                    title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                            <path
+                                d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z" />
+                        </svg></span>
+                </a>
 
-                    <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                    </a>
+                <a rel="next prefetch" href="../architecture/indexed-realfs-backend.html" class="nav-chapters next"
+                    title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                            <path
+                                d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z" />
+                        </svg></span>
+                </a>
             </nav>
 
         </div>
 
-        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
-        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
-        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
-        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
-        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z" />
+                </svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z" />
+                </svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z" />
+                </svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
+                </svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. -->
+                    <path
+                        d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z" />
+                </svg></span></template>
 
 
         <script>
@@ -664,5 +982,6 @@ pub trait FsDir: Send + Sync {
 
 
     </div>
-    </body>
+</body>
+
 </html>

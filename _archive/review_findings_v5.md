@@ -28,7 +28,7 @@ The repository is currently in a fragmented state between two major architectura
 
 **Proceed with `update_instructions` immediately.**
 
-The `update_instructions/update-instructions-vfs-design-manual.md` file contains the specific steps required to update the peripheral documents to match the v0.4.0 architecture in `design-overview.md`.
+The `update_instructions/update-instructions-anyfs-design-manual.md` file contains the specific steps required to update the peripheral documents to match the v0.4.0 architecture in `design-overview.md`.
 
 **Action Items:**
 1.  Execute `update_instructions` to align `decisions.md` and `technical-comparison.md`.

@@ -32,7 +32,7 @@ However, a few "Meta/Planning" documents effectively describe the previous desig
     *   Rewrite Phase 1 to specify `Vfs` trait (13 methods, Inode-based).
     *   Update Phase 3 to clarify that `FilesContainer` implements the 20-method `std::fs`-like API.
 2.  **Delete/Archive `update_instructions/`**:
-    *   The `update-instructions-vfs-design-manual.md` has been executed.
+    *   The `update-instructions-anyfs-design-manual.md` has been executed.
     *   The `design-alignment-suggestions.md` is obsolete.
     *   keeping them creates noise.
 
