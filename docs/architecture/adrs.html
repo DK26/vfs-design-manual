@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
+            window.path_to_searchindex_js = "../searchindex-462c7a48.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -1564,24 +1564,19 @@ pub struct CachingResolver&lt;R: PathResolver&gt; {
 <p><strong>Integration with FileStorage:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
-    /// Create FileStorage with default resolver.
+</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, IterativeResolver, M&gt; {
     pub fn new(backend: B) -&gt; Self { ... }
-    
-    /// Create FileStorage with custom resolver.
-    pub fn with_resolver(backend: B, resolver: impl PathResolver + 'static) -&gt; Self {
-        Self {
-            backend,
-            resolver: Box::new(resolver),
-            _marker: PhantomData,
-        }
+}
+
+impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
+    pub fn with_resolver(backend: B, resolver: R) -&gt; Self {
+        Self { backend, resolver, _marker: PhantomData }
     }
 }
 
-// Or via builder pattern
-FileStorage::builder(backend)
-    .with_resolver(CachingResolver::new(IterativeResolver::default()))
-    .build()
+// Usage
+let fs = FileStorage::new(backend);  // Uses IterativeResolver
+let fs = FileStorage::with_resolver(backend, CachingResolver::new(IterativeResolver::default()));
 <span class="boring">}</span></code></pre>
 <p><strong>Relationship with FsPath Trait:</strong></p>
 <div class="table-wrapper">
@@ -1648,22 +1643,19 @@ FileStorage::builder(backend)
 <p><strong>Example Use Cases:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Default: case-sensitive, symlink-aware
+</span>// Default: case-sensitive, symlink-aware (IterativeResolver is ZST, zero-cost)
 let fs = FileStorage::new(MemoryBackend::new());
 
-// Aggressive caching for read-heavy workloads
-let fs = FileStorage::builder(backend)
-    .with_resolver(CachingResolver::new(IterativeResolver::default()))
-    .build();
+// Caching for read-heavy workloads
+let fs = FileStorage::with_resolver(
+    backend,
+    CachingResolver::new(IterativeResolver::default())
+);
 
 // Custom resolver (user-implemented)
-let fs = FileStorage::builder(backend)
-    .with_resolver(MyCustomResolver::new())
-    .build();
-    .with_resolver(CachingResolver::new(IterativeResolver::default()))
-    .build();
+let fs = FileStorage::with_resolver(backend, MyCustomResolver::new());
 
-// Testing: verify resolution behavior
+// Testing: verify resolution behavior in isolation
 #[test]
 fn test_symlink_loop_detection() {
     let resolver = IterativeResolver::new();
@@ -1672,21 +1664,7 @@ fn test_symlink_loop_detection() {
     assert!(matches!(result, Err(FsError::InvalidData { .. })));
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Trade-offs:</strong></p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
-</thead>
-<tbody>
-<tr><td>Trait object (<code>Box&lt;dyn&gt;</code>)</td><td>Simple API, runtime flexibility</td><td>~50ns per call (negligible vs I/O)</td></tr>
-<tr><td>Generic parameter</td><td>Zero-cost, compile-time</td><td>Adds complexity to FileStorage</td></tr>
-<tr><td>Associated type on FsPath</td><td>Trait-level, backend controls</td><td>Complicates blanket impl</td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>Recommendation:</strong> Use trait object (<code>Box&lt;dyn PathResolver&gt;</code>) for simplicity. Following ADR-025 (Strategic Boxing), the ~50ns box overhead is &lt;1% of actual I/O time and enables maximum flexibility.</p>
-<p><strong>Conclusion:</strong> The <code>PathResolver</code> trait provides clean separation of concerns, making path resolution testable, benchmarkable, and extensible. It complements <code>FsPath</code> (backend optimization hook) and can replace or work alongside <code>SelfResolving</code> (via <code>NoOpResolver</code>). This design follows the Tower/Axum philosophy of composable, swappable components.</p>
+<p><strong>Conclusion:</strong> The <code>PathResolver</code> trait provides clean separation of concerns, making path resolution testable, benchmarkable, and extensible. It complements <code>FsPath</code> (backend optimization hook) and can replace or work alongside <code>SelfResolving</code> (via <code>NoOpResolver</code>).</p>
 <hr>
 <h2 id="adr-034-llm-oriented-architecture-loa"><a class="header" href="#adr-034-llm-oriented-architecture-loa">ADR-034: LLM-Oriented Architecture (LOA)</a></h2>
 <p><strong>Status:</strong> Accepted</p>

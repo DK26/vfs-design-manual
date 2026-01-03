@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
+            window.path_to_searchindex_js = "../searchindex-462c7a48.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -340,38 +340,49 @@ fn save_document(fs: &amp;UserDataFs, doc: &amp;Document) { ... }
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::marker::PhantomData;
-use anyfs_backend::Fs;
+use anyfs_backend::{Fs, PathResolver};
+use anyfs::resolvers::IterativeResolver;
 
 /// Zero-cost ergonomic wrapper.
-/// Generic over backend (B) and marker (M).
-pub struct FileStorage&lt;B, M = ()&gt; {
+/// Generic over backend (B), resolver (R), and marker (M).
+pub struct FileStorage&lt;B, R = IterativeResolver, M = ()&gt; {
     backend: B,
+    resolver: R,
     _marker: PhantomData&lt;M&gt;,
 }
 
-impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+impl&lt;B: Fs, M&gt; FileStorage&lt;B, IterativeResolver, M&gt; {
     /// Create a new FileStorage with default resolver (IterativeResolver).
     /// Marker type is specified via type annotation:
-    /// `let fs: FileStorage&lt;_, MyMarker&gt; = FileStorage::new(backend);`
+    /// `let fs: FileStorage&lt;_, _, MyMarker&gt; = FileStorage::new(backend);`
     pub fn new(backend: B) -&gt; Self {
-        FileStorage { backend, _marker: PhantomData }
+        FileStorage {
+            backend,
+            resolver: IterativeResolver::new(),
+            _marker: PhantomData,
+        }
     }
+}
 
+impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
     /// Create FileStorage with a custom path resolver.
     /// See ADR-033 for PathResolver trait details.
-    pub fn with_resolver(backend: B, resolver: impl PathResolver) -&gt; Self {
-        // Uses provided resolver instead of default IterativeResolver
-        FileStorage { backend, _marker: PhantomData }
-    }
-    
-    /// Builder pattern for advanced configuration.
-    pub fn builder(backend: B) -&gt; FileStorageBuilder&lt;B, M&gt; {
-        FileStorageBuilder::new(backend)
+    pub fn with_resolver(backend: B, resolver: R) -&gt; Self {
+        FileStorage {
+            backend,
+            resolver,
+            _marker: PhantomData,
+        }
     }
 
     /// Type-erase the backend for simpler types (opt-in boxing).
-    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt; {
-        FileStorage { backend: Box::new(self.backend), _marker: PhantomData }
+    /// Note: resolver type is preserved (no boxing).
+    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt; {
+        FileStorage {
+            backend: Box::new(self.backend),
+            resolver: self.resolver,
+            _marker: PhantomData,
+        }
     }
 }
 <span class="boring">}</span></code></pre>
@@ -382,7 +393,7 @@ impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
 </span>use anyfs::{FileStorage, MemoryBackend};
 use anyfs::resolvers::{IterativeResolver, CachingResolver};
 
-// Default: uses IterativeResolver
+// Default: uses IterativeResolver (zero-cost, likely ZST)
 let fs = FileStorage::new(MemoryBackend::new());
 
 // Custom: with caching resolver for read-heavy workloads
@@ -390,22 +401,14 @@ let fs = FileStorage::with_resolver(
     MemoryBackend::new(),
     CachingResolver::new(IterativeResolver::default())
 );
-
-// Builder pattern for more options
-let fs = FileStorage::builder(MemoryBackend::new())
-    .with_resolver(CachingResolver::default())
-    .build();
 <span class="boring">}</span></code></pre>
 <p>Backends implementing <code>SelfResolving</code> (like <code>VRootFsBackend</code>) skip resolution since the OS handles it.</p>
-<pre><code>
----
-
-## Type Erasure (Opt-in)
-
-When you need simpler types (e.g., storing in collections), use `.boxed()`:
-
-```rust
-use anyfs::{MemoryBackend, SqliteBackend, FileStorage, Fs};
+<hr>
+<h2 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure (Opt-in)</a></h2>
+<p>When you need simpler types (e.g., storing in collections), use <code>.boxed()</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage, Fs};
 
 // Type-erased for uniform storage
 let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
@@ -416,7 +419,7 @@ let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
 
 // Or use type alias
 type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
-</code></pre>
+<span class="boring">}</span></code></pre>
 <p><strong>When to use <code>.boxed()</code>:</strong></p>
 <div class="table-wrapper">
 <table>

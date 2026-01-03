@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
+            window.path_to_searchindex_js = "../searchindex-462c7a48.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -1243,25 +1243,31 @@ fn run_agent(fs: &amp;SandboxFs) { ... }
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::marker::PhantomData;
+use anyfs_backend::PathResolver;
+use anyfs::resolvers::IterativeResolver;
 
 /// Zero-cost ergonomic wrapper.
-/// Generic over backend (B) and marker (M).
-pub struct FileStorage&lt;B, M = ()&gt; {
+/// Generic over backend (B), resolver (R), and marker (M).
+pub struct FileStorage&lt;B, R = IterativeResolver, M = ()&gt; {
     backend: B,
+    resolver: R,
     _marker: PhantomData&lt;M&gt;,
 }
 
-impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+impl&lt;B: Fs, M&gt; FileStorage&lt;B, IterativeResolver, M&gt; {
+    /// Create with default resolver (IterativeResolver).
     /// Marker type is specified via type annotation:
-    /// `let fs: FileStorage&lt;_, MyMarker&gt; = FileStorage::new(backend);`
-    pub fn new(backend: B) -&gt; Self {
-        FileStorage { backend, _marker: PhantomData }
-    }
+    /// `let fs: FileStorage&lt;_, _, MyMarker&gt; = FileStorage::new(backend);`
+    pub fn new(backend: B) -&gt; Self { ... }
+}
+
+impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
+    /// Create with custom path resolver (see ADR-033).
+    pub fn with_resolver(backend: B, resolver: R) -&gt; Self { ... }
 
     /// Type-erase the backend (opt-in boxing).
-    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt; {
-        FileStorage { backend: Box::new(self.backend), _marker: PhantomData }
-    }
+    /// Note: resolver type is preserved.
+    pub fn boxed(self) -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt; { ... }
 }
 <span class="boring">}</span></code></pre>
 <h3 id="type-erasure-opt-in"><a class="header" href="#type-erasure-opt-in">Type Erasure (Opt-in)</a></h3>
