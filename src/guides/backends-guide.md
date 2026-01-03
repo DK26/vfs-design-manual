@@ -27,14 +27,14 @@ This guide explains each built-in backend in AnyFS, how it works internally, whe
 
 AnyFS backends fall into two fundamental categories based on **who resolves paths**:
 
-| Category                       | Path Resolution     | Symlink Handling   | Isolation    |
-| ------------------------------ | ------------------- | ------------------ | ------------ |
-| **Type 1: Virtual Filesystem** | Framework (logical) | Simulated by AnyFS | Complete     |
-| **Type 2: Real Filesystem**    | Operating System    | Delegated to OS    | Partial/None |
+| Category                       | Path Resolution          | Symlink Handling   | Isolation    |
+| ------------------------------ | ------------------------ | ------------------ | ------------ |
+| **Type 1: Virtual Filesystem** | PathResolver (pluggable) | Simulated by AnyFS | Complete     |
+| **Type 2: Real Filesystem**    | Operating System         | Delegated to OS    | Partial/None |
 
 ### Type 1: Virtual Filesystem Backends
 
-These backends store filesystem data in an abstract format (memory, database, etc.). **AnyFS handles all path resolution**, including:
+These backends store filesystem data in an abstract format (memory, database, etc.). **AnyFS handles path resolution via pluggable `PathResolver`** (see ADR-033), including:
 
 - Path traversal (`..`, `.`)
 - Symlink following (simulated)

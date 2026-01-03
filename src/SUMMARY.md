@@ -40,7 +40,7 @@
 
 - [Built-in Backends Guide](./guides/backends-guide.md)
 - [Which Crate Should I Use?](./guides/which-layer.md)
-- [Implementation Patterns (LLM Context)](./guides/llm-context.md)
+- [Consumer Documentation Planning](./guides/llm-context.md)
 - [LLM Development Methodology](./guides/llm-development-methodology.md)
 - [Cross-Platform Mounting](./guides/mounting.md)
 - [Tutorial: Building a TXT Backend](./guides/txt-backend-tutorial.md)

@@ -27,13 +27,13 @@ AnyFS uses a layered architecture that separates concerns:
 
 ## Layer Responsibilities
 
-| Layer         | Responsibility                  | Path Handling                                                   |
-| ------------- | ------------------------------- | --------------------------------------------------------------- |
-| `FileStorage` | Ergonomic API + path resolution | Accepts `impl AsRef<Path>`; resolves paths for virtual backends |
-| Middleware    | Policy enforcement              | `&Path` (object-safe core traits)                               |
-| Backend       | Storage + FS semantics          | `&Path` (object-safe core traits)                               |
+| Layer         | Responsibility                  | Path Handling                                                           |
+| ------------- | ------------------------------- | ----------------------------------------------------------------------- |
+| `FileStorage` | Ergonomic API + path resolution | Accepts `impl AsRef<Path>`; resolves paths via pluggable `PathResolver` |
+| Middleware    | Policy enforcement              | `&Path` (object-safe core traits)                                       |
+| Backend       | Storage + FS semantics          | `&Path` (object-safe core traits)                                       |
 
-Core traits use `&Path` for object safety; `FileStorage`/`FsExt` provide `impl AsRef<Path>` ergonomics. Backends that wrap a real filesystem implement `SelfResolving` so FileStorage can skip its virtual path resolution.
+Core traits use `&Path` for object safety; `FileStorage`/`FsExt` provide `impl AsRef<Path>` ergonomics. Path resolution is pluggable via `PathResolver` trait (see ADR-033). Backends that wrap a real filesystem implement `SelfResolving` so FileStorage can skip resolution.
 
 ---
 

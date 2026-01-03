@@ -17,7 +17,7 @@ It is the intended application-facing API: std::fs-style paths with object-safe 
 **It does THREE things:**
 1. Ergonomics (std::fs-aligned API)
 2. Optional type-safety via marker types
-3. Centralized path resolution for virtual backends (symlink-aware normalization)
+3. Pluggable path resolution for virtual backends (via `PathResolver` trait - see ADR-033)
 
 All policy (limits, feature gates, logging) is handled by middleware, not FileStorage.
 

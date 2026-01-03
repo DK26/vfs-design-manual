@@ -41,12 +41,13 @@ All backends must be safe for concurrent access:
 
 ### 3. Consistent Path Handling
 
-FileStorage handles path resolution (symlink-aware, not just lexical normalization):
+FileStorage handles path resolution via pluggable `PathResolver` trait (see ADR-033):
 
 - Always absolute paths internally
 - Always `/` separator (even on Windows)
-- Resolve `..` and `.` via canonicalization (symlink-aware, not lexical)
-- Handle edge cases: `//`, trailing `/`, empty string
+- Default `IterativeResolver`: symlink-aware canonicalization (not lexical)
+- Handle edge cases: `//`, trailing `/`, empty string, circular symlinks
+- Optional resolver: `CachingResolver` (for read-heavy workloads)
 
 **Public canonicalization API on FileStorage:**
 - `canonicalize(path)` - strict, all components must exist

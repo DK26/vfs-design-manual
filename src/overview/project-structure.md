@@ -30,6 +30,7 @@ anyfs-backend/              # Crate 1: traits + types (minimal dependencies)
     layer.rs                # Layer trait (Tower-style)
     ext.rs                  # FsExt (extension methods)
     markers.rs              # SelfResolving marker trait
+    path_resolver.rs        # PathResolver trait (pluggable resolution)
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -54,6 +55,10 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
       dry_run.rs            # DryRun<B>
       cache.rs              # Cache<B>
       overlay.rs            # Overlay<B1, B2>
+    resolvers/
+      iterative.rs          # IterativeResolver (default)
+      noop.rs               # NoOpResolver (for SelfResolving backends)
+      caching.rs            # CachingResolver (LRU cache wrapper)
     container.rs            # FileStorage<B, M>
     stack.rs                # BackendStack builder
 ```

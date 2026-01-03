@@ -32,25 +32,30 @@ This document captures previously open questions and design considerations. Unle
 
 ## Virtual vs Real Backends: Path Resolution
 
-**Status:** Resolved
+**Status:** Resolved (see also ADR-033 for PathResolver)
 
 **Question:** Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?
 
-**Resolution:** `FileStorage` handles symlink-aware path resolution for non-`SelfResolving` backends. `SelfResolving` backends delegate to the OS, so FileStorage does not pre-resolve paths for them.
+**Resolution:** `FileStorage` handles path resolution via pluggable `PathResolver` trait for non-`SelfResolving` backends. `SelfResolving` backends delegate to the OS, so FileStorage does not pre-resolve paths for them.
 
-| Backend Type | Path Resolution | Symlink Handling |
-|--------------|-----------------|------------------|
-| MemoryBackend | **FileStorage** (symlink-aware) | FileStorage follows symlinks |
-| SqliteBackend | **FileStorage** (symlink-aware) | FileStorage follows symlinks |
-| VRootFsBackend | **OS** (implements `SelfResolving`) | OS follows symlinks (strict-path prevents escapes) |
+| Backend Type   | Path Resolution                               | Symlink Handling                                   |
+| -------------- | --------------------------------------------- | -------------------------------------------------- |
+| MemoryBackend  | **PathResolver** (default: IterativeResolver) | Resolver follows symlinks                          |
+| SqliteBackend  | **PathResolver** (default: IterativeResolver) | Resolver follows symlinks                          |
+| VRootFsBackend | **OS** (implements `SelfResolving`)           | OS follows symlinks (strict-path prevents escapes) |
 
-**Key design decision:** Backends that wrap a real filesystem implement the `SelfResolving` marker trait to tell `FileStorage` to skip resolution:
+**Key design decisions:**
+
+1. Backends that wrap a real filesystem implement the `SelfResolving` marker trait to tell `FileStorage` to skip resolution:
 
 ```rust
 impl SelfResolving for VRootFsBackend {}
 ```
 
-This ensures consistent behavior: all virtual backends get symlink-aware resolution from `FileStorage`, while real filesystem backends delegate to the OS.
+2. Path resolution is pluggable via `PathResolver` trait (ADR-033). Built-in resolvers include:
+   - `IterativeResolver` - default symlink-aware resolution
+   - `NoOpResolver` - for `SelfResolving` backends
+   - `CachingResolver` - LRU cache wrapper
 
 ---
 
@@ -84,9 +89,9 @@ This is an implementation detail of the backend, not visible to the `FileStorage
 
 **Note:** There are two projects named "AgentFS":
 
-| Project | Description |
-|---------|-------------|
-| [tursodatabase/agentfs](https://github.com/tursodatabase/agentfs) | Full AI agent runtime (Turso/libSQL) |
+| Project                                                           | Description                                                           |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [tursodatabase/agentfs](https://github.com/tursodatabase/agentfs) | Full AI agent runtime (Turso/libSQL)                                  |
 | [cryptopatrick/agentfs](https://github.com/cryptopatrick/agentfs) | Related to [AgentDB](https://lib.rs/crates/agentdb) abstraction layer |
 
 This section focuses on **Turso's AgentFS**, which has a [published spec](https://github.com/tursodatabase/agentfs/blob/main/SPEC.md).
@@ -101,14 +106,14 @@ AgentFS is an **agent runtime**, not just a filesystem. It provides three integr
 
 ### AnyFS vs AgentFS: Different Abstractions
 
-| Concern | AnyFS | AgentFS |
-|---------|-------|---------|
-| **Scope** | Filesystem abstraction | Agent runtime |
-| **Filesystem** | Full | Full |
-| **Key-Value store** | Not our domain | Included |
-| **Tool auditing** | `Tracing` middleware | Built-in |
-| **Backends** | Memory, SQLite, VRootFs, custom | SQLite only (spec) |
-| **Middleware** | Composable layers | Monolithic |
+| Concern             | AnyFS                           | AgentFS            |
+| ------------------- | ------------------------------- | ------------------ |
+| **Scope**           | Filesystem abstraction          | Agent runtime      |
+| **Filesystem**      | Full                            | Full               |
+| **Key-Value store** | Not our domain                  | Included           |
+| **Tool auditing**   | `Tracing` middleware            | Built-in           |
+| **Backends**        | Memory, SQLite, VRootFs, custom | SQLite only (spec) |
+| **Middleware**      | Composable layers               | Monolithic         |
 
 ### Relationship Options
 
@@ -126,13 +131,13 @@ AgentFS is an **agent runtime**, not just a filesystem. It provides three integr
 
 ### When to Use Which
 
-| Use Case | Recommendation |
-|----------|----------------|
-| Need just filesystem operations | **AnyFS** |
-| Need composable middleware (quota, sandboxing) | **AnyFS** |
-| Need full agent runtime (FS + KV + auditing) | **AgentFS** |
-| Need multiple backend types (memory, real FS) | **AnyFS** |
-| Need AgentFS-compatible SQLite format | **AgentFS** or custom AnyFS backend |
+| Use Case                                       | Recommendation                      |
+| ---------------------------------------------- | ----------------------------------- |
+| Need just filesystem operations                | **AnyFS**                           |
+| Need composable middleware (quota, sandboxing) | **AnyFS**                           |
+| Need full agent runtime (FS + KV + auditing)   | **AgentFS**                         |
+| Need multiple backend types (memory, real FS)  | **AnyFS**                           |
+| Need AgentFS-compatible SQLite format          | **AgentFS** or custom AnyFS backend |
 
 ### Takeaway
 
@@ -217,11 +222,11 @@ See [FileStorage<B, M>](../traits/files-container.md) for details.
 
 Based on review feedback, the following naming concerns were raised:
 
-| Current Name | Concern | Alternatives Considered |
-|--------------|---------|------------------------|
-| `anyfs-traits` | "traits" is vague | `anyfs-backend` (adopted) |
-| `anyfs-container` | Could imply Docker | Merged into `anyfs` (adopted) |
-| `anyfs` | Sounds like Hebrew "ani efes" (I am zero) | `anyfs` retained for simplicity |
+| Current Name      | Concern                                   | Alternatives Considered         |
+| ----------------- | ----------------------------------------- | ------------------------------- |
+| `anyfs-traits`    | "traits" is vague                         | `anyfs-backend` (adopted)       |
+| `anyfs-container` | Could imply Docker                        | Merged into `anyfs` (adopted)   |
+| `anyfs`           | Sounds like Hebrew "ani efes" (I am zero) | `anyfs` retained for simplicity |
 
 **Decision:** Renamed `anyfs-traits` to `anyfs-backend`. Merged `anyfs-container` into `anyfs`.
 
@@ -266,27 +271,27 @@ Based on review feedback, the following naming concerns were raised:
 
 ## Summary
 
-| Topic | v1 Decision |
-|-------|-------------|
-| Symlink security | Backend-defined (`FsLink`); VRootFsBackend uses `strict-path` for containment |
-| Path resolution | FileStorage (symlink-aware); VRootFs = OS via `SelfResolving` |
-| Compression/encryption | Backend responsibility |
-| Hooks/callbacks | `Tracing` middleware |
-| FUSE mount | Planned `anyfs-mount` companion crate (cross-platform) |
-| Type-system protection | `FileStorage<B, M>` marker types |
-| POSIX compatibility | Not a goal |
-| `truncate` | Added to `FsWrite` |
-| `sync` / `fsync` | Added to `FsSync` |
-| Async support | Sync-first, async-ready (ADR-010) |
-| Layer trait | Tower-style composition (ADR-011) |
-| Logging | Tracing with tracing ecosystem (ADR-012) |
-| Extension methods | `FsExt` (ADR-013) |
-| Zero-copy bytes | Optional `bytes` feature (ADR-014) |
-| Error context | Contextual `FsError` (ADR-015) |
-| BackendStack builder | Fluent API via `.layer()` |
-| Path-based access control | `PathFilter` middleware (ADR-016) |
-| Read-only mode | `ReadOnly` middleware (ADR-017) |
-| Rate limiting | `RateLimit` middleware (ADR-018) |
-| Dry-run testing | `DryRun` middleware (ADR-019) |
-| Read caching | `Cache` middleware (ADR-020) |
-| Union filesystem | `Overlay` middleware (ADR-021) |
+| Topic                     | v1 Decision                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| Symlink security          | Backend-defined (`FsLink`); VRootFsBackend uses `strict-path` for containment |
+| Path resolution           | FileStorage (symlink-aware); VRootFs = OS via `SelfResolving`                 |
+| Compression/encryption    | Backend responsibility                                                        |
+| Hooks/callbacks           | `Tracing` middleware                                                          |
+| FUSE mount                | Planned `anyfs-mount` companion crate (cross-platform)                        |
+| Type-system protection    | `FileStorage<B, M>` marker types                                              |
+| POSIX compatibility       | Not a goal                                                                    |
+| `truncate`                | Added to `FsWrite`                                                            |
+| `sync` / `fsync`          | Added to `FsSync`                                                             |
+| Async support             | Sync-first, async-ready (ADR-010)                                             |
+| Layer trait               | Tower-style composition (ADR-011)                                             |
+| Logging                   | Tracing with tracing ecosystem (ADR-012)                                      |
+| Extension methods         | `FsExt` (ADR-013)                                                             |
+| Zero-copy bytes           | Optional `bytes` feature (ADR-014)                                            |
+| Error context             | Contextual `FsError` (ADR-015)                                                |
+| BackendStack builder      | Fluent API via `.layer()`                                                     |
+| Path-based access control | `PathFilter` middleware (ADR-016)                                             |
+| Read-only mode            | `ReadOnly` middleware (ADR-017)                                               |
+| Rate limiting             | `RateLimit` middleware (ADR-018)                                              |
+| Dry-run testing           | `DryRun` middleware (ADR-019)                                                 |
+| Read caching              | `Cache` middleware (ADR-020)                                                  |
+| Union filesystem          | `Overlay` middleware (ADR-021)                                                |

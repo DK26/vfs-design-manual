@@ -467,10 +467,12 @@ mdbook serve
 
 Key documents:
 - `src/architecture/design-overview.md` - Architecture and traits
-- `src/guides/llm-context.md` - Quick implementation patterns
+- `src/guides/llm-context.md` - Consumer documentation planning
+- `src/guides/llm-development-methodology.md` - LLM-oriented development patterns
 - `src/guides/mounting.md` - Virtual drive mounting
 - `src/implementation/backend-guide.md` - Implement custom backends
 - `src/implementation/testing-guide.md` - Test suite design
+- `src/comparisons/benchmarking-plan.md` - Performance benchmarking strategy
 - `AGENTS.md` - Quick reference for AI assistants
 
 ---

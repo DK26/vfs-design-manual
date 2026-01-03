@@ -22,7 +22,7 @@ FsRead + FsWrite + FsDir (core)
 
 Key properties:
 - Backends accept `&Path` for all path parameters
-- **Backends receive already-resolved paths** - FileStorage handles path resolution (symlinks, `..`, normalization). See ADR-029.
+- **Backends receive already-resolved paths** - FileStorage handles path resolution via pluggable `PathResolver` (see ADR-033). Default is `IterativeResolver` for symlink-aware resolution.
 - Backends handle **storage only** - just store/retrieve bytes at given paths
 - Policy (limits, feature gates) is handled by middleware, not backends
 - Implement only the traits your backend supports

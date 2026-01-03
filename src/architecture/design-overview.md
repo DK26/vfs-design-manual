@@ -1298,9 +1298,9 @@ fn resolve_path_internal(
 }
 ```
 
-**This is NOT a public API.** The public API for path resolution is the `canonicalize` family of methods on `FileStorage` (see "Path Canonicalization Utilities" below).
+**Path resolution is pluggable via the `PathResolver` trait** (see ADR-033). The default `IterativeResolver` implements the algorithm above. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors. The public API for path resolution is the `canonicalize` family of methods on `FileStorage` (see "Path Canonicalization Utilities" below).
 
-**Note:** The internal resolution function requires `Fs + FsLink`. For backends that don't implement `FsLink`, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement `FsLink`.
+**Note:** The default resolution requires `Fs + FsLink`. For backends that don't implement `FsLink`, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement `FsLink`.
 
 ### When Resolution Is Needed
 
@@ -1485,22 +1485,25 @@ The `Fs` trait doesn't enforce filesystem semantics - backends decide their beha
 use anyfs::{FileStorage, MemoryBackend};
 use std::path::Path;
 
-// Built-in backends: Linux-like
+// Built-in backends: Linux-like (case-sensitive)
 let linux_fs = FileStorage::new(MemoryBackend::new());
 assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 
-// Someone wants NTFS-like behavior? User-implemented middleware or custom backend:
-let ntfs_like = CaseInsensitive::new(           // (user-implemented middleware)
-    NtfsValidation::new(MemoryBackend::new())   // (user-implemented middleware)
-);
-
-// Or full custom implementation
-impl Fs for NtfsEmulatingBackend {
-    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
-        let normalized = self.case_fold(path);  // Case-insensitive lookup
-        // ...
+// For case-insensitive behavior, implement a custom PathResolver:
+// (Not built-in because real-world demand is minimal - VRootFsBackend on 
+// Windows/macOS already gets case-insensitivity from the OS)
+struct CaseFoldingResolver;
+impl PathResolver for CaseFoldingResolver {
+    fn resolve(&self, backend: &B, path: &Path) -> Result<PathBuf, FsError> {
+        // Normalize path components to lowercase during lookup
+        todo!()
     }
 }
+
+let ntfs_like = FileStorage::with_resolver(
+    MemoryBackend::new(),
+    CaseFoldingResolver  // User-implemented
+);
 ```
 
 ### FUSE Mount: Report What You Support

@@ -1390,17 +1390,15 @@ pub struct IterativeResolver {
 /// No-op resolver for SelfResolving backends (OS handles resolution).
 pub struct NoOpResolver;
 
-/// Case-folding resolver for case-insensitive filesystems.
-pub struct CaseFoldingResolver<R: PathResolver> {
-    inner: R,
-    // Wraps another resolver, normalizing case during lookup
-}
-
 /// Caching resolver for read-heavy workloads.
 pub struct CachingResolver<R: PathResolver> {
     inner: R,
     cache: Cache<PathBuf, PathBuf>,
 }
+
+// Case-folding resolver is NOT built-in. Users can implement one via PathResolver
+// trait if needed, but real-world demand is minimal since VRootFsBackend on
+// Windows/macOS already gets case-insensitivity from the OS.
 ```
 
 **Integration with FileStorage:**
@@ -1422,7 +1420,7 @@ impl<B: Fs, M> FileStorage<B, M> {
 
 // Or via builder pattern
 FileStorage::builder(backend)
-    .with_resolver(CaseFoldingResolver::new())
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
     .build()
 ```
 
@@ -1469,25 +1467,26 @@ Or backends can override entirely for optimized implementations (e.g., SQLite CT
 | `PathResolver` trait    | `anyfs-backend` | Core contract, minimal deps      |
 | `IterativeResolver`     | `anyfs`         | Default impl, needs Fs methods   |
 | `NoOpResolver`          | `anyfs`         | For SelfResolving backends       |
-| `CaseFoldingResolver`   | `anyfs`         | Optional, wraps other resolvers  |
 | `CachingResolver`       | `anyfs`         | Optional, needs cache impl       |
 | FileStorage integration | `anyfs`         | Uses resolvers for path handling |
+
+> **Note:** Case-folding resolvers are NOT built-in. The `PathResolver` trait allows users to implement custom resolvers if needed, but we don't ship speculative features.
 
 **Example Use Cases:**
 
 ```rust
-// Case-insensitive filesystem emulation
-let fs = FileStorage::builder(MemoryBackend::new())
-    .with_resolver(CaseFoldingResolver::default())
-    .build();
-
-// Windows-style path resolution (backslash normalization, drive letters)
-let fs = FileStorage::builder(backend)
-    .with_resolver(WindowsPathResolver::new())
-    .build();
+// Default: case-sensitive, symlink-aware
+let fs = FileStorage::new(MemoryBackend::new());
 
 // Aggressive caching for read-heavy workloads
 let fs = FileStorage::builder(backend)
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build();
+
+// Custom resolver (user-implemented)
+let fs = FileStorage::builder(backend)
+    .with_resolver(MyCustomResolver::new())
+    .build();
     .with_resolver(CachingResolver::new(IterativeResolver::default()))
     .build();
 
@@ -1597,9 +1596,9 @@ These same properties also benefit:
 The architecture enables these clean prompts:
 
 ```
-# Implement
-Implement `CaseFoldingResolver` in src/resolvers/case_folding.rs.
-Contract: Implement `PathResolver` trait.
+# Implement (user-provided resolver example)
+Implement a case-folding resolver in your project.
+Contract: Implement `PathResolver` trait from anyfs-backend.
 Test: "/Foo/BAR" → "/foo/bar"
 
 # Fix

@@ -145,7 +145,6 @@ anyfs/                      # Crate 2: backends + middleware + FileStorage
     resolvers/
       iterative.rs          # IterativeResolver (default)
       noop.rs               # NoOpResolver (for SelfResolving backends)
-      case_folding.rs       # CaseFoldingResolver (case-insensitive)
       caching.rs            # CachingResolver (LRU cache wrapper)
     container.rs            # FileStorage<B, M>
 ```
@@ -520,5 +519,14 @@ OPT-IN TYPE ERASURE:
    - Performance tradeoffs exist, but functionality is complete
    - Do NOT claim "X isn't designed for Y" - if it's in the API, it works
 
-6. **Do NOT run `mdbook build`** - the user or CI will build, you only edit `src/` files
+6. **Do NOT speculate features without real-world justification:**
+   - Before adding a component, ask: "Has anyone actually needed this?"
+   - Check prior art: do similar crates (vfs, cap-std, tempfile) have this feature?
+   - If a feature is "nice to have" with no concrete use case, leave it as user-implementable
+   - The `PathResolver` trait exists so users CAN implement custom resolvers, not so we MUST ship every variant
+   - Speculative features become maintenance burden and documentation debt
+   - Suggested features must be implementable in the real world and make sense within AnyFS's architecture
+   - Ask: "How would this actually be implemented? Does it fit our trait hierarchy and middleware pattern?"
+
+7. **Do NOT run `mdbook build`** - the user or CI will build, you only edit `src/` files
 

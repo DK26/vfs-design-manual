@@ -207,16 +207,16 @@ mod tests {
 ### Pattern 1: Implement a Component
 
 ```
-Implement `CaseFoldingResolver` in `src/resolvers/case_folding.rs`.
+Implement `CachingResolver` in `src/resolvers/caching.rs`.
 
 Contract: Implement `PathResolver` trait (see src/path_resolver.rs).
 
 Requirements:
 - Wrap another resolver
-- Normalize path components to lowercase during lookup
-- Preserve original casing in returned paths
+- Cache resolved paths in LRU cache
+- Invalidate cache entries on write operations
 
-Test: Write a test showing "/Foo/BAR" resolves to "/foo/bar" on a case-insensitive filesystem.
+Test: Write a test showing cached resolution is faster than repeated resolution.
 ```
 
 ### Pattern 2: Fix a Bug
