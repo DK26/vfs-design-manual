@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -198,7 +198,7 @@ FsRead + FsWrite + FsDir (core)
 <p>Key properties:</p>
 <ul>
 <li>Backends accept <code>&amp;Path</code> for all path parameters</li>
-<li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path resolution (symlinks, <code>..</code>, normalization). See ADR-029.</li>
+<li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path resolution via pluggable <code>PathResolver</code> (see ADR-033). Default is <code>IterativeResolver</code> for symlink-aware resolution.</li>
 <li>Backends handle <strong>storage only</strong> - just store/retrieve bytes at given paths</li>
 <li>Policy (limits, feature gates) is handled by middleware, not backends</li>
 <li>Implement only the traits your backend supports</li>

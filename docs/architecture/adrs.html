@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -265,6 +265,8 @@
 <tr><td>ADR-030</td><td>Layered trait hierarchy</td><td>Accepted</td></tr>
 <tr><td>ADR-031</td><td>Indexing as middleware</td><td>Accepted (Post-v1)</td></tr>
 <tr><td>ADR-032</td><td>Path Canonicalization via FsPath Trait</td><td>Accepted</td></tr>
+<tr><td>ADR-033</td><td>PathResolver Trait for Pluggable Resolution</td><td>Accepted</td></tr>
+<tr><td>ADR-034</td><td>LLM-Oriented Architecture (LOA)</td><td>Accepted</td></tr>
 </tbody>
 </table>
 </div>
@@ -1505,6 +1507,325 @@ impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
 </table>
 </div>
 <p><strong>Conclusion:</strong> The <code>FsPath</code> trait provides a clean abstraction that works everywhere but can be optimized where it matters. This follows Rust’s “zero-cost abstractions” philosophy: you don’t pay for what you don’t use, and you can optimize hot paths when needed.</p>
+<hr>
+<h2 id="adr-033-pathresolver-trait-for-pluggable-resolution"><a class="header" href="#adr-033-pathresolver-trait-for-pluggable-resolution">ADR-033: PathResolver Trait for Pluggable Resolution</a></h2>
+<p><strong>Status:</strong> Accepted</p>
+<p><strong>Context:</strong> Path resolution (normalizing <code>..</code>, <code>.</code>, and following symlinks) is currently handled in two places:</p>
+<ol>
+<li><code>FsPath</code> trait methods (<code>canonicalize</code>, <code>soft_canonicalize</code>) with backend-specific optimizations</li>
+<li><code>FileStorage</code> performs pre-resolution for non-<code>SelfResolving</code> backends</li>
+<li><code>SelfResolving</code> marker trait opts out of FileStorage resolution</li>
+</ol>
+<p>This works, but the resolution <strong>algorithm</strong> is not a first-class, testable unit. The logic is spread across components, making it harder to:</p>
+<ul>
+<li>Test path resolution in isolation</li>
+<li>Benchmark/profile resolution performance</li>
+<li>Provide third-party custom resolvers</li>
+<li>Explore alternative resolution strategies (case-insensitive, caching, etc.)</li>
+</ul>
+<p><strong>Decision:</strong> Introduce a <code>PathResolver</code> trait that encapsulates the path resolution algorithm as a standalone, pluggable component.</p>
+<p><strong>The Pattern:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In anyfs-backend (trait definition)
+/// Strategy trait for path resolution algorithms.
+///
+/// Encapsulates how paths are normalized, symlinks are followed,
+/// and `..`/`.` components are resolved.
+pub trait PathResolver: Send + Sync {
+    /// Resolve path to canonical form (all symlinks resolved, all components exist).
+    fn canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt;;
+    
+    /// Like canonicalize, but allows non-existent final component.
+    fn soft_canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt;;
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Built-in Implementations (in <code>anyfs</code> crate):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Default iterative resolver - walks path component by component.
+pub struct IterativeResolver {
+    max_symlink_depth: usize,  // Default: 40
+}
+
+/// No-op resolver for SelfResolving backends (OS handles resolution).
+pub struct NoOpResolver;
+
+/// Caching resolver for read-heavy workloads.
+pub struct CachingResolver&lt;R: PathResolver&gt; {
+    inner: R,
+    cache: Cache&lt;PathBuf, PathBuf&gt;,
+}
+
+// Case-folding resolver is NOT built-in. Users can implement one via PathResolver
+// trait if needed, but real-world demand is minimal since VRootFsBackend on
+// Windows/macOS already gets case-insensitivity from the OS.
+<span class="boring">}</span></code></pre>
+<p><strong>Integration with FileStorage:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+    /// Create FileStorage with default resolver.
+    pub fn new(backend: B) -&gt; Self { ... }
+    
+    /// Create FileStorage with custom resolver.
+    pub fn with_resolver(backend: B, resolver: impl PathResolver + 'static) -&gt; Self {
+        Self {
+            backend,
+            resolver: Box::new(resolver),
+            _marker: PhantomData,
+        }
+    }
+}
+
+// Or via builder pattern
+FileStorage::builder(backend)
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build()
+<span class="boring">}</span></code></pre>
+<p><strong>Relationship with FsPath Trait:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PathResolver</code></td><td>Algorithm for resolution (first-class, testable, swappable)</td></tr>
+<tr><td><code>FsPath</code></td><td>Backend-level optimization hook (can delegate to resolver or override entirely)</td></tr>
+<tr><td><code>SelfResolving</code></td><td>Remains as marker OR becomes <code>NoOpResolver</code> assignment</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>FsPath</code> can delegate to the resolver:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FsPath: FsRead + FsLink {
+    fn resolver(&amp;self) -&gt; &amp;dyn PathResolver {
+        static DEFAULT: IterativeResolver = IterativeResolver::new();
+        &amp;DEFAULT
+    }
+    
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver().canonicalize(path, self)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Or backends can override entirely for optimized implementations (e.g., SQLite CTE).</p>
+<p><strong>Why This Design:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Benefit</th><th>Explanation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Testable in isolation</strong></td><td>Unit test resolvers without full backend setup</td></tr>
+<tr><td><strong>Benchmarkable</strong></td><td>Profile resolution algorithms independently</td></tr>
+<tr><td><strong>Third-party extensible</strong></td><td>Custom resolvers without touching <code>Fs</code> traits</td></tr>
+<tr><td><strong>Maintainable</strong></td><td>Path resolution is one focused, isolated component</td></tr>
+<tr><td><strong>New capabilities</strong></td><td>Case-insensitive, caching, Windows-style resolvers become easy</td></tr>
+<tr><td><strong>Backwards compatible</strong></td><td>Existing FsPath overrides still work; resolver is additive</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Crate Placement:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Crate</th><th>Rationale</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PathResolver</code> trait</td><td><code>anyfs-backend</code></td><td>Core contract, minimal deps</td></tr>
+<tr><td><code>IterativeResolver</code></td><td><code>anyfs</code></td><td>Default impl, needs Fs methods</td></tr>
+<tr><td><code>NoOpResolver</code></td><td><code>anyfs</code></td><td>For SelfResolving backends</td></tr>
+<tr><td><code>CachingResolver</code></td><td><code>anyfs</code></td><td>Optional, needs cache impl</td></tr>
+<tr><td>FileStorage integration</td><td><code>anyfs</code></td><td>Uses resolvers for path handling</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> Case-folding resolvers are NOT built-in. The <code>PathResolver</code> trait allows users to implement custom resolvers if needed, but we don’t ship speculative features.</p>
+</blockquote>
+<p><strong>Example Use Cases:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Default: case-sensitive, symlink-aware
+let fs = FileStorage::new(MemoryBackend::new());
+
+// Aggressive caching for read-heavy workloads
+let fs = FileStorage::builder(backend)
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build();
+
+// Custom resolver (user-implemented)
+let fs = FileStorage::builder(backend)
+    .with_resolver(MyCustomResolver::new())
+    .build();
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build();
+
+// Testing: verify resolution behavior
+#[test]
+fn test_symlink_loop_detection() {
+    let resolver = IterativeResolver::new();
+    let mock_fs = MockFs::with_symlink_loop();
+    let result = resolver.canonicalize(Path::new("/loop"), &amp;mock_fs);
+    assert!(matches!(result, Err(FsError::InvalidData { .. })));
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Trade-offs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+</thead>
+<tbody>
+<tr><td>Trait object (<code>Box&lt;dyn&gt;</code>)</td><td>Simple API, runtime flexibility</td><td>~50ns per call (negligible vs I/O)</td></tr>
+<tr><td>Generic parameter</td><td>Zero-cost, compile-time</td><td>Adds complexity to FileStorage</td></tr>
+<tr><td>Associated type on FsPath</td><td>Trait-level, backend controls</td><td>Complicates blanket impl</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommendation:</strong> Use trait object (<code>Box&lt;dyn PathResolver&gt;</code>) for simplicity. Following ADR-025 (Strategic Boxing), the ~50ns box overhead is &lt;1% of actual I/O time and enables maximum flexibility.</p>
+<p><strong>Conclusion:</strong> The <code>PathResolver</code> trait provides clean separation of concerns, making path resolution testable, benchmarkable, and extensible. It complements <code>FsPath</code> (backend optimization hook) and can replace or work alongside <code>SelfResolving</code> (via <code>NoOpResolver</code>). This design follows the Tower/Axum philosophy of composable, swappable components.</p>
+<hr>
+<h2 id="adr-034-llm-oriented-architecture-loa"><a class="header" href="#adr-034-llm-oriented-architecture-loa">ADR-034: LLM-Oriented Architecture (LOA)</a></h2>
+<p><strong>Status:</strong> Accepted</p>
+<p><strong>Context:</strong> AnyFS is being developed with significant LLM assistance (GitHub Copilot, Claude, etc.). Traditional software architecture prioritizes maintainability, testability, and extensibility for <strong>human developers</strong>. However, when LLMs are part of the development workflow, additional constraints become essential:</p>
+<ol>
+<li>LLMs work best with <strong>limited context windows</strong> - they can’t “understand” an entire codebase</li>
+<li>LLMs excel at <strong>pattern matching</strong> - consistent structure enables better assistance</li>
+<li>LLMs need <strong>clear contracts</strong> - well-documented interfaces reduce hallucination</li>
+<li>LLMs benefit from <strong>isolated components</strong> - fixing one thing shouldn’t require understanding everything</li>
+</ol>
+<p>These same properties also benefit:</p>
+<ul>
+<li>Open source contributors (quick onboarding)</li>
+<li>Code review (focused changes)</li>
+<li>Parallel development (independent components)</li>
+<li>AI-generated tests and documentation</li>
+</ul>
+<p><strong>Decision:</strong> Structure AnyFS using <strong>LLM-Oriented Architecture (LOA)</strong> - a methodology where every component is independently understandable, testable, and fixable with only local context.</p>
+<p><strong>The Five Pillars:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Pillar</th><th>Description</th><th>Implementation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Single Responsibility</strong></td><td>One file = one concept</td><td><code>quota.rs</code>, <code>iterative.rs</code>, etc.</td></tr>
+<tr><td><strong>Contract-First</strong></td><td>Traits define the spec</td><td>Documented trait invariants</td></tr>
+<tr><td><strong>Isolated Testing</strong></td><td>Tests use mocks only</td><td>No real backends in unit tests</td></tr>
+<tr><td><strong>Rich Errors</strong></td><td>Errors explain the fix</td><td>Context in every <code>FsError</code> variant</td></tr>
+<tr><td><strong>Boundary Docs</strong></td><td>Examples at every API</td><td>Usage example in every doc comment</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>File Structure Convention:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! # Component Name
+//!
+//! ## Responsibility
+//! - Single bullet point
+//!
+//! ## Dependencies  
+//! - Traits/types only
+//!
+//! ## Usage
+//! ```rust
+//! // Minimal example
+//! ```
+
+// ============================================================================
+// Types
+// ============================================================================
+
+// ============================================================================
+// Trait Implementations
+// ============================================================================
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+// ============================================================================
+// Private Helpers
+// ============================================================================
+
+// ============================================================================
+// Tests
+// ============================================================================
+<span class="boring">}</span></code></pre>
+<p><strong>Component Isolation Checklist:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Single file per component</li>
+<li><input disabled="" type="checkbox"> Implements a trait with documented invariants</li>
+<li><input disabled="" type="checkbox"> Dependencies are traits/types, not implementations</li>
+<li><input disabled="" type="checkbox"> Tests use mocks, not real backends</li>
+<li><input disabled="" type="checkbox"> Error messages explain what went wrong and how to fix</li>
+<li><input disabled="" type="checkbox"> Doc comment shows standalone usage example</li>
+<li><input disabled="" type="checkbox"> No global state</li>
+<li><input disabled="" type="checkbox"> <code>Send + Sync</code> where required</li>
+</ul>
+<p><strong>LLM Prompting Patterns:</strong></p>
+<p>The architecture enables these clean prompts:</p>
+<pre><code># Implement (user-provided resolver example)
+Implement a case-folding resolver in your project.
+Contract: Implement `PathResolver` trait from anyfs-backend.
+Test: "/Foo/BAR" → "/foo/bar"
+
+# Fix
+Bug: Quota&lt;B&gt; doesn't account for existing file size.
+File: src/middleware/quota.rs
+Error: QuotaExceeded writing 50 bytes to 30-byte file with 100-byte limit.
+
+# Review
+Does this change maintain the PathResolver contract?
+Are edge cases handled?
+Are error messages informative?
+</code></pre>
+<p><strong>Deliverables:</strong></p>
+<ol>
+<li><strong>AGENTS.md</strong> - Instructions for LLMs contributing to the codebase</li>
+<li><strong>LLM Development Methodology Guide</strong> - Full methodology documentation</li>
+<li><strong>llm-context.md</strong> - Context7-style API guide for LLMs <em>using</em> the library</li>
+</ol>
+<p><strong>Why This Design:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Benefit</th><th>For LLMs</th><th>For Humans</th></tr>
+</thead>
+<tbody>
+<tr><td>Isolated components</td><td>Fits in context window</td><td>Easy to understand</td></tr>
+<tr><td>Clear contracts</td><td>Reduces hallucination</td><td>Self-documenting</td></tr>
+<tr><td>Consistent structure</td><td>Pattern matching works</td><td>Predictable codebase</td></tr>
+<tr><td>Rich errors</td><td>Can suggest fixes</td><td>Quick debugging</td></tr>
+<tr><td>Focused tests</td><td>Can verify changes</td><td>Fast CI</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Trade-offs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+</thead>
+<tbody>
+<tr><td>Deep abstraction</td><td>Maximum isolation</td><td>More files, more indirection</td></tr>
+<tr><td>Monolithic design</td><td>Fewer files</td><td>LLMs can’t reason about it</td></tr>
+<tr><td>LOA (chosen)</td><td>LLM-friendly + maintainable</td><td>Requires discipline</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Relationship to Other ADRs:</strong></p>
+<ul>
+<li><strong>ADR-030 (Layered traits):</strong> LOA extends this with per-file isolation</li>
+<li><strong>ADR-033 (PathResolver):</strong> Example of LOA - resolver is isolated, testable, replaceable</li>
+<li><strong>ADR-025 (Strategic Boxing):</strong> LOA prefers simplicity over micro-optimization</li>
+</ul>
+<p><strong>Conclusion:</strong> LLM-Oriented Architecture is not just about AI. It’s about creating a codebase where <strong>any component can be understood, tested, fixed, or replaced with only local context</strong>. This benefits LLMs, open source contributors, code reviewers, and future maintainers equally. As AI-assisted development becomes standard, LOA positions AnyFS as a reference implementation for sustainable human-AI collaboration.</p>
+<p><strong>See Also:</strong> <a href="../guides/llm-development-methodology.html">LLM Development Methodology Guide</a></p>
 
                     </main>
 

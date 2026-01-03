@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -217,7 +217,7 @@
                                                 (path canonicalization)
 </code></pre>
 <p><strong>Simple rule:</strong> Import <code>Fs</code> for basic use. Add traits as needed for advanced features.</p>
-<p><strong>Note:</strong> <code>FsPath</code> is a derived trait with a blanket impl. Any type implementing <code>FsRead + FsLink</code> automatically gets <code>FsPath</code>. <code>SelfResolving</code> is a marker trait that opts out of <code>FileStorage</code> path resolution.</p>
+<p><strong>Note:</strong> <code>FsPath</code> is a derived trait with a blanket impl. Any type implementing <code>FsRead + FsLink</code> automatically gets <code>FsPath</code>. <code>SelfResolving</code> is a marker trait that opts out of <code>FileStorage</code> path resolution. <code>PathResolver</code> is a strategy trait for pluggable path resolution (see ADR-033).</p>
 <hr>
 <h2 id="layer-1-core-traits-required"><a class="header" href="#layer-1-core-traits-required">Layer 1: Core Traits (Required)</a></h2>
 <blockquote>

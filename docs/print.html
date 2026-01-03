@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ed1a2457.js"></script>
+        <script src="toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -422,6 +422,7 @@ fs.write("/documents/hello.txt", b"Hello!")?;
     layer.rs                # Layer trait (Tower-style)
     ext.rs                  # FsExt (extension methods)
     markers.rs              # SelfResolving marker trait
+    path_resolver.rs        # PathResolver trait (pluggable resolution)
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -446,6 +447,10 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
       dry_run.rs            # DryRun&lt;B&gt;
       cache.rs              # Cache&lt;B&gt;
       overlay.rs            # Overlay&lt;B1, B2&gt;
+    resolvers/
+      iterative.rs          # IterativeResolver (default)
+      noop.rs               # NoOpResolver (for SelfResolving backends)
+      caching.rs            # CachingResolver (LRU cache wrapper)
     container.rs            # FileStorage&lt;B, M&gt;
     stack.rs                # BackendStack builder
 </code></pre>
@@ -2741,8 +2746,8 @@ fn resolve_path_internal(
     // Return fully resolved canonical path
 }
 <span class="boring">}</span></code></pre>
-<p><strong>This is NOT a public API.</strong> The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
-<p><strong>Note:</strong> The internal resolution function requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
+<p><strong>Path resolution is pluggable via the <code>PathResolver</code> trait</strong> (see ADR-033). The default <code>IterativeResolver</code> implements the algorithm above. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors. The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
+<p><strong>Note:</strong> The default resolution requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
 <h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
 <div class="table-wrapper">
 <table>
@@ -2921,22 +2926,30 @@ let path = simplified(r"\\?\C:\Users\foo\bar.txt");
 </span>use anyfs::{FileStorage, MemoryBackend};
 use std::path::Path;
 
-// Built-in backends: Linux-like
+// Built-in backends: Linux-like (case-sensitive)
 let linux_fs = FileStorage::new(MemoryBackend::new());
 assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 
-// Someone wants NTFS-like behavior? User-implemented middleware or custom backend:
-let ntfs_like = CaseInsensitive::new(           // (user-implemented middleware)
-    NtfsValidation::new(MemoryBackend::new())   // (user-implemented middleware)
-);
-
-// Or full custom implementation
-impl Fs for NtfsEmulatingBackend {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        let normalized = self.case_fold(path);  // Case-insensitive lookup
-        // ...
+// For case-insensitive behavior, implement a custom PathResolver:
+// (Not built-in because real-world demand is minimal - VRootFsBackend on 
+// Windows/macOS already gets case-insensitivity from the OS)
+struct CaseFoldingResolver;
+impl PathResolver for CaseFoldingResolver {
+    fn canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Normalize path components to lowercase during lookup
+        todo!()
+    }
+    
+    fn soft_canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Same but allows non-existent final component
+        todo!()
     }
 }
+
+let ntfs_like = FileStorage::with_resolver(
+    MemoryBackend::new(),
+    CaseFoldingResolver  // User-implemented
+);
 <span class="boring">}</span></code></pre>
 <h3 id="fuse-mount-report-what-you-support"><a class="header" href="#fuse-mount-report-what-you-support">FUSE Mount: Report What You Support</a></h3>
 <p>When mounting, the FUSE layer reports backend capabilities to the OS:</p>
@@ -3414,13 +3427,13 @@ pub fn symlinks_available() -&gt; bool {
 <tr><th>Layer</th><th>Responsibility</th><th>Path Handling</th></tr>
 </thead>
 <tbody>
-<tr><td><code>FileStorage</code></td><td>Ergonomic API + path resolution</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code>; resolves paths for virtual backends</td></tr>
+<tr><td><code>FileStorage</code></td><td>Ergonomic API + path resolution</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code>; resolves paths via pluggable <code>PathResolver</code></td></tr>
 <tr><td>Middleware</td><td>Policy enforcement</td><td><code>&amp;Path</code> (object-safe core traits)</td></tr>
 <tr><td>Backend</td><td>Storage + FS semantics</td><td><code>&amp;Path</code> (object-safe core traits)</td></tr>
 </tbody>
 </table>
 </div>
-<p>Core traits use <code>&amp;Path</code> for object safety; <code>FileStorage</code>/<code>FsExt</code> provide <code>impl AsRef&lt;Path&gt;</code> ergonomics. Backends that wrap a real filesystem implement <code>SelfResolving</code> so FileStorage can skip its virtual path resolution.</p>
+<p>Core traits use <code>&amp;Path</code> for object safety; <code>FileStorage</code>/<code>FsExt</code> provide <code>impl AsRef&lt;Path&gt;</code> ergonomics. Path resolution is pluggable via <code>PathResolver</code> trait (see ADR-033). Backends that wrap a real filesystem implement <code>SelfResolving</code> so FileStorage can skip resolution.</p>
 <hr>
 <h2 id="policy-via-middleware"><a class="header" href="#policy-via-middleware">Policy via Middleware</a></h2>
 <p><strong>Old design (rejected):</strong> FileStorage contained quota/feature logic.</p>
@@ -3557,6 +3570,8 @@ let fs = FileStorage::new(backend);
 <tr><td>ADR-030</td><td>Layered trait hierarchy</td><td>Accepted</td></tr>
 <tr><td>ADR-031</td><td>Indexing as middleware</td><td>Accepted (Post-v1)</td></tr>
 <tr><td>ADR-032</td><td>Path Canonicalization via FsPath Trait</td><td>Accepted</td></tr>
+<tr><td>ADR-033</td><td>PathResolver Trait for Pluggable Resolution</td><td>Accepted</td></tr>
+<tr><td>ADR-034</td><td>LLM-Oriented Architecture (LOA)</td><td>Accepted</td></tr>
 </tbody>
 </table>
 </div>
@@ -4797,6 +4812,325 @@ impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
 </table>
 </div>
 <p><strong>Conclusion:</strong> The <code>FsPath</code> trait provides a clean abstraction that works everywhere but can be optimized where it matters. This follows Rust’s “zero-cost abstractions” philosophy: you don’t pay for what you don’t use, and you can optimize hot paths when needed.</p>
+<hr>
+<h2 id="adr-033-pathresolver-trait-for-pluggable-resolution"><a class="header" href="#adr-033-pathresolver-trait-for-pluggable-resolution">ADR-033: PathResolver Trait for Pluggable Resolution</a></h2>
+<p><strong>Status:</strong> Accepted</p>
+<p><strong>Context:</strong> Path resolution (normalizing <code>..</code>, <code>.</code>, and following symlinks) is currently handled in two places:</p>
+<ol>
+<li><code>FsPath</code> trait methods (<code>canonicalize</code>, <code>soft_canonicalize</code>) with backend-specific optimizations</li>
+<li><code>FileStorage</code> performs pre-resolution for non-<code>SelfResolving</code> backends</li>
+<li><code>SelfResolving</code> marker trait opts out of FileStorage resolution</li>
+</ol>
+<p>This works, but the resolution <strong>algorithm</strong> is not a first-class, testable unit. The logic is spread across components, making it harder to:</p>
+<ul>
+<li>Test path resolution in isolation</li>
+<li>Benchmark/profile resolution performance</li>
+<li>Provide third-party custom resolvers</li>
+<li>Explore alternative resolution strategies (case-insensitive, caching, etc.)</li>
+</ul>
+<p><strong>Decision:</strong> Introduce a <code>PathResolver</code> trait that encapsulates the path resolution algorithm as a standalone, pluggable component.</p>
+<p><strong>The Pattern:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In anyfs-backend (trait definition)
+/// Strategy trait for path resolution algorithms.
+///
+/// Encapsulates how paths are normalized, symlinks are followed,
+/// and `..`/`.` components are resolved.
+pub trait PathResolver: Send + Sync {
+    /// Resolve path to canonical form (all symlinks resolved, all components exist).
+    fn canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt;;
+    
+    /// Like canonicalize, but allows non-existent final component.
+    fn soft_canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt;;
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Built-in Implementations (in <code>anyfs</code> crate):</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Default iterative resolver - walks path component by component.
+pub struct IterativeResolver {
+    max_symlink_depth: usize,  // Default: 40
+}
+
+/// No-op resolver for SelfResolving backends (OS handles resolution).
+pub struct NoOpResolver;
+
+/// Caching resolver for read-heavy workloads.
+pub struct CachingResolver&lt;R: PathResolver&gt; {
+    inner: R,
+    cache: Cache&lt;PathBuf, PathBuf&gt;,
+}
+
+// Case-folding resolver is NOT built-in. Users can implement one via PathResolver
+// trait if needed, but real-world demand is minimal since VRootFsBackend on
+// Windows/macOS already gets case-insensitivity from the OS.
+<span class="boring">}</span></code></pre>
+<p><strong>Integration with FileStorage:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
+    /// Create FileStorage with default resolver.
+    pub fn new(backend: B) -&gt; Self { ... }
+    
+    /// Create FileStorage with custom resolver.
+    pub fn with_resolver(backend: B, resolver: impl PathResolver + 'static) -&gt; Self {
+        Self {
+            backend,
+            resolver: Box::new(resolver),
+            _marker: PhantomData,
+        }
+    }
+}
+
+// Or via builder pattern
+FileStorage::builder(backend)
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build()
+<span class="boring">}</span></code></pre>
+<p><strong>Relationship with FsPath Trait:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Responsibility</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PathResolver</code></td><td>Algorithm for resolution (first-class, testable, swappable)</td></tr>
+<tr><td><code>FsPath</code></td><td>Backend-level optimization hook (can delegate to resolver or override entirely)</td></tr>
+<tr><td><code>SelfResolving</code></td><td>Remains as marker OR becomes <code>NoOpResolver</code> assignment</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>FsPath</code> can delegate to the resolver:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait FsPath: FsRead + FsLink {
+    fn resolver(&amp;self) -&gt; &amp;dyn PathResolver {
+        static DEFAULT: IterativeResolver = IterativeResolver::new();
+        &amp;DEFAULT
+    }
+    
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver().canonicalize(path, self)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Or backends can override entirely for optimized implementations (e.g., SQLite CTE).</p>
+<p><strong>Why This Design:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Benefit</th><th>Explanation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Testable in isolation</strong></td><td>Unit test resolvers without full backend setup</td></tr>
+<tr><td><strong>Benchmarkable</strong></td><td>Profile resolution algorithms independently</td></tr>
+<tr><td><strong>Third-party extensible</strong></td><td>Custom resolvers without touching <code>Fs</code> traits</td></tr>
+<tr><td><strong>Maintainable</strong></td><td>Path resolution is one focused, isolated component</td></tr>
+<tr><td><strong>New capabilities</strong></td><td>Case-insensitive, caching, Windows-style resolvers become easy</td></tr>
+<tr><td><strong>Backwards compatible</strong></td><td>Existing FsPath overrides still work; resolver is additive</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Crate Placement:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Crate</th><th>Rationale</th></tr>
+</thead>
+<tbody>
+<tr><td><code>PathResolver</code> trait</td><td><code>anyfs-backend</code></td><td>Core contract, minimal deps</td></tr>
+<tr><td><code>IterativeResolver</code></td><td><code>anyfs</code></td><td>Default impl, needs Fs methods</td></tr>
+<tr><td><code>NoOpResolver</code></td><td><code>anyfs</code></td><td>For SelfResolving backends</td></tr>
+<tr><td><code>CachingResolver</code></td><td><code>anyfs</code></td><td>Optional, needs cache impl</td></tr>
+<tr><td>FileStorage integration</td><td><code>anyfs</code></td><td>Uses resolvers for path handling</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> Case-folding resolvers are NOT built-in. The <code>PathResolver</code> trait allows users to implement custom resolvers if needed, but we don’t ship speculative features.</p>
+</blockquote>
+<p><strong>Example Use Cases:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Default: case-sensitive, symlink-aware
+let fs = FileStorage::new(MemoryBackend::new());
+
+// Aggressive caching for read-heavy workloads
+let fs = FileStorage::builder(backend)
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build();
+
+// Custom resolver (user-implemented)
+let fs = FileStorage::builder(backend)
+    .with_resolver(MyCustomResolver::new())
+    .build();
+    .with_resolver(CachingResolver::new(IterativeResolver::default()))
+    .build();
+
+// Testing: verify resolution behavior
+#[test]
+fn test_symlink_loop_detection() {
+    let resolver = IterativeResolver::new();
+    let mock_fs = MockFs::with_symlink_loop();
+    let result = resolver.canonicalize(Path::new("/loop"), &amp;mock_fs);
+    assert!(matches!(result, Err(FsError::InvalidData { .. })));
+}
+<span class="boring">}</span></code></pre>
+<p><strong>Trade-offs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+</thead>
+<tbody>
+<tr><td>Trait object (<code>Box&lt;dyn&gt;</code>)</td><td>Simple API, runtime flexibility</td><td>~50ns per call (negligible vs I/O)</td></tr>
+<tr><td>Generic parameter</td><td>Zero-cost, compile-time</td><td>Adds complexity to FileStorage</td></tr>
+<tr><td>Associated type on FsPath</td><td>Trait-level, backend controls</td><td>Complicates blanket impl</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Recommendation:</strong> Use trait object (<code>Box&lt;dyn PathResolver&gt;</code>) for simplicity. Following ADR-025 (Strategic Boxing), the ~50ns box overhead is &lt;1% of actual I/O time and enables maximum flexibility.</p>
+<p><strong>Conclusion:</strong> The <code>PathResolver</code> trait provides clean separation of concerns, making path resolution testable, benchmarkable, and extensible. It complements <code>FsPath</code> (backend optimization hook) and can replace or work alongside <code>SelfResolving</code> (via <code>NoOpResolver</code>). This design follows the Tower/Axum philosophy of composable, swappable components.</p>
+<hr>
+<h2 id="adr-034-llm-oriented-architecture-loa"><a class="header" href="#adr-034-llm-oriented-architecture-loa">ADR-034: LLM-Oriented Architecture (LOA)</a></h2>
+<p><strong>Status:</strong> Accepted</p>
+<p><strong>Context:</strong> AnyFS is being developed with significant LLM assistance (GitHub Copilot, Claude, etc.). Traditional software architecture prioritizes maintainability, testability, and extensibility for <strong>human developers</strong>. However, when LLMs are part of the development workflow, additional constraints become essential:</p>
+<ol>
+<li>LLMs work best with <strong>limited context windows</strong> - they can’t “understand” an entire codebase</li>
+<li>LLMs excel at <strong>pattern matching</strong> - consistent structure enables better assistance</li>
+<li>LLMs need <strong>clear contracts</strong> - well-documented interfaces reduce hallucination</li>
+<li>LLMs benefit from <strong>isolated components</strong> - fixing one thing shouldn’t require understanding everything</li>
+</ol>
+<p>These same properties also benefit:</p>
+<ul>
+<li>Open source contributors (quick onboarding)</li>
+<li>Code review (focused changes)</li>
+<li>Parallel development (independent components)</li>
+<li>AI-generated tests and documentation</li>
+</ul>
+<p><strong>Decision:</strong> Structure AnyFS using <strong>LLM-Oriented Architecture (LOA)</strong> - a methodology where every component is independently understandable, testable, and fixable with only local context.</p>
+<p><strong>The Five Pillars:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Pillar</th><th>Description</th><th>Implementation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Single Responsibility</strong></td><td>One file = one concept</td><td><code>quota.rs</code>, <code>iterative.rs</code>, etc.</td></tr>
+<tr><td><strong>Contract-First</strong></td><td>Traits define the spec</td><td>Documented trait invariants</td></tr>
+<tr><td><strong>Isolated Testing</strong></td><td>Tests use mocks only</td><td>No real backends in unit tests</td></tr>
+<tr><td><strong>Rich Errors</strong></td><td>Errors explain the fix</td><td>Context in every <code>FsError</code> variant</td></tr>
+<tr><td><strong>Boundary Docs</strong></td><td>Examples at every API</td><td>Usage example in every doc comment</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>File Structure Convention:</strong></p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! # Component Name
+//!
+//! ## Responsibility
+//! - Single bullet point
+//!
+//! ## Dependencies  
+//! - Traits/types only
+//!
+//! ## Usage
+//! ```rust
+//! // Minimal example
+//! ```
+
+// ============================================================================
+// Types
+// ============================================================================
+
+// ============================================================================
+// Trait Implementations
+// ============================================================================
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+// ============================================================================
+// Private Helpers
+// ============================================================================
+
+// ============================================================================
+// Tests
+// ============================================================================
+<span class="boring">}</span></code></pre>
+<p><strong>Component Isolation Checklist:</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Single file per component</li>
+<li><input disabled="" type="checkbox"> Implements a trait with documented invariants</li>
+<li><input disabled="" type="checkbox"> Dependencies are traits/types, not implementations</li>
+<li><input disabled="" type="checkbox"> Tests use mocks, not real backends</li>
+<li><input disabled="" type="checkbox"> Error messages explain what went wrong and how to fix</li>
+<li><input disabled="" type="checkbox"> Doc comment shows standalone usage example</li>
+<li><input disabled="" type="checkbox"> No global state</li>
+<li><input disabled="" type="checkbox"> <code>Send + Sync</code> where required</li>
+</ul>
+<p><strong>LLM Prompting Patterns:</strong></p>
+<p>The architecture enables these clean prompts:</p>
+<pre><code># Implement (user-provided resolver example)
+Implement a case-folding resolver in your project.
+Contract: Implement `PathResolver` trait from anyfs-backend.
+Test: "/Foo/BAR" → "/foo/bar"
+
+# Fix
+Bug: Quota&lt;B&gt; doesn't account for existing file size.
+File: src/middleware/quota.rs
+Error: QuotaExceeded writing 50 bytes to 30-byte file with 100-byte limit.
+
+# Review
+Does this change maintain the PathResolver contract?
+Are edge cases handled?
+Are error messages informative?
+</code></pre>
+<p><strong>Deliverables:</strong></p>
+<ol>
+<li><strong>AGENTS.md</strong> - Instructions for LLMs contributing to the codebase</li>
+<li><strong>LLM Development Methodology Guide</strong> - Full methodology documentation</li>
+<li><strong>llm-context.md</strong> - Context7-style API guide for LLMs <em>using</em> the library</li>
+</ol>
+<p><strong>Why This Design:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Benefit</th><th>For LLMs</th><th>For Humans</th></tr>
+</thead>
+<tbody>
+<tr><td>Isolated components</td><td>Fits in context window</td><td>Easy to understand</td></tr>
+<tr><td>Clear contracts</td><td>Reduces hallucination</td><td>Self-documenting</td></tr>
+<tr><td>Consistent structure</td><td>Pattern matching works</td><td>Predictable codebase</td></tr>
+<tr><td>Rich errors</td><td>Can suggest fixes</td><td>Quick debugging</td></tr>
+<tr><td>Focused tests</td><td>Can verify changes</td><td>Fast CI</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Trade-offs:</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Approach</th><th>Pros</th><th>Cons</th></tr>
+</thead>
+<tbody>
+<tr><td>Deep abstraction</td><td>Maximum isolation</td><td>More files, more indirection</td></tr>
+<tr><td>Monolithic design</td><td>Fewer files</td><td>LLMs can’t reason about it</td></tr>
+<tr><td>LOA (chosen)</td><td>LLM-friendly + maintainable</td><td>Requires discipline</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Relationship to Other ADRs:</strong></p>
+<ul>
+<li><strong>ADR-030 (Layered traits):</strong> LOA extends this with per-file isolation</li>
+<li><strong>ADR-033 (PathResolver):</strong> Example of LOA - resolver is isolated, testable, replaceable</li>
+<li><strong>ADR-025 (Strategic Boxing):</strong> LOA prefers simplicity over micro-optimization</li>
+</ul>
+<p><strong>Conclusion:</strong> LLM-Oriented Architecture is not just about AI. It’s about creating a codebase where <strong>any component can be understood, tested, fixed, or replaced with only local context</strong>. This benefits LLMs, open source contributors, code reviewers, and future maintainers equally. As AI-assisted development becomes standard, LOA positions AnyFS as a reference implementation for sustainable human-AI collaboration.</p>
+<p><strong>See Also:</strong> <a href="#llm-optimized-development-methodology">LLM Development Methodology Guide</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="hybrid-backend-design"><a class="header" href="#hybrid-backend-design">Hybrid Backend Design</a></h1>
 <p><strong>SQLite Metadata + Content-Addressed Blob Storage</strong></p>
@@ -6104,7 +6438,7 @@ CREATE TABLE IF NOT EXISTS config (
                                                 (path canonicalization)
 </code></pre>
 <p><strong>Simple rule:</strong> Import <code>Fs</code> for basic use. Add traits as needed for advanced features.</p>
-<p><strong>Note:</strong> <code>FsPath</code> is a derived trait with a blanket impl. Any type implementing <code>FsRead + FsLink</code> automatically gets <code>FsPath</code>. <code>SelfResolving</code> is a marker trait that opts out of <code>FileStorage</code> path resolution.</p>
+<p><strong>Note:</strong> <code>FsPath</code> is a derived trait with a blanket impl. Any type implementing <code>FsRead + FsLink</code> automatically gets <code>FsPath</code>. <code>SelfResolving</code> is a marker trait that opts out of <code>FileStorage</code> path resolution. <code>PathResolver</code> is a strategy trait for pluggable path resolution (see ADR-033).</p>
 <hr>
 <h2 id="layer-1-core-traits-required"><a class="header" href="#layer-1-core-traits-required">Layer 1: Core Traits (Required)</a></h2>
 <blockquote>
@@ -6405,7 +6739,7 @@ impl&lt;B: Fs&gt; FsExt for B {}
 <ol>
 <li>Ergonomics (std::fs-aligned API)</li>
 <li>Optional type-safety via marker types</li>
-<li>Centralized path resolution for virtual backends (symlink-aware normalization)</li>
+<li>Pluggable path resolution for virtual backends (via <code>PathResolver</code> trait - see ADR-033)</li>
 </ol>
 <p>All policy (limits, feature gates, logging) is handled by middleware, not FileStorage.</p>
 <hr>
@@ -6560,11 +6894,23 @@ pub struct FileStorage&lt;B, M = ()&gt; {
 }
 
 impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
-    /// Create a new FileStorage.
+    /// Create a new FileStorage with default resolver (IterativeResolver).
     /// Marker type is specified via type annotation:
     /// `let fs: FileStorage&lt;_, MyMarker&gt; = FileStorage::new(backend);`
     pub fn new(backend: B) -&gt; Self {
         FileStorage { backend, _marker: PhantomData }
+    }
+
+    /// Create FileStorage with a custom path resolver.
+    /// See ADR-033 for PathResolver trait details.
+    pub fn with_resolver(backend: B, resolver: impl PathResolver) -&gt; Self {
+        // Uses provided resolver instead of default IterativeResolver
+        FileStorage { backend, _marker: PhantomData }
+    }
+    
+    /// Builder pattern for advanced configuration.
+    pub fn builder(backend: B) -&gt; FileStorageBuilder&lt;B, M&gt; {
+        FileStorageBuilder::new(backend)
     }
 
     /// Type-erase the backend for simpler types (opt-in boxing).
@@ -6573,12 +6919,37 @@ impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
     }
 }
 <span class="boring">}</span></code></pre>
-<hr>
-<h2 id="type-erasure-opt-in-1"><a class="header" href="#type-erasure-opt-in-1">Type Erasure (Opt-in)</a></h2>
-<p>When you need simpler types (e.g., storing in collections), use <code>.boxed()</code>:</p>
+<h3 id="path-resolution-1"><a class="header" href="#path-resolution-1">Path Resolution</a></h3>
+<p>FileStorage handles path resolution for virtual backends via the <code>PathResolver</code> trait (see ADR-033). The default <code>IterativeResolver</code> provides symlink-aware canonicalization.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, SqliteBackend, FileStorage, Fs};
+</span>use anyfs::{FileStorage, MemoryBackend};
+use anyfs::resolvers::{IterativeResolver, CachingResolver};
+
+// Default: uses IterativeResolver
+let fs = FileStorage::new(MemoryBackend::new());
+
+// Custom: with caching resolver for read-heavy workloads
+let fs = FileStorage::with_resolver(
+    MemoryBackend::new(),
+    CachingResolver::new(IterativeResolver::default())
+);
+
+// Builder pattern for more options
+let fs = FileStorage::builder(MemoryBackend::new())
+    .with_resolver(CachingResolver::default())
+    .build();
+<span class="boring">}</span></code></pre>
+<p>Backends implementing <code>SelfResolving</code> (like <code>VRootFsBackend</code>) skip resolution since the OS handles it.</p>
+<pre><code>
+---
+
+## Type Erasure (Opt-in)
+
+When you need simpler types (e.g., storing in collections), use `.boxed()`:
+
+```rust
+use anyfs::{MemoryBackend, SqliteBackend, FileStorage, Fs};
 
 // Type-erased for uniform storage
 let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
@@ -6589,7 +6960,7 @@ let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
 
 // Or use type alias
 type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
-<span class="boring">}</span></code></pre>
+</code></pre>
 <p><strong>When to use <code>.boxed()</code>:</strong></p>
 <div class="table-wrapper">
 <table>
@@ -6657,13 +7028,13 @@ fs.write("/file.txt", b"data")?;
 <tr><th>Category</th><th>Path Resolution</th><th>Symlink Handling</th><th>Isolation</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>Type 1: Virtual Filesystem</strong></td><td>Framework (logical)</td><td>Simulated by AnyFS</td><td>Complete</td></tr>
+<tr><td><strong>Type 1: Virtual Filesystem</strong></td><td>PathResolver (pluggable)</td><td>Simulated by AnyFS</td><td>Complete</td></tr>
 <tr><td><strong>Type 2: Real Filesystem</strong></td><td>Operating System</td><td>Delegated to OS</td><td>Partial/None</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="type-1-virtual-filesystem-backends"><a class="header" href="#type-1-virtual-filesystem-backends">Type 1: Virtual Filesystem Backends</a></h3>
-<p>These backends store filesystem data in an abstract format (memory, database, etc.). <strong>AnyFS handles all path resolution</strong>, including:</p>
+<p>These backends store filesystem data in an abstract format (memory, database, etc.). <strong>AnyFS handles path resolution via pluggable <code>PathResolver</code></strong> (see ADR-033), including:</p>
 <ul>
 <li>Path traversal (<code>..</code>, <code>.</code>)</li>
 <li>Symlink following (simulated)</li>
@@ -7428,10 +7799,73 @@ impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
 <li><strong>Don’t put policy in FileStorage.</strong> It is an ergonomic wrapper with centralized path resolution, not a policy layer.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="anyfs-implementation-patterns"><a class="header" href="#anyfs-implementation-patterns">AnyFS Implementation Patterns</a></h1>
-<p><strong>Purpose:</strong> Quick reference for implementing backends, middleware, and adapters.</p>
+<h1 id="consumer-documentation-planning"><a class="header" href="#consumer-documentation-planning">Consumer Documentation Planning</a></h1>
+<blockquote>
+<p><strong>This document specifies what the Context7-style consumer documentation should contain when the AnyFS library is implemented.</strong>
+This is a planning/specification document, not actual API documentation.</p>
+</blockquote>
 <hr>
-<h2 id="trait-hierarchy-pick-your-level"><a class="header" href="#trait-hierarchy-pick-your-level">Trait Hierarchy (Pick Your Level)</a></h2>
+<h2 id="purpose"><a class="header" href="#purpose">Purpose</a></h2>
+<p>When AnyFS is implemented, we need a <strong>Context7-style reference document</strong> that LLMs can use to correctly consume the AnyFS API. This document specifies what that reference should contain.</p>
+<p><strong>Why Context7-style?</strong></p>
+<ul>
+<li>LLMs need quick decision trees to select the right components</li>
+<li>Copy-paste-ready patterns reduce hallucination</li>
+<li>Common mistakes section prevents known pitfalls</li>
+<li>Trait hierarchy helps understand what to implement</li>
+</ul>
+<hr>
+<h2 id="required-sections"><a class="header" href="#required-sections">Required Sections</a></h2>
+<p>The consumer documentation MUST include these sections:</p>
+<h3 id="1-quick-decision-trees"><a class="header" href="#1-quick-decision-trees">1. Quick Decision Trees</a></h3>
+<p>Decision trees help LLMs quickly navigate to the right component. Include:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision Tree</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>Which Crate?</td><td><code>anyfs-backend</code> vs <code>anyfs</code></td></tr>
+<tr><td>Which Backend?</td><td>Memory, SQLite, VRootFs, etc.</td></tr>
+<tr><td>Which Middleware?</td><td>Quota, PathFilter, ReadOnly, etc.</td></tr>
+<tr><td>Which Trait Level?</td><td>Fs, FsFull, FsFuse, FsPosix</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Format:</strong> ASCII tree diagrams with terminal answers.</p>
+<p><strong>Example structure (to be filled with actual API when implemented):</strong></p>
+<pre><code>Is data persistence required?
+├─ NO → MemoryBackend
+└─ YES → Is encryption needed?
+         ├─ YES → SqliteCipherBackend
+         └─ NO → [continue decision tree...]
+</code></pre>
+<h3 id="2-common-patterns"><a class="header" href="#2-common-patterns">2. Common Patterns</a></h3>
+<p>Provide copy-paste-ready code for these scenarios:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Pattern</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Simple File Operations</td><td>read, write, delete, check existence</td></tr>
+<tr><td>Directory Operations</td><td>create, list, remove</td></tr>
+<tr><td>Sandboxed AI Agent</td><td>Full middleware stack example</td></tr>
+<tr><td>Persistent Database</td><td>SqliteBackend setup</td></tr>
+<tr><td>Type-Safe Containers</td><td>Marker types for compile-time safety</td></tr>
+<tr><td>Streaming Large Files</td><td>open_read/open_write usage</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Requirements for each pattern:</strong></p>
+<ul>
+<li>Complete, runnable code blocks</li>
+<li>All imports included</li>
+<li>Proper error handling (no <code>.unwrap()</code>)</li>
+<li>Minimal code that demonstrates the concept</li>
+</ul>
+<h3 id="3-trait-hierarchy-diagram"><a class="header" href="#3-trait-hierarchy-diagram">3. Trait Hierarchy Diagram</a></h3>
+<p>Visual representation of the trait hierarchy:</p>
 <pre><code>FsPosix  ← Full POSIX (handles, locks, xattr)
     ↑
 FsFuse   ← FUSE-mountable (+ inodes)
@@ -7442,348 +7876,519 @@ FsFull   ← std::fs features (+ links, permissions, sync, stats)
     ↑
 FsRead + FsWrite + FsDir  ← Core traits
 </code></pre>
-<p><strong>Rule:</strong> Implement the lowest level you need. Higher levels include all below.</p>
-<hr>
-<h2 id="pattern-1-implement-a-backend"><a class="header" href="#pattern-1-implement-a-backend">Pattern 1: Implement a Backend</a></h2>
-<blockquote>
-<p><strong>Thread Safety:</strong> All methods use <code>&amp;self</code>. Backends MUST use interior mutability (<code>RwLock</code>, <code>Mutex</code>) for thread-safe concurrent access.</p>
-</blockquote>
-<h3 id="minimum-implement-fs-3-traits"><a class="header" href="#minimum-implement-fs-3-traits">Minimum: Implement <code>Fs</code> (3 traits)</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Metadata, DirEntry, FileType, Permissions};
-use std::path::Path;
-
-pub struct MyBackend { /* your storage */ }
-
-impl FsRead for MyBackend {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        todo!("return file contents")
-    }
-    fn read_to_string(&amp;self, path: &amp;Path) -&gt; Result&lt;String, FsError&gt; {
-        String::from_utf8(self.read(path)?).map_err(|e| FsError::Backend(e.to_string()))
-    }
-    fn read_range(&amp;self, path: &amp;Path, offset: u64, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        todo!("return slice of file")
-    }
-    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
-        todo!("check if path exists")
-    }
-    fn metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
-        todo!("return Metadata { inode, nlink, file_type, size, permissions, created, modified, accessed }")
-    }
-    fn open_read(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Read + Send&gt;, FsError&gt; {
-        Ok(Box::new(std::io::Cursor::new(self.read(path)?)))
-    }
-}
-
-impl FsWrite for MyBackend {
-    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
-        todo!("create or overwrite file")
-    }
-    fn append(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
-        todo!("append to file")
-    }
-    fn remove_file(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("delete file")
-    }
-    fn rename(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("move/rename")
-    }
-    fn copy(&amp;self, from: &amp;Path, to: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("copy file")
-    }
-    fn truncate(&amp;self, path: &amp;Path, size: u64) -&gt; Result&lt;(), FsError&gt; {
-        todo!("resize file")
-    }
-    fn open_write(&amp;self, path: &amp;Path) -&gt; Result&lt;Box&lt;dyn std::io::Write + Send&gt;, FsError&gt; {
-        todo!("return writer")
-    }
-}
-
-impl FsDir for MyBackend {
-    fn read_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;ReadDirIter, FsError&gt; {
-        todo!("return ReadDirIter::new(entries.into_iter().map(Ok))")
-    }
-    fn create_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("create single directory")
-    }
-    fn create_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("create directory and parents")
-    }
-    fn remove_dir(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("remove empty directory")
-    }
-    fn remove_dir_all(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("remove directory recursively")
-    }
-}
-// MyBackend now implements Fs automatically!
-<span class="boring">}</span></code></pre>
-<h3 id="add-linkspermissions-implement-fsfull-add-4-traits"><a class="header" href="#add-linkspermissions-implement-fsfull-add-4-traits">Add Links/Permissions: Implement <code>FsFull</code> (add 4 traits)</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl FsLink for MyBackend {
-    fn symlink(&amp;self, target: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("create symlink pointing to target")
-    }
-    fn hard_link(&amp;self, original: &amp;Path, link: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("create hard link (same inode)")
-    }
-    fn read_link(&amp;self, path: &amp;Path) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
-        todo!("return symlink target")
-    }
-    fn symlink_metadata(&amp;self, path: &amp;Path) -&gt; Result&lt;Metadata, FsError&gt; {
-        todo!("metadata without following symlink")
-    }
-}
-
-impl FsPermissions for MyBackend {
-    fn set_permissions(&amp;self, path: &amp;Path, perm: Permissions) -&gt; Result&lt;(), FsError&gt; {
-        todo!("set file permissions")
-    }
-}
-
-impl FsSync for MyBackend {
-    fn sync(&amp;self) -&gt; Result&lt;(), FsError&gt; {
-        todo!("flush all writes to storage")
-    }
-    fn fsync(&amp;self, path: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        todo!("flush writes for one file")
-    }
-}
-
-impl FsStats for MyBackend {
-    fn statfs(&amp;self) -&gt; Result&lt;anyfs_backend::StatFs, FsError&gt; {
-        todo!("return StatFs { total_bytes, available_bytes, ... }")
-    }
-}
-// MyBackend now implements FsFull!
-<span class="boring">}</span></code></pre>
-<h3 id="add-fuse-support-implement-fsfuse-add-1-trait"><a class="header" href="#add-fuse-support-implement-fsfuse-add-1-trait">Add FUSE Support: Implement <code>FsFuse</code> (add 1 trait)</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl FsInode for MyBackend {
-    fn path_to_inode(&amp;self, path: &amp;Path) -&gt; Result&lt;u64, FsError&gt; {
-        todo!("return unique inode for path")
-    }
-    fn inode_to_path(&amp;self, inode: u64) -&gt; Result&lt;std::path::PathBuf, FsError&gt; {
-        todo!("return path for inode")
-    }
-    fn lookup(&amp;self, parent_inode: u64, name: &amp;std::ffi::OsStr) -&gt; Result&lt;u64, FsError&gt; {
-        todo!("find child inode by name")
-    }
-    fn metadata_by_inode(&amp;self, inode: u64) -&gt; Result&lt;Metadata, FsError&gt; {
-        todo!("get metadata by inode (fast path)")
-    }
-}
-// MyBackend now implements FsFuse!
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="pattern-2-implement-middleware"><a class="header" href="#pattern-2-implement-middleware">Pattern 2: Implement Middleware</a></h2>
-<p><strong>Rule:</strong> Middleware implements the same traits as its inner backend, intercepting some methods.</p>
-<h3 id="template"><a class="header" href="#template">Template</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Layer};
-
-pub struct MyMiddleware&lt;B&gt; {
-    inner: B,
-    // your state
-}
-
-impl&lt;B&gt; MyMiddleware&lt;B&gt; {
-    pub fn new(inner: B) -&gt; Self {
-        Self { inner }
-    }
-}
-
-// Implement each trait, delegating or intercepting as needed
-impl&lt;B: FsRead&gt; FsRead for MyMiddleware&lt;B&gt; {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        // INTERCEPT: add your logic
-        let data = self.inner.read(path)?;  // DELEGATE
-        // INTERCEPT: modify result
-        Ok(data)
-    }
-
-    // For passthrough methods, just delegate:
-    fn exists(&amp;self, path: &amp;Path) -&gt; Result&lt;bool, FsError&gt; {
-        self.inner.exists(path)
-    }
-    // ... implement all FsRead methods
-}
-
-impl&lt;B: FsWrite&gt; FsWrite for MyMiddleware&lt;B&gt; {
-    // ... implement all FsWrite methods
-}
-
-impl&lt;B: FsDir&gt; FsDir for MyMiddleware&lt;B&gt; {
-    // ... implement all FsDir methods
-}
-
-// Optional: Layer for .layer() syntax
-pub struct MyMiddlewareLayer { /* config */ }
-
-impl&lt;B: Fs&gt; Layer&lt;B&gt; for MyMiddlewareLayer {
-    type Backend = MyMiddleware&lt;B&gt;;
-    fn layer(self, backend: B) -&gt; Self::Backend {
-        MyMiddleware::new(backend)
-    }
-}
-<span class="boring">}</span></code></pre>
-<h3 id="common-middleware-patterns"><a class="header" href="#common-middleware-patterns">Common Middleware Patterns</a></h3>
+<p>With clear guidance: “Implement the lowest level you need. Higher levels include all below.”</p>
+<h3 id="4-backend-implementation-pattern"><a class="header" href="#4-backend-implementation-pattern">4. Backend Implementation Pattern</a></h3>
+<p>Template for implementing custom backends. The consumer docs should include:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Level</th><th>Traits to Implement</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Minimum</td><td><code>FsRead + FsWrite + FsDir</code></td><td><code>Fs</code></td></tr>
+<tr><td>Extended</td><td>Add <code>FsLink</code>, <code>FsPermissions</code>, <code>FsSync</code>, <code>FsStats</code></td><td><code>FsFull</code></td></tr>
+<tr><td>FUSE</td><td>Add <code>FsInode</code></td><td><code>FsFuse</code></td></tr>
+<tr><td>POSIX</td><td>Add <code>FsHandles</code>, <code>FsLock</code>, <code>FsXattr</code></td><td><code>FsPosix</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Each level should have a complete template showing all required method signatures.</p>
+<h3 id="5-middleware-implementation-pattern"><a class="header" href="#5-middleware-implementation-pattern">5. Middleware Implementation Pattern</a></h3>
+<p>Template showing:</p>
+<ul>
+<li>How to wrap an inner backend with a generic type parameter</li>
+<li>Which methods to intercept vs delegate</li>
+<li>The <code>Layer</code> trait for <code>.layer()</code> syntax</li>
+<li>Common middleware patterns table:</li>
+</ul>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Pattern</th><th>Intercept</th><th>Delegate</th><th>Example</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>Logging</strong></td><td>All (before/after)</td><td>All</td><td><code>Tracing</code></td></tr>
-<tr><td><strong>Block writes</strong></td><td>Write methods → return error</td><td>Read methods</td><td><code>ReadOnly</code></td></tr>
-<tr><td><strong>Transform data</strong></td><td><code>read</code>/<code>write</code></td><td>Everything else</td><td><code>Encryption</code></td></tr>
-<tr><td><strong>Check permissions</strong></td><td>All (before)</td><td>All</td><td><code>PathFilter</code></td></tr>
-<tr><td><strong>Enforce limits</strong></td><td>Write methods (check size)</td><td>Read methods</td><td><code>Quota</code></td></tr>
-<tr><td><strong>Count operations</strong></td><td>All (increment counter)</td><td>All</td><td><code>Counter</code></td></tr>
+<tr><td>Logging</td><td>All (before/after)</td><td>All</td><td><code>Tracing</code></td></tr>
+<tr><td>Block writes</td><td>Write methods → error</td><td>Read methods</td><td><code>ReadOnly</code></td></tr>
+<tr><td>Transform data</td><td><code>read</code>/<code>write</code></td><td>Everything else</td><td><code>Encryption</code></td></tr>
+<tr><td>Check access</td><td>All (before)</td><td>All</td><td><code>PathFilter</code></td></tr>
+<tr><td>Enforce limits</td><td>Write methods (check size)</td><td>Read methods</td><td><code>Quota</code></td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="example-readonly-middleware"><a class="header" href="#example-readonly-middleware">Example: ReadOnly Middleware</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl&lt;B: FsWrite&gt; FsWrite for ReadOnly&lt;B&gt; {
-    fn write(&amp;self, _: &amp;Path, _: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
-        Err(FsError::ReadOnly { operation: "write" })
-    }
-    fn remove_file(&amp;self, _: &amp;Path) -&gt; Result&lt;(), FsError&gt; {
-        Err(FsError::ReadOnly { operation: "remove_file" })
-    }
-    // ... all write methods return ReadOnly error
-}
-<span class="boring">}</span></code></pre>
-<h3 id="example-encryption-middleware"><a class="header" href="#example-encryption-middleware">Example: Encryption Middleware</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>impl&lt;B: FsRead&gt; FsRead for Encrypted&lt;B&gt; {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        let encrypted = self.inner.read(path)?;
-        Ok(self.decrypt(&amp;encrypted))
-    }
-}
-
-impl&lt;B: FsWrite&gt; FsWrite for Encrypted&lt;B&gt; {
-    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
-        let encrypted = self.encrypt(data);
-        self.inner.write(path, &amp;encrypted)
-    }
-}
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="pattern-3-implement-an-adapter"><a class="header" href="#pattern-3-implement-an-adapter">Pattern 3: Implement an Adapter</a></h2>
-<h3 id="adapter-from-another-crates-trait"><a class="header" href="#adapter-from-another-crates-trait">Adapter FROM another crate’s trait</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Wrap external crate's filesystem to use as AnyFS backend
-pub struct ExternalCompat&lt;F&gt;(F);
-
-impl&lt;F: external::FileSystem&gt; FsRead for ExternalCompat&lt;F&gt; {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        self.0.read_file(path).map_err(|e| FsError::Backend(e.to_string()))
-    }
-    // Map each method, converting errors
-}
-
-impl&lt;F: external::FileSystem&gt; FsWrite for ExternalCompat&lt;F&gt; { /* ... */ }
-impl&lt;F: external::FileSystem&gt; FsDir for ExternalCompat&lt;F&gt; { /* ... */ }
-// Only implement traits the external crate supports
-<span class="boring">}</span></code></pre>
-<h3 id="adapter-to-another-crates-trait"><a class="header" href="#adapter-to-another-crates-trait">Adapter TO another crate’s trait</a></h3>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Wrap AnyFS backend to use with external crate
-pub struct AnyFsCompat&lt;B: Fs&gt;(B);
-
-impl&lt;B: Fs&gt; external::FileSystem for AnyFsCompat&lt;B&gt; {
-    fn read_file(&amp;self, path: &amp;Path) -&gt; external::Result&lt;Vec&lt;u8&gt;&gt; {
-        self.0.read(path).map_err(|e| external::Error::from(e.to_string()))
-    }
-    // Only expose methods the external trait requires
-}
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="error-handling-2"><a class="header" href="#error-handling-2">Error Handling</a></h2>
-<p><strong>Rule:</strong> Always return <code>FsError</code>, never panic.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// Common error returns
-FsError::NotFound { path, operation }      // Path doesn't exist
-FsError::AlreadyExists { path, operation } // Path already exists
-FsError::NotAFile { path }                 // Expected file, got directory
-FsError::NotADirectory { path }            // Expected directory, got file
-FsError::DirectoryNotEmpty { path }        // Can't remove non-empty dir
-FsError::ReadOnly { operation }            // Write blocked by ReadOnly middleware
-FsError::AccessDenied { path, reason }     // Blocked by PathFilter
-FsError::QuotaExceeded { limit, requested, usage }
-FsError::NotSupported { operation }        // Backend doesn't support this
-FsError::Backend(String)                   // Backend-specific error
-<span class="boring">}</span></code></pre>
-<hr>
-<h2 id="quick-reference-what-to-implement"><a class="header" href="#quick-reference-what-to-implement">Quick Reference: What to Implement</a></h2>
+<h3 id="6-adapter-patterns"><a class="header" href="#6-adapter-patterns">6. Adapter Patterns</a></h3>
+<p>Templates for interoperability:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>You want to…</th><th>Implement</th></tr>
+<tr><th>Adapter Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td>Basic file operations</td><td><code>FsRead</code> + <code>FsWrite</code> + <code>FsDir</code> (= <code>Fs</code>)</td></tr>
-<tr><td>+ Symlinks/hardlinks</td><td>+ <code>FsLink</code></td></tr>
-<tr><td>+ Permissions</td><td>+ <code>FsPermissions</code></td></tr>
-<tr><td>+ Durability (sync)</td><td>+ <code>FsSync</code></td></tr>
-<tr><td>+ Filesystem stats</td><td>+ <code>FsStats</code></td></tr>
-<tr><td>All of above</td><td><code>Fs</code> + <code>FsLink</code> + <code>FsPermissions</code> + <code>FsSync</code> + <code>FsStats</code> (= <code>FsFull</code>)</td></tr>
-<tr><td>+ FUSE mounting</td><td>+ <code>FsInode</code> (= <code>FsFuse</code>)</td></tr>
-<tr><td>+ File handles/locks</td><td>+ <code>FsHandles</code> + <code>FsLock</code> + <code>FsXattr</code> (= <code>FsPosix</code>)</td></tr>
+<tr><td>FROM external</td><td>Wrap external crate’s filesystem as AnyFS backend</td></tr>
+<tr><td>TO external</td><td>Wrap AnyFS backend to satisfy external crate’s trait</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="7-error-handling-reference"><a class="header" href="#7-error-handling-reference">7. Error Handling Reference</a></h3>
+<p>All <code>FsError</code> variants with when to use each:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>When to Return</th></tr>
+</thead>
+<tbody>
+<tr><td><code>NotFound</code></td><td>Path doesn’t exist</td></tr>
+<tr><td><code>AlreadyExists</code></td><td>Path already exists (create conflict)</td></tr>
+<tr><td><code>NotAFile</code></td><td>Expected file, got directory</td></tr>
+<tr><td><code>NotADirectory</code></td><td>Expected directory, got file</td></tr>
+<tr><td><code>DirectoryNotEmpty</code></td><td>Can’t remove non-empty directory</td></tr>
+<tr><td><code>ReadOnly</code></td><td>Write blocked by ReadOnly middleware</td></tr>
+<tr><td><code>AccessDenied</code></td><td>Blocked by PathFilter or permissions</td></tr>
+<tr><td><code>QuotaExceeded</code></td><td>Size/count limit exceeded</td></tr>
+<tr><td><code>NotSupported</code></td><td>Backend doesn’t support this operation</td></tr>
+<tr><td><code>Backend</code></td><td>Backend-specific error</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="8-common-mistakes--fixes"><a class="header" href="#8-common-mistakes--fixes">8. Common Mistakes &amp; Fixes</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>Fix</th></tr>
+</thead>
+<tbody>
+<tr><td>Using <code>unwrap()</code></td><td>Always use <code>?</code> or handle <code>FsError</code></td></tr>
+<tr><td>Assuming paths normalized</td><td>Use <code>canonicalize()</code> first</td></tr>
+<tr><td>Forgetting parent dirs</td><td>Use <code>create_dir_all</code></td></tr>
+<tr><td>Holding handles too long</td><td>Drop promptly</td></tr>
+<tr><td>Mixing backend types</td><td>Use <code>FileStorage::boxed()</code></td></tr>
+<tr><td>Testing with real files</td><td>Use <code>MemoryBackend</code></td></tr>
 </tbody>
 </table>
 </div>
 <hr>
-<h2 id="usage-examples-1"><a class="header" href="#usage-examples-1">Usage Examples</a></h2>
-<h3 id="create-a-backend-stack"><a class="header" href="#create-a-backend-stack">Create a backend stack</a></h3>
+<h2 id="document-structure"><a class="header" href="#document-structure">Document Structure</a></h2>
+<p>When creating the actual consumer documentation, follow this structure:</p>
+<pre><code class="language-markdown"># AnyFS Implementation Patterns
+
+## Quick Decision Trees
+### Which Crate Do I Need?
+### Which Backend Should I Use?
+### Do I Need Middleware?
+### Which Trait Level?
+
+## Common Patterns
+### Simple File Operations
+### Directory Operations
+### Sandboxed AI Agent
+### Persistent Database
+### Type-Safe Container Markers
+
+## Trait Hierarchy (Pick Your Level)
+
+## Pattern 1: Implement a Backend
+### Minimum: Implement Fs
+### Add Links/Permissions: Implement FsFull
+### Add FUSE Support: Implement FsFuse
+
+## Pattern 2: Implement Middleware
+### Template
+### Common Middleware Patterns
+
+## Pattern 3: Implement an Adapter
+### Adapter FROM another crate
+### Adapter TO another crate
+
+## Error Handling Reference
+
+## Common Mistakes &amp; Fixes
+
+## Quick Reference: What to Implement
+</code></pre>
+<hr>
+<h2 id="creation-guidelines"><a class="header" href="#creation-guidelines">Creation Guidelines</a></h2>
+<p>When creating the actual consumer documentation after implementation:</p>
+<ol>
+<li><strong>Use actual tested code</strong> - Every example must compile and run</li>
+<li><strong>Include all imports</strong> - LLMs need complete context</li>
+<li><strong>Show error handling</strong> - Never use <code>.unwrap()</code> in examples</li>
+<li><strong>Keep examples minimal</strong> - Shortest code that demonstrates the pattern</li>
+<li><strong>Update with API changes</strong> - This doc must stay in sync with implementation</li>
+<li><strong>Validate against real usage</strong> - Test each pattern before including it</li>
+</ol>
+<hr>
+<h2 id="quality-checklist"><a class="header" href="#quality-checklist">Quality Checklist</a></h2>
+<p>Before publishing the consumer documentation:</p>
+<ul>
+<li><input disabled="" type="checkbox"> All code examples compile</li>
+<li><input disabled="" type="checkbox"> All code examples run without panics</li>
+<li><input disabled="" type="checkbox"> Decision trees lead to correct answers</li>
+<li><input disabled="" type="checkbox"> Error variants match actual <code>FsError</code> enum</li>
+<li><input disabled="" type="checkbox"> Trait hierarchy matches actual trait definitions</li>
+<li><input disabled="" type="checkbox"> Common mistakes reflect actual issues found in testing</li>
+</ul>
+<hr>
+<h2 id="related-documents"><a class="header" href="#related-documents">Related Documents</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Document</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="#llm-optimized-development-methodology">LLM Development Methodology</a></td><td>For implementers: how to structure code for LLM development</td></tr>
+<tr><td>This document</td><td>Specification for consumer documentation</td></tr>
+<tr><td><a href="#backend-implementers-guide">Backend Guide</a></td><td>Design for backend implementation</td></tr>
+<tr><td><a href="#tutorial-building-your-first-middleware">Middleware Tutorial</a></td><td>Design for middleware creation</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="tracking"><a class="header" href="#tracking">Tracking</a></h2>
+<p>This planning document should be replaced with actual consumer documentation when:</p>
+<ol>
+<li><strong>AnyFS is implemented</strong> - The crates exist and compile</li>
+<li><strong>API is stable</strong> - No major breaking changes expected</li>
+<li><strong>Examples are tested</strong> - All patterns verified working</li>
+</ol>
+<p><strong>GitHub Issue:</strong> Create Context7-style consumer documentation</p>
+<ul>
+<li><strong>Status:</strong> Blocked by AnyFS implementation</li>
+<li><strong>Template:</strong> This planning document</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="llm-optimized-development-methodology"><a class="header" href="#llm-optimized-development-methodology">LLM-Optimized Development Methodology</a></h1>
+<p><strong>Purpose:</strong> This document defines the methodology for structuring AnyFS code so that each component is independently testable, reviewable, replaceable, and fixable—by both humans and LLMs—without requiring full project context.</p>
+<hr>
+<h2 id="core-principle-context-independent-components"><a class="header" href="#core-principle-context-independent-components">Core Principle: Context-Independent Components</a></h2>
+<p>Every component in AnyFS should be understandable and modifiable with <strong>only local context</strong>. An LLM (or human contributor) should be able to:</p>
+<ol>
+<li><strong>Understand</strong> a component by reading only its file + trait definition</li>
+<li><strong>Test</strong> a component in isolation without the rest of the system</li>
+<li><strong>Fix</strong> a bug by looking at only the failing component + error message</li>
+<li><strong>Review</strong> changes without understanding the entire architecture</li>
+<li><strong>Replace</strong> a component with an alternative implementation</li>
+</ol>
+<p>This is achieved through strict separation of concerns, clear contracts (traits), and self-documenting structure.</p>
+<hr>
+<h2 id="the-five-pillars"><a class="header" href="#the-five-pillars">The Five Pillars</a></h2>
+<h3 id="1-single-responsibility-per-file"><a class="header" href="#1-single-responsibility-per-file">1. Single Responsibility per File</a></h3>
+<p>Each file implements <strong>exactly one concept</strong>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Implements</th><th>Dependencies</th></tr>
+</thead>
+<tbody>
+<tr><td><code>fs_read.rs</code></td><td><code>FsRead</code> trait</td><td><code>FsError</code>, <code>Metadata</code></td></tr>
+<tr><td><code>quota.rs</code></td><td><code>Quota&lt;B&gt;</code> middleware</td><td><code>Fs</code> trait</td></tr>
+<tr><td><code>memory.rs</code></td><td><code>MemoryBackend</code></td><td><code>Fs</code>, <code>FsLink</code>, etc.</td></tr>
+<tr><td><code>iterative.rs</code></td><td><code>IterativeResolver</code></td><td><code>PathResolver</code> trait</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Why:</strong> An LLM can be given just the file + its dependencies. No need for “the big picture.”</p>
+<h3 id="2-contract-first-design-traits-as-contracts"><a class="header" href="#2-contract-first-design-traits-as-contracts">2. Contract-First Design (Traits as Contracts)</a></h3>
+<p>Every component implements a well-defined trait. The trait IS the specification:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, TracingLayer};
-
-let backend = MemoryBackend::new()
-    .layer(QuotaLayer::builder()
-        .max_total_size(100 * 1024 * 1024)
-        .build())
-    .layer(PathFilterLayer::builder()
-        .allow("/workspace/**")
-        .deny("**/.env")
-        .build())
-    .layer(TracingLayer::new());
+</span>/// Read operations for a virtual filesystem.
+/// 
+/// # Contract
+/// - All methods use `&amp;self` (interior mutability)
+/// - Thread-safe: `Send + Sync` required
+/// - Errors are always `FsError`, never panic
+/// 
+/// # Implementor Checklist
+/// - [ ] Handle non-existent paths with `FsError::NotFound`
+/// - [ ] Handle non-UTF8 content in `read_to_string` with `FsError::InvalidData`
+/// - [ ] `metadata()` follows symlinks; use `symlink_metadata()` for link info
+pub trait FsRead: Send + Sync {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt;;
+    // ...
+}
 <span class="boring">}</span></code></pre>
-<h3 id="with-filestorage-wrapper"><a class="header" href="#with-filestorage-wrapper">With FileStorage wrapper</a></h3>
+<p><strong>LLM Instruction:</strong> “Implement <code>FsRead</code> for <code>MyBackend</code>. Follow the contract in the trait doc.”</p>
+<h3 id="3-isolated-testing-no-integration-dependencies"><a class="header" href="#3-isolated-testing-no-integration-dependencies">3. Isolated Testing (No Integration Dependencies)</a></h3>
+<p>Each component has tests that run without external dependencies:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use anyfs::FileStorage;
-
-let fs = FileStorage::new(backend);
-fs.write("/file.txt", b"hello")?;
-let data = fs.read("/file.txt")?;
+</span>#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // Mock only what's needed
+    struct MockFs {
+        files: HashMap&lt;PathBuf, Vec&lt;u8&gt;&gt;,
+    }
+    
+    #[test]
+    fn quota_rejects_oversized_write() {
+        let mock = MockFs::new();
+        let quota = Quota::new(mock).max_file_size(100);
+        
+        let result = quota.write(Path::new("/big.txt"), &amp;[0u8; 200]);
+        assert!(matches!(result, Err(FsError::FileSizeExceeded { .. })));
+    }
+}
 <span class="boring">}</span></code></pre>
-<h3 id="type-safe-containers"><a class="header" href="#type-safe-containers">Type-safe containers</a></h3>
+<p><strong>Why:</strong> LLM can run tests for just the component being fixed. No database, no filesystem, no network.</p>
+<h3 id="4-error-messages-as-documentation"><a class="header" href="#4-error-messages-as-documentation">4. Error Messages as Documentation</a></h3>
+<p>Errors must contain enough context to fix the problem without reading other code:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>struct Sandbox;
-struct UserData;
+</span>// ❌ Bad: Requires context to understand
+Err(FsError::NotFound { path: path.to_path_buf() })
 
-// Specify marker in type annotation, infer backend with _
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
-
-fn process(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { /* only accepts Sandbox */ }
+// ✅ Good: Self-explanatory
+Err(FsError::NotFound { 
+    path: path.to_path_buf(),
+    operation: "read",
+    context: "file does not exist or is a directory".into(),
+})
 <span class="boring">}</span></code></pre>
+<p><strong>LLM Instruction:</strong> “The error says ‘quota exceeded: limit 100MB, requested 150MB, usage 80MB’. Fix the code that’s writing 150MB.”</p>
+<h3 id="5-documentation-at-every-boundary"><a class="header" href="#5-documentation-at-every-boundary">5. Documentation at Every Boundary</a></h3>
+<p>Every public item has documentation explaining:</p>
+<ul>
+<li><strong>What</strong> it does (one line)</li>
+<li><strong>When</strong> to use it (use case)</li>
+<li><strong>How</strong> to use it (example)</li>
+<li><strong>Why</strong> it exists (rationale, if non-obvious)</li>
+</ul>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Path resolution strategy using iterative component-by-component traversal.
+///
+/// # When to Use
+/// - Default resolver for virtual backends (MemoryBackend, SqliteBackend)
+/// - When you need standard POSIX-like symlink resolution
+///
+/// # Example
+/// ```rust
+/// let resolver = IterativeResolver::new();
+/// let canonical = resolver.canonicalize(Path::new("/a/b/../c"), &amp;fs)?;
+/// ```
+///
+/// # Performance
+/// O(n) where n = number of path components. For deep paths with many symlinks,
+/// consider `CachingResolver` wrapper.
+pub struct IterativeResolver { /* ... */ }
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="file-structure-convention"><a class="header" href="#file-structure-convention">File Structure Convention</a></h2>
+<p>Every implementation file follows this structure:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>//! # Component Name
+//!
+//! Brief description of what this component does.
+//!
+//! ## Responsibility
+//! - Single bullet point describing THE responsibility
+//!
+//! ## Dependencies
+//! - List of traits/types this depends on
+//!
+//! ## Usage
+//! ```rust
+//! // Minimal working example
+//! ```
+
+use crate::{...}; // Minimal imports
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/// Primary type for this component.
+pub struct ComponentName { /* ... */ }
+
+// ============================================================================
+// Trait Implementations
+// ============================================================================
+
+impl SomeTrait for ComponentName {
+    // Implementation
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+impl ComponentName {
+    /// Constructor with sensible defaults.
+    pub fn new() -&gt; Self { /* ... */ }
+    
+    /// Builder-style configuration.
+    pub fn with_option(self, value: T) -&gt; Self { /* ... */ }
+}
+
+// ============================================================================
+// Private Helpers
+// ============================================================================
+
+impl ComponentName {
+    fn internal_helper(&amp;self) { /* ... */ }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // Tests that verify the contract
+}
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="llm-prompting-patterns"><a class="header" href="#llm-prompting-patterns">LLM Prompting Patterns</a></h2>
+<h3 id="pattern-1-implement-a-component"><a class="header" href="#pattern-1-implement-a-component">Pattern 1: Implement a Component</a></h3>
+<pre><code>Implement `CachingResolver` in `anyfs/src/resolvers/caching.rs`.
+
+Contract: Implement `PathResolver` trait (see anyfs-backend/src/path_resolver.rs).
+
+Requirements:
+- Wrap another resolver
+- Cache resolved paths in LRU cache with TTL expiration
+- Cache is best-effort (stale entries acceptable, eventually consistent)
+
+Test: Write a test showing cached resolution is faster than repeated resolution.
+</code></pre>
+<h3 id="pattern-2-fix-a-bug"><a class="header" href="#pattern-2-fix-a-bug">Pattern 2: Fix a Bug</a></h3>
+<pre><code>Bug: `Quota&lt;B&gt;` doesn't account for existing file size when checking write limits.
+
+File: src/middleware/quota.rs
+Error: QuotaExceeded when writing 50 bytes to a 30-byte file with 100-byte limit.
+Expected: Should succeed (30 + 50 = 80 &lt; 100).
+
+Fix the `check_write_quota` method.
+</code></pre>
+<h3 id="pattern-3-add-a-feature"><a class="header" href="#pattern-3-add-a-feature">Pattern 3: Add a Feature</a></h3>
+<pre><code>Add `max_path_depth` limit to `Quota&lt;B&gt;` middleware.
+
+File: src/middleware/quota.rs
+Contract: Reject operations that would create paths deeper than the limit.
+
+Example:
+```rust
+let quota = Quota::new(backend).max_path_depth(5);
+quota.create_dir_all("/a/b/c/d/e/f")?; // Err: depth 6 &gt; limit 5
+</code></pre>
+<pre><code>
+### Pattern 4: Review a Change
+
+</code></pre>
+<p>Review this change to IterativeResolver:</p>
+<ul>
+<li>Does it maintain the PathResolver contract?</li>
+<li>Are edge cases handled (empty path, root path, circular symlinks)?</li>
+<li>Are error messages informative?</li>
+<li>Are tests sufficient?</li>
+</ul>
+<p>[diff]</p>
+<pre><code>
+---
+
+## Component Isolation Checklist
+
+Before considering a component complete, verify:
+
+- [ ] **Single file** - Component lives in one file (or one module with mod.rs)
+- [ ] **Clear contract** - Implements a trait with documented invariants
+- [ ] **Minimal dependencies** - Only depends on traits/types, not other implementations
+- [ ] **Self-contained tests** - Tests use mocks, not real backends
+- [ ] **Informative errors** - Error messages explain what went wrong and how to fix
+- [ ] **Usage example** - Doc comment shows how to use in isolation
+- [ ] **No global state** - All state is in the struct instance
+- [ ] **Thread-safe** - `Send + Sync` where required
+- [ ] **Documented edge cases** - What happens with empty input, None, errors?
+
+---
+
+## Open Source Contribution Benefits
+
+This methodology directly enables:
+
+| Benefit                     | How                                                             |
+| --------------------------- | --------------------------------------------------------------- |
+| **First-time contributors** | Can understand one component without reading the whole codebase |
+| **Focused PRs**             | Changes stay in one file, easy to review                        |
+| **Parallel development**    | Multiple contributors work on different components              |
+| **Quick onboarding**        | Read the trait, implement the trait, done                       |
+| **CI efficiency**           | Test just the changed component                                 |
+
+---
+
+## Anti-Patterns to Avoid
+
+### ❌ Spaghetti Dependencies
+
+```rust
+// Bad: Middleware knows about specific backends
+impl&lt;B: Fs&gt; Quota&lt;B&gt; {
+    fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
+        if let Some(sqlite) = self.inner.downcast_ref::&lt;SqliteBackend&gt;() {
+            // Special case for SQLite
+        }
+    }
+}
+</code></pre>
+<h3 id="-hidden-context-requirements"><a class="header" href="#-hidden-context-requirements">❌ Hidden Context Requirements</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Bad: Requires knowing about global configuration
+impl FsRead for MyBackend {
+    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
+        let config = CONFIG.lock().unwrap(); // Hidden global!
+        // ...
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="-tests-that-require-setup"><a class="header" href="#-tests-that-require-setup">❌ Tests That Require Setup</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Bad: Requires database, filesystem, network
+#[test]
+fn test_sqlite_backend() {
+    let db = SqliteBackend::open("test.db").unwrap(); // Creates real file!
+    // ...
+}
+<span class="boring">}</span></code></pre>
+<h3 id="-vague-errors"><a class="header" href="#-vague-errors">❌ Vague Errors</a></h3>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Bad: No context
+Err(FsError::Backend("operation failed".into()))
+<span class="boring">}</span></code></pre>
+<hr>
+<h2 id="integration-with-context7-style-documentation"><a class="header" href="#integration-with-context7-style-documentation">Integration with Context7-style Documentation</a></h2>
+<p>When the project is complete, we will provide a <strong>consumer-facing LLM context document</strong> that:</p>
+<ol>
+<li>Explains the surface API (what to import, what to call)</li>
+<li>Provides decision trees (which backend? which middleware?)</li>
+<li>Shows complete, runnable examples</li>
+<li>Lists common mistakes and how to avoid them</li>
+</ol>
+<p>This is separate from AGENTS.md (for contributors) and lives in <a href="#consumer-documentation-planning">Implementation Patterns</a>.</p>
+<hr>
+<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Principle</th><th>Implementation</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Isolated</strong></td><td>One file, one concept</td></tr>
+<tr><td><strong>Contracted</strong></td><td>Traits define the spec</td></tr>
+<tr><td><strong>Testable</strong></td><td>Mock-based unit tests</td></tr>
+<tr><td><strong>Debuggable</strong></td><td>Rich error context</td></tr>
+<tr><td><strong>Documented</strong></td><td>Examples at every boundary</td></tr>
+<tr><td><strong>LLM-Ready</strong></td><td>Promptable patterns for common tasks</td></tr>
+</tbody>
+</table>
+</div>
+<p>By following this methodology, AnyFS becomes a codebase where any component can be understood, tested, fixed, or replaced by an LLM (or human) with only local context. This is the foundation for sustainable AI-assisted development.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="cross-platform-virtual-drive-mounting"><a class="header" href="#cross-platform-virtual-drive-mounting">Cross-Platform Virtual Drive Mounting</a></h1>
 <p><strong>Mounting AnyFS backends as real filesystem mount points</strong></p>
@@ -8164,7 +8769,7 @@ let mount = MountHandle::mount(backend, "X:")?;
     .mount()?;
 <span class="boring">}</span></code></pre>
 <hr>
-<h2 id="error-handling-3"><a class="header" href="#error-handling-3">Error Handling</a></h2>
+<h2 id="error-handling-2"><a class="header" href="#error-handling-2">Error Handling</a></h2>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum MountError {
@@ -9752,7 +10357,7 @@ assert!(fs.create_dir("/new").is_err());
 <li><input disabled="" type="checkbox"> Is thread-safe (<code>&amp;self</code> methods, use atomics/locks for state)</li>
 </ul>
 <hr>
-<h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
+<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <p><strong>Middleware is just:</strong></p>
 <ol>
 <li>A struct wrapping <code>inner: B</code></li>
@@ -11094,7 +11699,7 @@ fs.write("/test.txt", b"hello")?;
 <li><strong>Must mount filesystem</strong> - Use a FUSE solution directly today (anyfs-mount is planned)</li>
 </ul>
 <hr>
-<h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
+<h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <p><strong>AnyFS exists because:</strong></p>
 <ol>
 <li>Existing VFS libraries have basic, inadequate security (2/19 attack vectors)</li>
@@ -11335,7 +11940,7 @@ strict-path: /etc/passwd is NOT within /sandbox → DENIED
 </code></pre>
 <p>This is “follow and verify containment” - symlinks are followed by the OS, but escapes are blocked by strict-path.</p>
 <p><strong>Limitation:</strong> Symlinks within the jail are followed. We cannot disable this without implementing custom path resolution (TOCTOU risk) or platform-specific hacks.</p>
-<h4 id="summary-4"><a class="header" href="#summary-4">Summary</a></h4>
+<h4 id="summary-5"><a class="header" href="#summary-5">Summary</a></h4>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -13260,6 +13865,250 @@ fn process_user(f: &amp;StrictPath&lt;UserFiles&gt;) { /* ... */ }
 <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2022-21658">CVE-2022-21658 (TOCTOU in Rust std)</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="benchmarking-plan"><a class="header" href="#benchmarking-plan">Benchmarking Plan</a></h1>
+<blockquote>
+<p><strong>This document specifies the benchmarking strategy for AnyFS when the implementation exists.</strong>
+Functionality and security are the primary goals; performance validation is secondary but important.</p>
+</blockquote>
+<hr>
+<h2 id="goals-1"><a class="header" href="#goals-1">Goals</a></h2>
+<ol>
+<li><strong>Validate design decisions</strong> - Confirm that the Tower-style middleware approach doesn’t introduce unacceptable overhead</li>
+<li><strong>Identify optimization opportunities</strong> - Find hot paths that need attention</li>
+<li><strong>Establish baselines</strong> - Know where we stand relative to alternatives</li>
+<li><strong>Prevent regressions</strong> - Track performance across versions</li>
+</ol>
+<hr>
+<h2 id="benchmark-categories"><a class="header" href="#benchmark-categories">Benchmark Categories</a></h2>
+<h3 id="1-backend-benchmarks"><a class="header" href="#1-backend-benchmarks">1. Backend Benchmarks</a></h3>
+<p>Compare AnyFS backends against equivalent solutions for their specific use cases.</p>
+<h4 id="memorybackend-vs-alternatives"><a class="header" href="#memorybackend-vs-alternatives">MemoryBackend vs Alternatives</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Competitor</th><th>Use Case</th><th>Why Compare</th></tr>
+</thead>
+<tbody>
+<tr><td><code>std::collections::HashMap</code></td><td>Raw key-value baseline</td><td>Theoretical minimum overhead</td></tr>
+<tr><td><code>tempfile</code> + <code>std::fs</code></td><td>In-memory temp files</td><td>Common testing approach</td></tr>
+<tr><td><code>vfs::MemoryFS</code></td><td>Virtual filesystem</td><td>Direct competitor</td></tr>
+<tr><td><code>virtual-fs</code></td><td>In-memory FS</td><td>Another VFS crate</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Metrics:</strong></p>
+<ul>
+<li>Sequential read/write throughput (1KB, 64KB, 1MB, 16MB files)</li>
+<li>Random access latency (small reads at random offsets)</li>
+<li>Directory listing performance (10, 100, 1000, 10000 entries)</li>
+<li>Memory overhead per file/directory</li>
+</ul>
+<h4 id="sqlitebackend-vs-alternatives"><a class="header" href="#sqlitebackend-vs-alternatives">SqliteBackend vs Alternatives</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Competitor</th><th>Use Case</th><th>Why Compare</th></tr>
+</thead>
+<tbody>
+<tr><td><code>rusqlite</code> raw</td><td>Baseline SQLite performance</td><td>Measure our abstraction cost</td></tr>
+<tr><td><code>sled</code></td><td>Embedded database</td><td>Alternative storage engine</td></tr>
+<tr><td><code>redb</code></td><td>Embedded database</td><td>Modern alternative</td></tr>
+<tr><td>File-per-record</td><td>Direct filesystem</td><td>Traditional approach</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Metrics:</strong></p>
+<ul>
+<li>Insert throughput (batch vs individual)</li>
+<li>Read throughput (sequential vs random)</li>
+<li>Transaction overhead</li>
+<li>Database size vs raw file size</li>
+<li>Startup time (opening existing database)</li>
+</ul>
+<h4 id="vrootfsbackend-vs-alternatives"><a class="header" href="#vrootfsbackend-vs-alternatives">VRootFsBackend vs Alternatives</a></h4>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Competitor</th><th>Use Case</th><th>Why Compare</th></tr>
+</thead>
+<tbody>
+<tr><td><code>std::fs</code> direct</td><td>Baseline filesystem</td><td>Measure containment overhead</td></tr>
+<tr><td><code>cap-std</code></td><td>Capability-based FS</td><td>Security-focused alternative</td></tr>
+<tr><td><code>chroot</code> simulation</td><td>Traditional sandboxing</td><td>System-level approach</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Metrics:</strong></p>
+<ul>
+<li>Path resolution overhead</li>
+<li>Symlink traversal cost</li>
+<li>Escape attempt detection cost</li>
+</ul>
+<h3 id="2-middleware-overhead-benchmarks"><a class="header" href="#2-middleware-overhead-benchmarks">2. Middleware Overhead Benchmarks</a></h3>
+<p>Measure the cost of each middleware layer.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Middleware</th><th>What to Measure</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Quota&lt;B&gt;</code></td><td>Size tracking overhead per operation</td></tr>
+<tr><td><code>PathFilter&lt;B&gt;</code></td><td>Glob matching cost per path</td></tr>
+<tr><td><code>ReadOnly&lt;B&gt;</code></td><td>Should be zero (just error return)</td></tr>
+<tr><td><code>RateLimit&lt;B&gt;</code></td><td>Fixed-window counter check overhead</td></tr>
+<tr><td><code>Tracing&lt;B&gt;</code></td><td>Span creation/logging cost</td></tr>
+<tr><td><code>Cache&lt;B&gt;</code></td><td>Cache hit/miss latency difference</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Key question:</strong> What’s the cost of a 5-layer middleware stack vs direct backend access?</p>
+<p><strong>Target:</strong> Middleware overhead should be &lt;5% of I/O time for typical operations.</p>
+<h3 id="3-composition-benchmarks"><a class="header" href="#3-composition-benchmarks">3. Composition Benchmarks</a></h3>
+<p>Measure real-world stacks, not isolated components.</p>
+<h4 id="ai-agent-sandbox-stack"><a class="header" href="#ai-agent-sandbox-stack">AI Agent Sandbox Stack</a></h4>
+<pre><code>Quota → PathFilter → RateLimit → Tracing → MemoryBackend
+</code></pre>
+<p>Compare against:</p>
+<ul>
+<li>Raw MemoryBackend (baseline)</li>
+<li>Manual checks in application code (alternative approach)</li>
+</ul>
+<h4 id="persistent-database-stack"><a class="header" href="#persistent-database-stack">Persistent Database Stack</a></h4>
+<pre><code>Cache → Tracing → SqliteBackend
+</code></pre>
+<p>Compare against:</p>
+<ul>
+<li>Raw SqliteBackend (baseline)</li>
+<li>Application-level caching (alternative approach)</li>
+</ul>
+<h3 id="4-trait-implementation-benchmarks"><a class="header" href="#4-trait-implementation-benchmarks">4. Trait Implementation Benchmarks</a></h3>
+<p>Validate that strategic boxing doesn’t hurt performance.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Expected Cost</th></tr>
+</thead>
+<tbody>
+<tr><td><code>read()</code> / <code>write()</code></td><td>Zero-cost (monomorphized)</td></tr>
+<tr><td><code>open_read()</code> → <code>Box&lt;dyn Read&gt;</code></td><td>~50ns allocation, negligible vs I/O</td></tr>
+<tr><td><code>read_dir()</code> → <code>ReadDirIter</code></td><td>One allocation per call</td></tr>
+<tr><td><code>FileStorage::boxed()</code></td><td>One-time cost at setup</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="competitor-matrix"><a class="header" href="#competitor-matrix">Competitor Matrix</a></h2>
+<h3 id="by-use-case-1"><a class="header" href="#by-use-case-1">By Use Case</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Use Case</th><th>AnyFS Component</th><th>Primary Competitors</th></tr>
+</thead>
+<tbody>
+<tr><td>Testing/mocking</td><td>MemoryBackend</td><td><code>tempfile</code>, <code>vfs::MemoryFS</code></td></tr>
+<tr><td>Embedded database</td><td>SqliteBackend</td><td><code>sled</code>, <code>redb</code>, raw SQLite</td></tr>
+<tr><td>Sandboxed host access</td><td>VRootFsBackend</td><td><code>cap-std</code>, <code>chroot</code></td></tr>
+<tr><td>Policy enforcement</td><td>Middleware stack</td><td>Manual application code</td></tr>
+<tr><td>Union filesystem</td><td>Overlay</td><td><code>overlayfs</code> (kernel), <code>fuse-overlayfs</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="crate-comparison"><a class="header" href="#crate-comparison">Crate Comparison</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Crate</th><th>Strengths</th><th>Weaknesses</th><th>Compare For</th></tr>
+</thead>
+<tbody>
+<tr><td><code>vfs</code></td><td>Simple API</td><td>No middleware, limited features</td><td>API ergonomics</td></tr>
+<tr><td><code>virtual-fs</code></td><td>WASM support</td><td>Less composable</td><td>Cross-platform</td></tr>
+<tr><td><code>cap-std</code></td><td>Security-focused</td><td>Different abstraction level</td><td>Sandboxing</td></tr>
+<tr><td><code>tempfile</code></td><td>Battle-tested</td><td>Not a VFS</td><td>Temp file operations</td></tr>
+<tr><td><code>include_dir</code></td><td>Compile-time embedding</td><td>Read-only</td><td>Embedded assets</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="benchmark-infrastructure"><a class="header" href="#benchmark-infrastructure">Benchmark Infrastructure</a></h2>
+<h3 id="framework"><a class="header" href="#framework">Framework</a></h3>
+<p>Use <code>criterion</code> for statistical rigor:</p>
+<ul>
+<li>Warm-up iterations</li>
+<li>Outlier detection</li>
+<li>Comparison between runs</li>
+</ul>
+<h3 id="test-data-sets"><a class="header" href="#test-data-sets">Test Data Sets</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Dataset</th><th>Contents</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>Small files</td><td>1000 files × 1KB</td><td>Metadata-heavy workload</td></tr>
+<tr><td>Large files</td><td>10 files × 100MB</td><td>Throughput workload</td></tr>
+<tr><td>Deep hierarchy</td><td>10 levels × 10 dirs</td><td>Path resolution stress</td></tr>
+<tr><td>Wide directory</td><td>1 dir × 10000 files</td><td>Listing performance</td></tr>
+<tr><td>Mixed realistic</td><td>Project-like structure</td><td>Real-world simulation</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="reporting"><a class="header" href="#reporting">Reporting</a></h3>
+<p>Generate:</p>
+<ul>
+<li>Throughput charts (ops/sec, MB/sec)</li>
+<li>Latency histograms (p50, p95, p99)</li>
+<li>Memory usage graphs</li>
+<li>Comparison tables vs competitors</li>
+</ul>
+<hr>
+<h2 id="performance-targets"><a class="header" href="#performance-targets">Performance Targets</a></h2>
+<p>These are aspirational targets to validate during implementation:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Metric</th><th>Target</th><th>Rationale</th></tr>
+</thead>
+<tbody>
+<tr><td>Middleware overhead</td><td>&lt;5% of I/O time</td><td>Composability shouldn’t cost much</td></tr>
+<tr><td>MemoryBackend vs HashMap</td><td>&lt;2x slower</td><td>Abstraction cost</td></tr>
+<tr><td>SqliteBackend vs raw SQLite</td><td>&lt;1.5x slower</td><td>Thin wrapper</td></tr>
+<tr><td>VRootFsBackend vs std::fs</td><td>&lt;1.2x slower</td><td>Path checking cost</td></tr>
+<tr><td>5-layer stack</td><td>&lt;10% overhead</td><td>Real-world composition</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="benchmark-workflow"><a class="header" href="#benchmark-workflow">Benchmark Workflow</a></h2>
+<h3 id="development-phase"><a class="header" href="#development-phase">Development Phase</a></h3>
+<pre><code>cargo bench --bench &lt;component&gt;
+</code></pre>
+<p>Run focused benchmarks during development to catch regressions.</p>
+<h3 id="release-phase"><a class="header" href="#release-phase">Release Phase</a></h3>
+<pre><code>cargo bench --all
+</code></pre>
+<p>Full benchmark suite before releases, with comparison to previous version.</p>
+<h3 id="ci-integration"><a class="header" href="#ci-integration">CI Integration</a></h3>
+<ul>
+<li>Run subset of benchmarks on PR (smoke test)</li>
+<li>Full benchmark suite on main branch</li>
+<li>Store results for trend analysis</li>
+</ul>
+<hr>
+<h2 id="non-goals-1"><a class="header" href="#non-goals-1">Non-Goals</a></h2>
+<ul>
+<li><strong>Beating std::fs at raw I/O</strong> - We add abstraction; some overhead is acceptable</li>
+<li><strong>Micro-optimizing cold paths</strong> - Focus on hot paths (read, write, metadata)</li>
+<li><strong>Benchmark gaming</strong> - Optimize for real use cases, not synthetic benchmarks</li>
+</ul>
+<hr>
+<h2 id="tracking-1"><a class="header" href="#tracking-1">Tracking</a></h2>
+<p><strong>GitHub Issue:</strong> Implement benchmark suite</p>
+<ul>
+<li><strong>Blocked by:</strong> Core AnyFS implementation</li>
+<li><strong>Dependencies:</strong> <code>criterion</code>, test data generation</li>
+<li><strong>Milestone:</strong> Post-1.0 (after functionality and security are solid)</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="implementation-plan"><a class="header" href="#implementation-plan">Implementation Plan</a></h1>
 <p>This plan describes a phased rollout of the AnyFS ecosystem:</p>
 <ul>
@@ -13295,12 +14144,13 @@ let entry = self.entries.get(&amp;path)
 </ul>
 <p><strong>Required:</strong> Concurrent stress tests in conformance suite.</p>
 <h3 id="3-consistent-path-handling"><a class="header" href="#3-consistent-path-handling">3. Consistent Path Handling</a></h3>
-<p>FileStorage handles path resolution (symlink-aware, not just lexical normalization):</p>
+<p>FileStorage handles path resolution via pluggable <code>PathResolver</code> trait (see ADR-033):</p>
 <ul>
 <li>Always absolute paths internally</li>
 <li>Always <code>/</code> separator (even on Windows)</li>
-<li>Resolve <code>..</code> and <code>.</code> via canonicalization (symlink-aware, not lexical)</li>
-<li>Handle edge cases: <code>//</code>, trailing <code>/</code>, empty string</li>
+<li>Default <code>IterativeResolver</code>: symlink-aware canonicalization (not lexical)</li>
+<li>Handle edge cases: <code>//</code>, trailing <code>/</code>, empty string, circular symlinks</li>
+<li>Optional resolver: <code>CachingResolver</code> (for read-heavy workloads)</li>
 </ul>
 <p><strong>Public canonicalization API on FileStorage:</strong></p>
 <ul>
@@ -14279,7 +15129,7 @@ FsRead + FsWrite + FsDir (core)
 <p>Key properties:</p>
 <ul>
 <li>Backends accept <code>&amp;Path</code> for all path parameters</li>
-<li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path resolution (symlinks, <code>..</code>, normalization). See ADR-029.</li>
+<li><strong>Backends receive already-resolved paths</strong> - FileStorage handles path resolution via pluggable <code>PathResolver</code> (see ADR-033). Default is <code>IterativeResolver</code> for symlink-aware resolution.</li>
 <li>Backends handle <strong>storage only</strong> - just store/retrieve bytes at given paths</li>
 <li>Policy (limits, feature gates) is handled by middleware, not backends</li>
 <li>Implement only the traits your backend supports</li>
@@ -14684,7 +15534,7 @@ impl FsLink for MemoryBackend {
 <span class="boring">}</span></code></pre>
 <p><strong>Note:</strong> Most backends don’t need Layer 4. Only implement if you’re wrapping a real filesystem (<code>VRootFsBackend</code>) or building a database that needs full POSIX semantics.</p>
 <hr>
-<h2 id="error-handling-4"><a class="header" href="#error-handling-4">Error Handling</a></h2>
+<h2 id="error-handling-3"><a class="header" href="#error-handling-3">Error Handling</a></h2>
 <p>Return appropriate <code>FsError</code> variants:</p>
 <div class="table-wrapper">
 <table>
@@ -17017,7 +17867,7 @@ pub async fn connect_with_mtls(
 <li><input disabled="" type="checkbox"> Tenant data segregation in backups</li>
 </ul>
 <hr>
-<h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
+<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -20071,7 +20921,7 @@ cargo test --test conformance -- --nocapture
 # Run thread safety tests with more threads
 RUST_TEST_THREADS=1 cargo test --test conformance thread_safety
 </code></pre>
-<h3 id="ci-integration"><a class="header" href="#ci-integration">CI Integration</a></h3>
+<h3 id="ci-integration-1"><a class="header" href="#ci-integration-1">CI Integration</a></h3>
 <pre><code class="language-yaml"># .github/workflows/test.yml
 name: Conformance Tests
 
@@ -20121,7 +20971,7 @@ jobs:
 <li><input disabled="" type="checkbox"> Error cases handled correctly</li>
 </ul>
 <hr>
-<h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
+<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <p>This conformance test suite provides:</p>
 <ol>
 <li><strong>Complete coverage</strong> of all <code>Fs</code> trait operations</li>
@@ -21433,7 +22283,7 @@ impl&lt;Lower: FsRead + FsDir, Upper: Fs&gt; FsDir for Overlay&lt;Lower, Upper&g
 <h3 id="verdict--implementable-5"><a class="header" href="#verdict--implementable-5">Verdict: ✅ Implementable</a></h3>
 <p>The most complex middleware, but uses well-established patterns from OverlayFS. Key insight: whiteouts are just marker files, no special backend support needed.</p>
 <hr>
-<h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
+<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -21495,7 +22345,7 @@ let fs = MemoryBackend::new()
 <p><strong>Analysis of issues from <code>vfs</code> and <code>agentfs</code> to inform AnyFS design.</strong></p>
 <p>This chapter documents problems encountered by similar projects and how AnyFS addresses them. These lessons are incorporated into our <a href="#implementation-plan">Implementation Plan</a> and <a href="#backend-implementers-guide">Backend Guide</a>.</p>
 <hr>
-<h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
+<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -21917,27 +22767,38 @@ pub struct SqliteBackend { ... }
 </ul>
 <hr>
 <h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
-<p><strong>Status:</strong> Resolved</p>
+<p><strong>Status:</strong> Resolved (see also ADR-033 for PathResolver)</p>
 <p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?</p>
-<p><strong>Resolution:</strong> <code>FileStorage</code> handles symlink-aware path resolution for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to the OS, so FileStorage does not pre-resolve paths for them.</p>
+<p><strong>Resolution:</strong> <code>FileStorage</code> handles path resolution via pluggable <code>PathResolver</code> trait for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to the OS, so FileStorage does not pre-resolve paths for them.</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Backend Type</th><th>Path Resolution</th><th>Symlink Handling</th></tr>
 </thead>
 <tbody>
-<tr><td>MemoryBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
-<tr><td>SqliteBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
+<tr><td>MemoryBackend</td><td><strong>PathResolver</strong> (default: IterativeResolver)</td><td>Resolver follows symlinks</td></tr>
+<tr><td>SqliteBackend</td><td><strong>PathResolver</strong> (default: IterativeResolver)</td><td>Resolver follows symlinks</td></tr>
 <tr><td>VRootFsBackend</td><td><strong>OS</strong> (implements <code>SelfResolving</code>)</td><td>OS follows symlinks (strict-path prevents escapes)</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Key design decision:</strong> Backends that wrap a real filesystem implement the <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:</p>
+<p><strong>Key design decisions:</strong></p>
+<ol>
+<li>Backends that wrap a real filesystem implement the <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:</li>
+</ol>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-<p>This ensures consistent behavior: all virtual backends get symlink-aware resolution from <code>FileStorage</code>, while real filesystem backends delegate to the OS.</p>
+<ol start="2">
+<li>Path resolution is pluggable via <code>PathResolver</code> trait (ADR-033). Built-in resolvers include:
+<ul>
+<li><code>IterativeResolver</code> - default symlink-aware resolution</li>
+<li><code>NoOpResolver</code> - for <code>SelfResolving</code> backends</li>
+<li><code>CachingResolver</code> - LRU cache wrapper</li>
+</ul>
+</li>
+</ol>
 <hr>
 <h2 id="compression-and-encryption"><a class="header" href="#compression-and-encryption">Compression and Encryption</a></h2>
 <p><strong>Question:</strong> Does the current design allow backends to compress/decompress or encrypt/decrypt files transparently?</p>
@@ -22147,7 +23008,7 @@ process_sandbox(&amp;userdata);  // Compile error!
 <li>No breaking changes to existing sync API</li>
 </ul>
 <hr>
-<h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
+<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -22183,7 +23044,7 @@ process_sandbox(&amp;userdata);  // Compile error!
 <h1 id="design-review-rust-community-alignment"><a class="header" href="#design-review-rust-community-alignment">Design Review: Rust Community Alignment</a></h1>
 <p>This document critically reviews AnyFS design decisions against Rust community expectations and best practices. The goal is to identify potential friction points before implementation.</p>
 <hr>
-<h2 id="summary-10"><a class="header" href="#summary-10">Summary</a></h2>
+<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -22504,7 +23365,7 @@ let quota = QuotaLayer::builder()
 </ul>
 <p>This is the same licensing model used by the Rust ecosystem.</p>
 <hr>
-<h2 id="summary-11"><a class="header" href="#summary-11">Summary</a></h2>
+<h2 id="summary-12"><a class="header" href="#summary-12">Summary</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>

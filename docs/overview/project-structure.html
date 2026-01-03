@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -206,6 +206,7 @@
     layer.rs                # Layer trait (Tower-style)
     ext.rs                  # FsExt (extension methods)
     markers.rs              # SelfResolving marker trait
+    path_resolver.rs        # PathResolver trait (pluggable resolution)
     types.rs                # Metadata, DirEntry, Permissions, StatFs
     error.rs                # FsError
 
@@ -230,6 +231,10 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
       dry_run.rs            # DryRun&lt;B&gt;
       cache.rs              # Cache&lt;B&gt;
       overlay.rs            # Overlay&lt;B1, B2&gt;
+    resolvers/
+      iterative.rs          # IterativeResolver (default)
+      noop.rs               # NoOpResolver (for SelfResolving backends)
+      caching.rs            # CachingResolver (LRU cache wrapper)
     container.rs            # FileStorage&lt;B, M&gt;
     stack.rs                # BackendStack builder
 </code></pre>

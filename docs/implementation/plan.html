@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -215,12 +215,13 @@ let entry = self.entries.get(&amp;path)
 </ul>
 <p><strong>Required:</strong> Concurrent stress tests in conformance suite.</p>
 <h3 id="3-consistent-path-handling"><a class="header" href="#3-consistent-path-handling">3. Consistent Path Handling</a></h3>
-<p>FileStorage handles path resolution (symlink-aware, not just lexical normalization):</p>
+<p>FileStorage handles path resolution via pluggable <code>PathResolver</code> trait (see ADR-033):</p>
 <ul>
 <li>Always absolute paths internally</li>
 <li>Always <code>/</code> separator (even on Windows)</li>
-<li>Resolve <code>..</code> and <code>.</code> via canonicalization (symlink-aware, not lexical)</li>
-<li>Handle edge cases: <code>//</code>, trailing <code>/</code>, empty string</li>
+<li>Default <code>IterativeResolver</code>: symlink-aware canonicalization (not lexical)</li>
+<li>Handle edge cases: <code>//</code>, trailing <code>/</code>, empty string, circular symlinks</li>
+<li>Optional resolver: <code>CachingResolver</code> (for read-heavy workloads)</li>
 </ul>
 <p><strong>Public canonicalization API on FileStorage:</strong></p>
 <ul>
@@ -1185,7 +1186,7 @@ alice@server:~$ du -sh .
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../comparisons/prior-art-analysis.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../comparisons/benchmarking-plan.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -1199,7 +1200,7 @@ alice@server:~$ du -sh .
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../comparisons/prior-art-analysis.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../comparisons/benchmarking-plan.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 

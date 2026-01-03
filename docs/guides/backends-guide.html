@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -214,13 +214,13 @@
 <tr><th>Category</th><th>Path Resolution</th><th>Symlink Handling</th><th>Isolation</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>Type 1: Virtual Filesystem</strong></td><td>Framework (logical)</td><td>Simulated by AnyFS</td><td>Complete</td></tr>
+<tr><td><strong>Type 1: Virtual Filesystem</strong></td><td>PathResolver (pluggable)</td><td>Simulated by AnyFS</td><td>Complete</td></tr>
 <tr><td><strong>Type 2: Real Filesystem</strong></td><td>Operating System</td><td>Delegated to OS</td><td>Partial/None</td></tr>
 </tbody>
 </table>
 </div>
 <h3 id="type-1-virtual-filesystem-backends"><a class="header" href="#type-1-virtual-filesystem-backends">Type 1: Virtual Filesystem Backends</a></h3>
-<p>These backends store filesystem data in an abstract format (memory, database, etc.). <strong>AnyFS handles all path resolution</strong>, including:</p>
+<p>These backends store filesystem data in an abstract format (memory, database, etc.). <strong>AnyFS handles path resolution via pluggable <code>PathResolver</code></strong> (see ADR-033), including:</p>
 <ul>
 <li>Path traversal (<code>..</code>, <code>.</code>)</li>
 <li>Symlink following (simulated)</li>

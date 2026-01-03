@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1388,8 +1388,8 @@ fn resolve_path_internal(
     // Return fully resolved canonical path
 }
 <span class="boring">}</span></code></pre>
-<p><strong>This is NOT a public API.</strong> The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
-<p><strong>Note:</strong> The internal resolution function requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
+<p><strong>Path resolution is pluggable via the <code>PathResolver</code> trait</strong> (see ADR-033). The default <code>IterativeResolver</code> implements the algorithm above. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors. The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
+<p><strong>Note:</strong> The default resolution requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
 <h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
 <div class="table-wrapper">
 <table>
@@ -1568,22 +1568,30 @@ let path = simplified(r"\\?\C:\Users\foo\bar.txt");
 </span>use anyfs::{FileStorage, MemoryBackend};
 use std::path::Path;
 
-// Built-in backends: Linux-like
+// Built-in backends: Linux-like (case-sensitive)
 let linux_fs = FileStorage::new(MemoryBackend::new());
 assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 
-// Someone wants NTFS-like behavior? User-implemented middleware or custom backend:
-let ntfs_like = CaseInsensitive::new(           // (user-implemented middleware)
-    NtfsValidation::new(MemoryBackend::new())   // (user-implemented middleware)
-);
-
-// Or full custom implementation
-impl Fs for NtfsEmulatingBackend {
-    fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
-        let normalized = self.case_fold(path);  // Case-insensitive lookup
-        // ...
+// For case-insensitive behavior, implement a custom PathResolver:
+// (Not built-in because real-world demand is minimal - VRootFsBackend on 
+// Windows/macOS already gets case-insensitivity from the OS)
+struct CaseFoldingResolver;
+impl PathResolver for CaseFoldingResolver {
+    fn canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Normalize path components to lowercase during lookup
+        todo!()
+    }
+    
+    fn soft_canonicalize(&amp;self, path: &amp;Path, fs: &amp;dyn Fs) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Same but allows non-existent final component
+        todo!()
     }
 }
+
+let ntfs_like = FileStorage::with_resolver(
+    MemoryBackend::new(),
+    CaseFoldingResolver  // User-implemented
+);
 <span class="boring">}</span></code></pre>
 <h3 id="fuse-mount-report-what-you-support"><a class="header" href="#fuse-mount-report-what-you-support">FUSE Mount: Report What You Support</a></h3>
 <p>When mounting, the FUSE layer reports backend capabilities to the OS:</p>

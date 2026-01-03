@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -208,13 +208,13 @@
 <tr><th>Layer</th><th>Responsibility</th><th>Path Handling</th></tr>
 </thead>
 <tbody>
-<tr><td><code>FileStorage</code></td><td>Ergonomic API + path resolution</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code>; resolves paths for virtual backends</td></tr>
+<tr><td><code>FileStorage</code></td><td>Ergonomic API + path resolution</td><td>Accepts <code>impl AsRef&lt;Path&gt;</code>; resolves paths via pluggable <code>PathResolver</code></td></tr>
 <tr><td>Middleware</td><td>Policy enforcement</td><td><code>&amp;Path</code> (object-safe core traits)</td></tr>
 <tr><td>Backend</td><td>Storage + FS semantics</td><td><code>&amp;Path</code> (object-safe core traits)</td></tr>
 </tbody>
 </table>
 </div>
-<p>Core traits use <code>&amp;Path</code> for object safety; <code>FileStorage</code>/<code>FsExt</code> provide <code>impl AsRef&lt;Path&gt;</code> ergonomics. Backends that wrap a real filesystem implement <code>SelfResolving</code> so FileStorage can skip its virtual path resolution.</p>
+<p>Core traits use <code>&amp;Path</code> for object safety; <code>FileStorage</code>/<code>FsExt</code> provide <code>impl AsRef&lt;Path&gt;</code> ergonomics. Path resolution is pluggable via <code>PathResolver</code> trait (see ADR-033). Backends that wrap a real filesystem implement <code>SelfResolving</code> so FileStorage can skip resolution.</p>
 <hr>
 <h2 id="policy-via-middleware"><a class="header" href="#policy-via-middleware">Policy via Middleware</a></h2>
 <p><strong>Old design (rejected):</strong> FileStorage contained quota/feature logic.</p>

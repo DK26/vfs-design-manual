@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-b87b4dc8.js";
+            window.path_to_searchindex_js = "../searchindex-e2e27f27.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ed1a2457.js"></script>
+        <script src="../toc-25c4523f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -209,27 +209,38 @@
 </ul>
 <hr>
 <h2 id="virtual-vs-real-backends-path-resolution"><a class="header" href="#virtual-vs-real-backends-path-resolution">Virtual vs Real Backends: Path Resolution</a></h2>
-<p><strong>Status:</strong> Resolved</p>
+<p><strong>Status:</strong> Resolved (see also ADR-033 for PathResolver)</p>
 <p><strong>Question:</strong> Should path resolution logic be different for virtual backends (memory, SQLite) vs filesystem-based backends (StdFsBackend, VRootFsBackend)?</p>
-<p><strong>Resolution:</strong> <code>FileStorage</code> handles symlink-aware path resolution for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to the OS, so FileStorage does not pre-resolve paths for them.</p>
+<p><strong>Resolution:</strong> <code>FileStorage</code> handles path resolution via pluggable <code>PathResolver</code> trait for non-<code>SelfResolving</code> backends. <code>SelfResolving</code> backends delegate to the OS, so FileStorage does not pre-resolve paths for them.</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Backend Type</th><th>Path Resolution</th><th>Symlink Handling</th></tr>
 </thead>
 <tbody>
-<tr><td>MemoryBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
-<tr><td>SqliteBackend</td><td><strong>FileStorage</strong> (symlink-aware)</td><td>FileStorage follows symlinks</td></tr>
+<tr><td>MemoryBackend</td><td><strong>PathResolver</strong> (default: IterativeResolver)</td><td>Resolver follows symlinks</td></tr>
+<tr><td>SqliteBackend</td><td><strong>PathResolver</strong> (default: IterativeResolver)</td><td>Resolver follows symlinks</td></tr>
 <tr><td>VRootFsBackend</td><td><strong>OS</strong> (implements <code>SelfResolving</code>)</td><td>OS follows symlinks (strict-path prevents escapes)</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Key design decision:</strong> Backends that wrap a real filesystem implement the <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:</p>
+<p><strong>Key design decisions:</strong></p>
+<ol>
+<li>Backends that wrap a real filesystem implement the <code>SelfResolving</code> marker trait to tell <code>FileStorage</code> to skip resolution:</li>
+</ol>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-<p>This ensures consistent behavior: all virtual backends get symlink-aware resolution from <code>FileStorage</code>, while real filesystem backends delegate to the OS.</p>
+<ol start="2">
+<li>Path resolution is pluggable via <code>PathResolver</code> trait (ADR-033). Built-in resolvers include:
+<ul>
+<li><code>IterativeResolver</code> - default symlink-aware resolution</li>
+<li><code>NoOpResolver</code> - for <code>SelfResolving</code> backends</li>
+<li><code>CachingResolver</code> - LRU cache wrapper</li>
+</ul>
+</li>
+</ol>
 <hr>
 <h2 id="compression-and-encryption"><a class="header" href="#compression-and-encryption">Compression and Encryption</a></h2>
 <p><strong>Question:</strong> Does the current design allow backends to compress/decompress or encrypt/decrypt files transparently?</p>
