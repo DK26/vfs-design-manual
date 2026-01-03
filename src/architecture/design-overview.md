@@ -1494,8 +1494,13 @@ assert!(linux_fs.exists("/Foo.txt")? != linux_fs.exists("/foo.txt")?);
 // Windows/macOS already gets case-insensitivity from the OS)
 struct CaseFoldingResolver;
 impl PathResolver for CaseFoldingResolver {
-    fn resolve(&self, backend: &B, path: &Path) -> Result<PathBuf, FsError> {
+    fn canonicalize(&self, path: &Path, fs: &dyn Fs) -> Result<PathBuf, FsError> {
         // Normalize path components to lowercase during lookup
+        todo!()
+    }
+    
+    fn soft_canonicalize(&self, path: &Path, fs: &dyn Fs) -> Result<PathBuf, FsError> {
+        // Same but allows non-existent final component
         todo!()
     }
 }

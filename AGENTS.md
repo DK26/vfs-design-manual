@@ -147,6 +147,7 @@ anyfs/                      # Crate 2: backends + middleware + FileStorage
       noop.rs               # NoOpResolver (for SelfResolving backends)
       caching.rs            # CachingResolver (LRU cache wrapper)
     container.rs            # FileStorage<B, M>
+    stack.rs                # BackendStack builder
 ```
 
 ---

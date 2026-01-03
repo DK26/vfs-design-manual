@@ -207,14 +207,14 @@ mod tests {
 ### Pattern 1: Implement a Component
 
 ```
-Implement `CachingResolver` in `src/resolvers/caching.rs`.
+Implement `CachingResolver` in `anyfs/src/resolvers/caching.rs`.
 
-Contract: Implement `PathResolver` trait (see src/path_resolver.rs).
+Contract: Implement `PathResolver` trait (see anyfs-backend/src/path_resolver.rs).
 
 Requirements:
 - Wrap another resolver
-- Cache resolved paths in LRU cache
-- Invalidate cache entries on write operations
+- Cache resolved paths in LRU cache with TTL expiration
+- Cache is best-effort (stale entries acceptable, eventually consistent)
 
 Test: Write a test showing cached resolution is faster than repeated resolution.
 ```

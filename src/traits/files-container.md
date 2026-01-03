@@ -175,11 +175,23 @@ pub struct FileStorage<B, M = ()> {
 }
 
 impl<B: Fs, M> FileStorage<B, M> {
-    /// Create a new FileStorage.
+    /// Create a new FileStorage with default resolver (IterativeResolver).
     /// Marker type is specified via type annotation:
     /// `let fs: FileStorage<_, MyMarker> = FileStorage::new(backend);`
     pub fn new(backend: B) -> Self {
         FileStorage { backend, _marker: PhantomData }
+    }
+
+    /// Create FileStorage with a custom path resolver.
+    /// See ADR-033 for PathResolver trait details.
+    pub fn with_resolver(backend: B, resolver: impl PathResolver) -> Self {
+        // Uses provided resolver instead of default IterativeResolver
+        FileStorage { backend, _marker: PhantomData }
+    }
+    
+    /// Builder pattern for advanced configuration.
+    pub fn builder(backend: B) -> FileStorageBuilder<B, M> {
+        FileStorageBuilder::new(backend)
     }
 
     /// Type-erase the backend for simpler types (opt-in boxing).
@@ -187,6 +199,32 @@ impl<B: Fs, M> FileStorage<B, M> {
         FileStorage { backend: Box::new(self.backend), _marker: PhantomData }
     }
 }
+```
+
+### Path Resolution
+
+FileStorage handles path resolution for virtual backends via the `PathResolver` trait (see ADR-033). The default `IterativeResolver` provides symlink-aware canonicalization.
+
+```rust
+use anyfs::{FileStorage, MemoryBackend};
+use anyfs::resolvers::{IterativeResolver, CachingResolver};
+
+// Default: uses IterativeResolver
+let fs = FileStorage::new(MemoryBackend::new());
+
+// Custom: with caching resolver for read-heavy workloads
+let fs = FileStorage::with_resolver(
+    MemoryBackend::new(),
+    CachingResolver::new(IterativeResolver::default())
+);
+
+// Builder pattern for more options
+let fs = FileStorage::builder(MemoryBackend::new())
+    .with_resolver(CachingResolver::default())
+    .build();
+```
+
+Backends implementing `SelfResolving` (like `VRootFsBackend`) skip resolution since the OS handles it.
 ```
 
 ---

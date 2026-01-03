@@ -73,7 +73,7 @@ Measure the cost of each middleware layer.
 | `Quota<B>`      | Size tracking overhead per operation |
 | `PathFilter<B>` | Glob matching cost per path          |
 | `ReadOnly<B>`   | Should be zero (just error return)   |
-| `RateLimit<B>`  | Token bucket check overhead          |
+| `RateLimit<B>`  | Fixed-window counter check overhead  |
 | `Tracing<B>`    | Span creation/logging cost           |
 | `Cache<B>`      | Cache hit/miss latency difference    |
 
