@@ -81,6 +81,7 @@ Primary docs are where each decision is explained in narrative form. ADRs remain
 | ADR-031 | Indexing as middleware                      | Accepted (Post-v1) |
 | ADR-032 | Path Canonicalization via FsPath Trait      | Accepted           |
 | ADR-033 | PathResolver Trait for Pluggable Resolution | Accepted           |
+| ADR-034 | LLM-Oriented Architecture (LOA)             | Accepted           |
 
 ---
 
@@ -1511,3 +1512,137 @@ fn test_symlink_loop_detection() {
 **Recommendation:** Use trait object (`Box<dyn PathResolver>`) for simplicity. Following ADR-025 (Strategic Boxing), the ~50ns box overhead is <1% of actual I/O time and enables maximum flexibility.
 
 **Conclusion:** The `PathResolver` trait provides clean separation of concerns, making path resolution testable, benchmarkable, and extensible. It complements `FsPath` (backend optimization hook) and can replace or work alongside `SelfResolving` (via `NoOpResolver`). This design follows the Tower/Axum philosophy of composable, swappable components.
+
+---
+
+## ADR-034: LLM-Oriented Architecture (LOA)
+
+**Status:** Accepted
+
+**Context:** AnyFS is being developed with significant LLM assistance (GitHub Copilot, Claude, etc.). Traditional software architecture prioritizes maintainability, testability, and extensibility for **human developers**. However, when LLMs are part of the development workflow, additional constraints become essential:
+
+1. LLMs work best with **limited context windows** - they can't "understand" an entire codebase
+2. LLMs excel at **pattern matching** - consistent structure enables better assistance
+3. LLMs need **clear contracts** - well-documented interfaces reduce hallucination
+4. LLMs benefit from **isolated components** - fixing one thing shouldn't require understanding everything
+
+These same properties also benefit:
+- Open source contributors (quick onboarding)
+- Code review (focused changes)
+- Parallel development (independent components)
+- AI-generated tests and documentation
+
+**Decision:** Structure AnyFS using **LLM-Oriented Architecture (LOA)** - a methodology where every component is independently understandable, testable, and fixable with only local context.
+
+**The Five Pillars:**
+
+| Pillar                    | Description            | Implementation                     |
+| ------------------------- | ---------------------- | ---------------------------------- |
+| **Single Responsibility** | One file = one concept | `quota.rs`, `iterative.rs`, etc.   |
+| **Contract-First**        | Traits define the spec | Documented trait invariants        |
+| **Isolated Testing**      | Tests use mocks only   | No real backends in unit tests     |
+| **Rich Errors**           | Errors explain the fix | Context in every `FsError` variant |
+| **Boundary Docs**         | Examples at every API  | Usage example in every doc comment |
+
+**File Structure Convention:**
+
+```rust
+//! # Component Name
+//!
+//! ## Responsibility
+//! - Single bullet point
+//!
+//! ## Dependencies  
+//! - Traits/types only
+//!
+//! ## Usage
+//! ```rust
+//! // Minimal example
+//! ```
+
+// ============================================================================
+// Types
+// ============================================================================
+
+// ============================================================================
+// Trait Implementations
+// ============================================================================
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+// ============================================================================
+// Private Helpers
+// ============================================================================
+
+// ============================================================================
+// Tests
+// ============================================================================
+```
+
+**Component Isolation Checklist:**
+
+- [ ] Single file per component
+- [ ] Implements a trait with documented invariants
+- [ ] Dependencies are traits/types, not implementations
+- [ ] Tests use mocks, not real backends
+- [ ] Error messages explain what went wrong and how to fix
+- [ ] Doc comment shows standalone usage example
+- [ ] No global state
+- [ ] `Send + Sync` where required
+
+**LLM Prompting Patterns:**
+
+The architecture enables these clean prompts:
+
+```
+# Implement
+Implement `CaseFoldingResolver` in src/resolvers/case_folding.rs.
+Contract: Implement `PathResolver` trait.
+Test: "/Foo/BAR" → "/foo/bar"
+
+# Fix
+Bug: Quota<B> doesn't account for existing file size.
+File: src/middleware/quota.rs
+Error: QuotaExceeded writing 50 bytes to 30-byte file with 100-byte limit.
+
+# Review
+Does this change maintain the PathResolver contract?
+Are edge cases handled?
+Are error messages informative?
+```
+
+**Deliverables:**
+
+1. **AGENTS.md** - Instructions for LLMs contributing to the codebase
+2. **LLM Development Methodology Guide** - Full methodology documentation
+3. **llm-context.md** - Context7-style API guide for LLMs *using* the library
+
+**Why This Design:**
+
+| Benefit              | For LLMs               | For Humans           |
+| -------------------- | ---------------------- | -------------------- |
+| Isolated components  | Fits in context window | Easy to understand   |
+| Clear contracts      | Reduces hallucination  | Self-documenting     |
+| Consistent structure | Pattern matching works | Predictable codebase |
+| Rich errors          | Can suggest fixes      | Quick debugging      |
+| Focused tests        | Can verify changes     | Fast CI              |
+
+**Trade-offs:**
+
+| Approach          | Pros                        | Cons                         |
+| ----------------- | --------------------------- | ---------------------------- |
+| Deep abstraction  | Maximum isolation           | More files, more indirection |
+| Monolithic design | Fewer files                 | LLMs can't reason about it   |
+| LOA (chosen)      | LLM-friendly + maintainable | Requires discipline          |
+
+**Relationship to Other ADRs:**
+
+- **ADR-030 (Layered traits):** LOA extends this with per-file isolation
+- **ADR-033 (PathResolver):** Example of LOA - resolver is isolated, testable, replaceable
+- **ADR-025 (Strategic Boxing):** LOA prefers simplicity over micro-optimization
+
+**Conclusion:** LLM-Oriented Architecture is not just about AI. It's about creating a codebase where **any component can be understood, tested, fixed, or replaced with only local context**. This benefits LLMs, open source contributors, code reviewers, and future maintainers equally. As AI-assisted development becomes standard, LOA positions AnyFS as a reference implementation for sustainable human-AI collaboration.
+
+**See Also:** [LLM Development Methodology Guide](../guides/llm-development-methodology.md)

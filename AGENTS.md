@@ -14,6 +14,44 @@ AnyFS is an open standard for pluggable virtual filesystem backends in Rust. It 
 
 **Key design principle:** Complete separation of concerns via composable layers.
 
+**Development methodology:** LLM-Oriented Architecture (LOA) - every component is independently understandable, testable, and fixable with only local context. See [ADR-034](src/architecture/adrs.md#adr-034-llm-oriented-architecture-loa) and the [LLM Development Methodology Guide](src/guides/llm-development-methodology.md).
+
+---
+
+## LLM-Oriented Architecture (Quick Reference)
+
+AnyFS is structured for **AI-assisted development**. Each component should be:
+
+| Property       | Meaning                | How to Verify                      |
+| -------------- | ---------------------- | ---------------------------------- |
+| **Isolated**   | One file = one concept | File has single responsibility     |
+| **Contracted** | Trait defines the spec | Trait doc has invariants           |
+| **Testable**   | Tests use mocks only   | No real backends in unit tests     |
+| **Debuggable** | Errors explain the fix | Error has path, operation, context |
+| **Documented** | Examples at every API  | Doc comment has usage example      |
+
+### Before Making Changes
+
+1. **Read only the component file** + the trait it implements
+2. **Run only the component's tests** to verify your change
+3. **Keep changes within one file** when possible
+4. **Make error messages self-explanatory** - include what failed and why
+
+### File Structure Convention
+
+Every implementation file follows this structure:
+```rust
+//! # Component Name
+//! Brief description.
+//! ## Responsibility - Single bullet
+//! ## Dependencies - Traits/types only  
+//! ## Usage - Minimal example
+
+// Types → Trait Impls → Public API → Private Helpers → Tests
+```
+
+See [LLM Development Methodology](src/guides/llm-development-methodology.md) for complete details.
+
 ---
 
 ## Architecture (Tower-style Middleware)

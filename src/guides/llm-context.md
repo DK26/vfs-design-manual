@@ -1,10 +1,73 @@
-# AnyFS Implementation Patterns
+# Consumer Documentation Planning
 
-**Purpose:** Quick reference for implementing backends, middleware, and adapters.
+> **This document specifies what the Context7-style consumer documentation should contain when the AnyFS library is implemented.**
+> This is a planning/specification document, not actual API documentation.
 
 ---
 
-## Trait Hierarchy (Pick Your Level)
+## Purpose
+
+When AnyFS is implemented, we need a **Context7-style reference document** that LLMs can use to correctly consume the AnyFS API. This document specifies what that reference should contain.
+
+**Why Context7-style?**
+
+- LLMs need quick decision trees to select the right components
+- Copy-paste-ready patterns reduce hallucination
+- Common mistakes section prevents known pitfalls
+- Trait hierarchy helps understand what to implement
+
+---
+
+## Required Sections
+
+The consumer documentation MUST include these sections:
+
+### 1. Quick Decision Trees
+
+Decision trees help LLMs quickly navigate to the right component. Include:
+
+| Decision Tree      | Purpose                           |
+| ------------------ | --------------------------------- |
+| Which Crate?       | `anyfs-backend` vs `anyfs`        |
+| Which Backend?     | Memory, SQLite, VRootFs, etc.     |
+| Which Middleware?  | Quota, PathFilter, ReadOnly, etc. |
+| Which Trait Level? | Fs, FsFull, FsFuse, FsPosix       |
+
+**Format:** ASCII tree diagrams with terminal answers.
+
+**Example structure (to be filled with actual API when implemented):**
+
+```
+Is data persistence required?
+├─ NO → MemoryBackend
+└─ YES → Is encryption needed?
+         ├─ YES → SqliteCipherBackend
+         └─ NO → [continue decision tree...]
+```
+
+### 2. Common Patterns
+
+Provide copy-paste-ready code for these scenarios:
+
+| Pattern                | Description                          |
+| ---------------------- | ------------------------------------ |
+| Simple File Operations | read, write, delete, check existence |
+| Directory Operations   | create, list, remove                 |
+| Sandboxed AI Agent     | Full middleware stack example        |
+| Persistent Database    | SqliteBackend setup                  |
+| Type-Safe Containers   | Marker types for compile-time safety |
+| Streaming Large Files  | open_read/open_write usage           |
+
+**Requirements for each pattern:**
+
+- Complete, runnable code blocks
+- All imports included
+- Proper error handling (no `.unwrap()`)
+- Minimal code that demonstrates the concept
+
+### 3. Trait Hierarchy Diagram
+
+Visual representation of the trait hierarchy:
 
 ```
 FsPosix  ← Full POSIX (handles, locks, xattr)
@@ -18,359 +81,167 @@ FsFull   ← std::fs features (+ links, permissions, sync, stats)
 FsRead + FsWrite + FsDir  ← Core traits
 ```
 
-**Rule:** Implement the lowest level you need. Higher levels include all below.
+With clear guidance: "Implement the lowest level you need. Higher levels include all below."
+
+### 4. Backend Implementation Pattern
+
+Template for implementing custom backends. The consumer docs should include:
+
+| Level    | Traits to Implement                                | Result    |
+| -------- | -------------------------------------------------- | --------- |
+| Minimum  | `FsRead + FsWrite + FsDir`                         | `Fs`      |
+| Extended | Add `FsLink`, `FsPermissions`, `FsSync`, `FsStats` | `FsFull`  |
+| FUSE     | Add `FsInode`                                      | `FsFuse`  |
+| POSIX    | Add `FsHandles`, `FsLock`, `FsXattr`               | `FsPosix` |
+
+Each level should have a complete template showing all required method signatures.
+
+### 5. Middleware Implementation Pattern
+
+Template showing:
+
+- How to wrap an inner backend with a generic type parameter
+- Which methods to intercept vs delegate
+- The `Layer` trait for `.layer()` syntax
+- Common middleware patterns table:
+
+| Pattern        | Intercept                  | Delegate        | Example      |
+| -------------- | -------------------------- | --------------- | ------------ |
+| Logging        | All (before/after)         | All             | `Tracing`    |
+| Block writes   | Write methods → error      | Read methods    | `ReadOnly`   |
+| Transform data | `read`/`write`             | Everything else | `Encryption` |
+| Check access   | All (before)               | All             | `PathFilter` |
+| Enforce limits | Write methods (check size) | Read methods    | `Quota`      |
+
+### 6. Adapter Patterns
+
+Templates for interoperability:
+
+| Adapter Type  | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| FROM external | Wrap external crate's filesystem as AnyFS backend    |
+| TO external   | Wrap AnyFS backend to satisfy external crate's trait |
+
+### 7. Error Handling Reference
+
+All `FsError` variants with when to use each:
+
+| Variant             | When to Return                         |
+| ------------------- | -------------------------------------- |
+| `NotFound`          | Path doesn't exist                     |
+| `AlreadyExists`     | Path already exists (create conflict)  |
+| `NotAFile`          | Expected file, got directory           |
+| `NotADirectory`     | Expected directory, got file           |
+| `DirectoryNotEmpty` | Can't remove non-empty directory       |
+| `ReadOnly`          | Write blocked by ReadOnly middleware   |
+| `AccessDenied`      | Blocked by PathFilter or permissions   |
+| `QuotaExceeded`     | Size/count limit exceeded              |
+| `NotSupported`      | Backend doesn't support this operation |
+| `Backend`           | Backend-specific error                 |
+
+### 8. Common Mistakes & Fixes
+
+| Mistake                   | Fix                                |
+| ------------------------- | ---------------------------------- |
+| Using `unwrap()`          | Always use `?` or handle `FsError` |
+| Assuming paths normalized | Use `canonicalize()` first         |
+| Forgetting parent dirs    | Use `create_dir_all`               |
+| Holding handles too long  | Drop promptly                      |
+| Mixing backend types      | Use `FileStorage::boxed()`         |
+| Testing with real files   | Use `MemoryBackend`                |
 
 ---
+
+## Document Structure
+
+When creating the actual consumer documentation, follow this structure:
+
+```markdown
+# AnyFS Implementation Patterns
+
+## Quick Decision Trees
+### Which Crate Do I Need?
+### Which Backend Should I Use?
+### Do I Need Middleware?
+### Which Trait Level?
+
+## Common Patterns
+### Simple File Operations
+### Directory Operations
+### Sandboxed AI Agent
+### Persistent Database
+### Type-Safe Container Markers
+
+## Trait Hierarchy (Pick Your Level)
 
 ## Pattern 1: Implement a Backend
-
-> **Thread Safety:** All methods use `&self`. Backends MUST use interior mutability (`RwLock`, `Mutex`) for thread-safe concurrent access.
-
-### Minimum: Implement `Fs` (3 traits)
-
-```rust
-use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Metadata, DirEntry, FileType, Permissions};
-use std::path::Path;
-
-pub struct MyBackend { /* your storage */ }
-
-impl FsRead for MyBackend {
-    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
-        todo!("return file contents")
-    }
-    fn read_to_string(&self, path: &Path) -> Result<String, FsError> {
-        String::from_utf8(self.read(path)?).map_err(|e| FsError::Backend(e.to_string()))
-    }
-    fn read_range(&self, path: &Path, offset: u64, len: usize) -> Result<Vec<u8>, FsError> {
-        todo!("return slice of file")
-    }
-    fn exists(&self, path: &Path) -> Result<bool, FsError> {
-        todo!("check if path exists")
-    }
-    fn metadata(&self, path: &Path) -> Result<Metadata, FsError> {
-        todo!("return Metadata { inode, nlink, file_type, size, permissions, created, modified, accessed }")
-    }
-    fn open_read(&self, path: &Path) -> Result<Box<dyn std::io::Read + Send>, FsError> {
-        Ok(Box::new(std::io::Cursor::new(self.read(path)?)))
-    }
-}
-
-impl FsWrite for MyBackend {
-    fn write(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
-        todo!("create or overwrite file")
-    }
-    fn append(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
-        todo!("append to file")
-    }
-    fn remove_file(&self, path: &Path) -> Result<(), FsError> {
-        todo!("delete file")
-    }
-    fn rename(&self, from: &Path, to: &Path) -> Result<(), FsError> {
-        todo!("move/rename")
-    }
-    fn copy(&self, from: &Path, to: &Path) -> Result<(), FsError> {
-        todo!("copy file")
-    }
-    fn truncate(&self, path: &Path, size: u64) -> Result<(), FsError> {
-        todo!("resize file")
-    }
-    fn open_write(&self, path: &Path) -> Result<Box<dyn std::io::Write + Send>, FsError> {
-        todo!("return writer")
-    }
-}
-
-impl FsDir for MyBackend {
-    fn read_dir(&self, path: &Path) -> Result<ReadDirIter, FsError> {
-        todo!("return ReadDirIter::new(entries.into_iter().map(Ok))")
-    }
-    fn create_dir(&self, path: &Path) -> Result<(), FsError> {
-        todo!("create single directory")
-    }
-    fn create_dir_all(&self, path: &Path) -> Result<(), FsError> {
-        todo!("create directory and parents")
-    }
-    fn remove_dir(&self, path: &Path) -> Result<(), FsError> {
-        todo!("remove empty directory")
-    }
-    fn remove_dir_all(&self, path: &Path) -> Result<(), FsError> {
-        todo!("remove directory recursively")
-    }
-}
-// MyBackend now implements Fs automatically!
-```
-
-### Add Links/Permissions: Implement `FsFull` (add 4 traits)
-
-```rust
-impl FsLink for MyBackend {
-    fn symlink(&self, target: &Path, link: &Path) -> Result<(), FsError> {
-        todo!("create symlink pointing to target")
-    }
-    fn hard_link(&self, original: &Path, link: &Path) -> Result<(), FsError> {
-        todo!("create hard link (same inode)")
-    }
-    fn read_link(&self, path: &Path) -> Result<std::path::PathBuf, FsError> {
-        todo!("return symlink target")
-    }
-    fn symlink_metadata(&self, path: &Path) -> Result<Metadata, FsError> {
-        todo!("metadata without following symlink")
-    }
-}
-
-impl FsPermissions for MyBackend {
-    fn set_permissions(&self, path: &Path, perm: Permissions) -> Result<(), FsError> {
-        todo!("set file permissions")
-    }
-}
-
-impl FsSync for MyBackend {
-    fn sync(&self) -> Result<(), FsError> {
-        todo!("flush all writes to storage")
-    }
-    fn fsync(&self, path: &Path) -> Result<(), FsError> {
-        todo!("flush writes for one file")
-    }
-}
-
-impl FsStats for MyBackend {
-    fn statfs(&self) -> Result<anyfs_backend::StatFs, FsError> {
-        todo!("return StatFs { total_bytes, available_bytes, ... }")
-    }
-}
-// MyBackend now implements FsFull!
-```
-
-### Add FUSE Support: Implement `FsFuse` (add 1 trait)
-
-```rust
-impl FsInode for MyBackend {
-    fn path_to_inode(&self, path: &Path) -> Result<u64, FsError> {
-        todo!("return unique inode for path")
-    }
-    fn inode_to_path(&self, inode: u64) -> Result<std::path::PathBuf, FsError> {
-        todo!("return path for inode")
-    }
-    fn lookup(&self, parent_inode: u64, name: &std::ffi::OsStr) -> Result<u64, FsError> {
-        todo!("find child inode by name")
-    }
-    fn metadata_by_inode(&self, inode: u64) -> Result<Metadata, FsError> {
-        todo!("get metadata by inode (fast path)")
-    }
-}
-// MyBackend now implements FsFuse!
-```
-
----
+### Minimum: Implement Fs
+### Add Links/Permissions: Implement FsFull
+### Add FUSE Support: Implement FsFuse
 
 ## Pattern 2: Implement Middleware
-
-**Rule:** Middleware implements the same traits as its inner backend, intercepting some methods.
-
 ### Template
-
-```rust
-use anyfs_backend::{FsRead, FsWrite, FsDir, FsError, Layer};
-
-pub struct MyMiddleware<B> {
-    inner: B,
-    // your state
-}
-
-impl<B> MyMiddleware<B> {
-    pub fn new(inner: B) -> Self {
-        Self { inner }
-    }
-}
-
-// Implement each trait, delegating or intercepting as needed
-impl<B: FsRead> FsRead for MyMiddleware<B> {
-    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
-        // INTERCEPT: add your logic
-        let data = self.inner.read(path)?;  // DELEGATE
-        // INTERCEPT: modify result
-        Ok(data)
-    }
-
-    // For passthrough methods, just delegate:
-    fn exists(&self, path: &Path) -> Result<bool, FsError> {
-        self.inner.exists(path)
-    }
-    // ... implement all FsRead methods
-}
-
-impl<B: FsWrite> FsWrite for MyMiddleware<B> {
-    // ... implement all FsWrite methods
-}
-
-impl<B: FsDir> FsDir for MyMiddleware<B> {
-    // ... implement all FsDir methods
-}
-
-// Optional: Layer for .layer() syntax
-pub struct MyMiddlewareLayer { /* config */ }
-
-impl<B: Fs> Layer<B> for MyMiddlewareLayer {
-    type Backend = MyMiddleware<B>;
-    fn layer(self, backend: B) -> Self::Backend {
-        MyMiddleware::new(backend)
-    }
-}
-```
-
 ### Common Middleware Patterns
 
-| Pattern | Intercept | Delegate | Example |
-|---------|-----------|----------|---------|
-| **Logging** | All (before/after) | All | `Tracing` |
-| **Block writes** | Write methods → return error | Read methods | `ReadOnly` |
-| **Transform data** | `read`/`write` | Everything else | `Encryption` |
-| **Check permissions** | All (before) | All | `PathFilter` |
-| **Enforce limits** | Write methods (check size) | Read methods | `Quota` |
-| **Count operations** | All (increment counter) | All | `Counter` |
-
-### Example: ReadOnly Middleware
-
-```rust
-impl<B: FsWrite> FsWrite for ReadOnly<B> {
-    fn write(&self, _: &Path, _: &[u8]) -> Result<(), FsError> {
-        Err(FsError::ReadOnly { operation: "write" })
-    }
-    fn remove_file(&self, _: &Path) -> Result<(), FsError> {
-        Err(FsError::ReadOnly { operation: "remove_file" })
-    }
-    // ... all write methods return ReadOnly error
-}
-```
-
-### Example: Encryption Middleware
-
-```rust
-impl<B: FsRead> FsRead for Encrypted<B> {
-    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
-        let encrypted = self.inner.read(path)?;
-        Ok(self.decrypt(&encrypted))
-    }
-}
-
-impl<B: FsWrite> FsWrite for Encrypted<B> {
-    fn write(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
-        let encrypted = self.encrypt(data);
-        self.inner.write(path, &encrypted)
-    }
-}
-```
-
----
-
 ## Pattern 3: Implement an Adapter
+### Adapter FROM another crate
+### Adapter TO another crate
 
-### Adapter FROM another crate's trait
+## Error Handling Reference
 
-```rust
-// Wrap external crate's filesystem to use as AnyFS backend
-pub struct ExternalCompat<F>(F);
-
-impl<F: external::FileSystem> FsRead for ExternalCompat<F> {
-    fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
-        self.0.read_file(path).map_err(|e| FsError::Backend(e.to_string()))
-    }
-    // Map each method, converting errors
-}
-
-impl<F: external::FileSystem> FsWrite for ExternalCompat<F> { /* ... */ }
-impl<F: external::FileSystem> FsDir for ExternalCompat<F> { /* ... */ }
-// Only implement traits the external crate supports
-```
-
-### Adapter TO another crate's trait
-
-```rust
-// Wrap AnyFS backend to use with external crate
-pub struct AnyFsCompat<B: Fs>(B);
-
-impl<B: Fs> external::FileSystem for AnyFsCompat<B> {
-    fn read_file(&self, path: &Path) -> external::Result<Vec<u8>> {
-        self.0.read(path).map_err(|e| external::Error::from(e.to_string()))
-    }
-    // Only expose methods the external trait requires
-}
-```
-
----
-
-## Error Handling
-
-**Rule:** Always return `FsError`, never panic.
-
-```rust
-// Common error returns
-FsError::NotFound { path, operation }      // Path doesn't exist
-FsError::AlreadyExists { path, operation } // Path already exists
-FsError::NotAFile { path }                 // Expected file, got directory
-FsError::NotADirectory { path }            // Expected directory, got file
-FsError::DirectoryNotEmpty { path }        // Can't remove non-empty dir
-FsError::ReadOnly { operation }            // Write blocked by ReadOnly middleware
-FsError::AccessDenied { path, reason }     // Blocked by PathFilter
-FsError::QuotaExceeded { limit, requested, usage }
-FsError::NotSupported { operation }        // Backend doesn't support this
-FsError::Backend(String)                   // Backend-specific error
-```
-
----
+## Common Mistakes & Fixes
 
 ## Quick Reference: What to Implement
-
-| You want to... | Implement |
-|----------------|-----------|
-| Basic file operations | `FsRead` + `FsWrite` + `FsDir` (= `Fs`) |
-| + Symlinks/hardlinks | + `FsLink` |
-| + Permissions | + `FsPermissions` |
-| + Durability (sync) | + `FsSync` |
-| + Filesystem stats | + `FsStats` |
-| All of above | `Fs` + `FsLink` + `FsPermissions` + `FsSync` + `FsStats` (= `FsFull`) |
-| + FUSE mounting | + `FsInode` (= `FsFuse`) |
-| + File handles/locks | + `FsHandles` + `FsLock` + `FsXattr` (= `FsPosix`) |
+```
 
 ---
 
-## Usage Examples
+## Creation Guidelines
 
-### Create a backend stack
+When creating the actual consumer documentation after implementation:
 
-```rust
-use anyfs::{MemoryBackend, QuotaLayer, PathFilterLayer, TracingLayer};
+1. **Use actual tested code** - Every example must compile and run
+2. **Include all imports** - LLMs need complete context
+3. **Show error handling** - Never use `.unwrap()` in examples
+4. **Keep examples minimal** - Shortest code that demonstrates the pattern
+5. **Update with API changes** - This doc must stay in sync with implementation
+6. **Validate against real usage** - Test each pattern before including it
 
-let backend = MemoryBackend::new()
-    .layer(QuotaLayer::builder()
-        .max_total_size(100 * 1024 * 1024)
-        .build())
-    .layer(PathFilterLayer::builder()
-        .allow("/workspace/**")
-        .deny("**/.env")
-        .build())
-    .layer(TracingLayer::new());
-```
+---
 
-### With FileStorage wrapper
+## Quality Checklist
 
-```rust
-use anyfs::FileStorage;
+Before publishing the consumer documentation:
 
-let fs = FileStorage::new(backend);
-fs.write("/file.txt", b"hello")?;
-let data = fs.read("/file.txt")?;
-```
+- [ ] All code examples compile
+- [ ] All code examples run without panics
+- [ ] Decision trees lead to correct answers
+- [ ] Error variants match actual `FsError` enum
+- [ ] Trait hierarchy matches actual trait definitions
+- [ ] Common mistakes reflect actual issues found in testing
 
-### Type-safe containers
+---
 
-```rust
-struct Sandbox;
-struct UserData;
+## Related Documents
 
-// Specify marker in type annotation, infer backend with _
-let sandbox: FileStorage<_, Sandbox> = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage<_, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
+| Document                                                      | Purpose                                                     |
+| ------------------------------------------------------------- | ----------------------------------------------------------- |
+| [LLM Development Methodology](llm-development-methodology.md) | For implementers: how to structure code for LLM development |
+| This document                                                 | Specification for consumer documentation                    |
+| [Backend Guide](../implementation/backend-guide.md)           | Design for backend implementation                           |
+| [Middleware Tutorial](middleware-tutorial.md)                 | Design for middleware creation                              |
 
-fn process(fs: &FileStorage<impl Fs, Sandbox>) { /* only accepts Sandbox */ }
-```
+---
+
+## Tracking
+
+This planning document should be replaced with actual consumer documentation when:
+
+1. **AnyFS is implemented** - The crates exist and compile
+2. **API is stable** - No major breaking changes expected
+3. **Examples are tested** - All patterns verified working
+
+**GitHub Issue:** Create Context7-style consumer documentation
+- **Status:** Blocked by AnyFS implementation
+- **Template:** This planning document
 
