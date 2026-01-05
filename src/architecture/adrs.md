@@ -218,7 +218,7 @@ let backend = RestrictionsLayer::builder()
     .layer(backend);
 ```
 
-**Symlink following:** Part of backend semantics. FileStorage resolves paths for non-`SelfResolving` backends; OS-backed backends delegate to the OS (strict-path prevents escapes). There is no runtime toggle.
+**Symlink following:** Controlled by the `PathResolver`. The default `IterativeResolver` follows symlinks when `FsLink` is available. Custom resolvers can implement different behaviors. OS-backed backends delegate to the OS (strict-path prevents escapes).
 
 ---
 

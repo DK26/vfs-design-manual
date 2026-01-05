@@ -1284,28 +1284,25 @@ We simulate inodes - that's the whole point of virtualizing a filesystem. Path r
 - Resolution requires following the actual directory structure (inodes)
 - The `Fs` traits have the needed methods: `metadata()`, `read_link()`, `read_dir()`
 
-### Internal Resolution (Private)
+### Path Resolution via PathResolver Trait
 
-`FileStorage` uses an internal resolution function to walk paths before passing them to backends:
+`FileStorage` delegates path resolution to a pluggable `PathResolver` (see ADR-033). The default `IterativeResolver` walks paths component by component:
 
 ```rust
-/// Internal: Resolve a path (symlink-aware for virtual backends).
-/// Used by FileStorage before delegating to backend.
-fn resolve_path_internal(
-    backend: &(impl Fs + FsLink),
-    path: impl AsRef<Path>,
-) -> Result<PathBuf, FsError> {
-    // Walk path component by component
-    // Use backend.metadata() to check node types
-    // Use backend.read_link() to follow symlinks
-    // Detect circular symlinks
-    // Return fully resolved canonical path
+/// Default resolver algorithm (simplified):
+/// - Walk path component by component
+/// - Use backend.metadata() to check node types
+/// - If backend implements FsLink, use read_link() to follow symlinks
+/// - Detect circular symlinks (max depth: 40)
+/// - Return fully resolved canonical path
+pub struct IterativeResolver {
+    max_symlink_depth: usize,  // Default: 40
 }
 ```
 
-**Path resolution is pluggable via the `PathResolver` trait** (see ADR-033). The default `IterativeResolver` implements the algorithm above. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors. The public API for path resolution is the `canonicalize` family of methods on `FileStorage` (see "Path Canonicalization Utilities" below).
+**Resolution behavior depends on the resolver used.** The default `IterativeResolver` follows symlinks when the backend implements `FsLink`. For backends without `FsLink`, it traverses directories but treats symlinks as regular files. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors.
 
-**Note:** The default resolution requires `Fs + FsLink`. For backends that don't implement `FsLink`, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement `FsLink`.
+**Note:** All built-in virtual backends (MemoryBackend, SqliteBackend) implement `FsLink`, so symlink-aware resolution works out of the box.
 
 ### When Resolution Is Needed
 
@@ -1327,16 +1324,15 @@ pub trait SelfResolving {}
 impl SelfResolving for VRootFsBackend {}
 ```
 
-`FileStorage` (or a dedicated wrapper) applies resolution automatically for backends that don't implement `SelfResolving`. Symlink following is part of backend semantics: virtual backends that implement `FsLink` are resolved with symlink awareness, and there is no runtime toggle.
+`FileStorage` applies resolution via its `PathResolver` for backends that don't implement `SelfResolving`. The default `IterativeResolver` follows symlinks when `FsLink` is available. Custom resolvers can implement different behaviors (e.g., no symlink following, caching, case-insensitivity).
 
 ```rust
-impl<B: Fs, M> FileStorage<B, M> {
-    pub fn new(backend: B) -> Self { /* ... */ }
+impl<B: Fs, M> FileStorage<B, IterativeResolver, M> {
+    pub fn new(backend: B) -> Self { /* uses IterativeResolver */ }
 }
 
-// Canonicalization requires FsLink (FsPath: FsRead + FsLink)
-impl<B: Fs + FsLink, M> FileStorage<B, M> {
-    pub fn canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError> { /* ... */ }
+impl<B: Fs, R: PathResolver, M> FileStorage<B, R, M> {
+    pub fn with_resolver(backend: B, resolver: R) -> Self { /* custom resolver */ }
 }
 ```
 

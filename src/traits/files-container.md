@@ -281,4 +281,4 @@ let fs = FileStorage::new(backend);
 fs.write("/file.txt", b"data")?;
 ```
 
-`FileStorage<B, M>` is part of the `anyfs` crate, not a separate crate.
+`FileStorage<B, R, M>` is part of the `anyfs` crate, not a separate crate.

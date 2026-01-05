@@ -15,10 +15,11 @@ This document captures previously open questions and design considerations. Unle
 
 **Status:** Resolved
 
-### Decision (v1)
-- Symlink support is a backend capability (via `FsLink`). There is no runtime toggle to disable following.
-- `FileStorage` resolves paths for non-`SelfResolving` backends; symlink following is inherent in that resolution.
-- `SelfResolving` backends delegate to the OS. `strict-path` prevents escapes but cannot disable following.
+### Decision
+- Symlink support is a backend capability (via `FsLink`).
+- `FileStorage` resolves paths via pluggable `PathResolver` for non-`SelfResolving` backends.
+- The default `IterativeResolver` follows symlinks when `FsLink` is available. Custom resolvers can implement different behaviors.
+- `SelfResolving` backends delegate to the OS. `strict-path` prevents escapes.
 
 ### Implications
 - If you need symlink-free semantics, use a backend that does not implement `FsLink` or block symlink creation and ensure no preexisting symlinks exist.
