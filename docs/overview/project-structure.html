@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-04de7841.js";
+            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -234,8 +234,8 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
     resolvers/
       iterative.rs          # IterativeResolver (default)
       noop.rs               # NoOpResolver (for SelfResolving backends)
-      caching.rs            # CachingResolver (LRU cache with TTL, best-effort)
-    container.rs            # FileStorage&lt;B, M&gt;
+      caching.rs            # CachingResolver (LRU cache wrapper)
+    container.rs            # FileStorage&lt;B, R, M&gt;
     stack.rs                # BackendStack builder
 </code></pre>
 <hr>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-04de7841.js";
+            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -1376,25 +1376,22 @@ fs.write(PathBuf::from("/file.txt"), data)?;
 <li>Resolution requires following the actual directory structure (inodes)</li>
 <li>The <code>Fs</code> traits have the needed methods: <code>metadata()</code>, <code>read_link()</code>, <code>read_dir()</code></li>
 </ul>
-<h3 id="internal-resolution-private"><a class="header" href="#internal-resolution-private">Internal Resolution (Private)</a></h3>
-<p><code>FileStorage</code> uses an internal resolution function to walk paths before passing them to backends:</p>
+<h3 id="path-resolution-via-pathresolver-trait"><a class="header" href="#path-resolution-via-pathresolver-trait">Path Resolution via PathResolver Trait</a></h3>
+<p><code>FileStorage</code> delegates path resolution to a pluggable <code>PathResolver</code> (see ADR-033). The default <code>IterativeResolver</code> walks paths component by component:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>/// Internal: Resolve a path (symlink-aware for virtual backends).
-/// Used by FileStorage before delegating to backend.
-fn resolve_path_internal(
-    backend: &amp;(impl Fs + FsLink),
-    path: impl AsRef&lt;Path&gt;,
-) -&gt; Result&lt;PathBuf, FsError&gt; {
-    // Walk path component by component
-    // Use backend.metadata() to check node types
-    // Use backend.read_link() to follow symlinks
-    // Detect circular symlinks
-    // Return fully resolved canonical path
+</span>/// Default resolver algorithm (simplified):
+/// - Walk path component by component
+/// - Use backend.metadata() to check node types
+/// - If backend implements FsLink, use read_link() to follow symlinks
+/// - Detect circular symlinks (max depth: 40)
+/// - Return fully resolved canonical path
+pub struct IterativeResolver {
+    max_symlink_depth: usize,  // Default: 40
 }
 <span class="boring">}</span></code></pre>
-<p><strong>Path resolution is pluggable via the <code>PathResolver</code> trait</strong> (see ADR-033). The default <code>IterativeResolver</code> implements the algorithm above. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors. The public API for path resolution is the <code>canonicalize</code> family of methods on <code>FileStorage</code> (see “Path Canonicalization Utilities” below).</p>
-<p><strong>Note:</strong> The default resolution requires <code>Fs + FsLink</code>. For backends that don’t implement <code>FsLink</code>, FileStorage uses a simplified resolution that traverses directories but cannot follow symlinks. All built-in virtual backends implement <code>FsLink</code>.</p>
+<p><strong>Resolution behavior depends on the resolver used.</strong> The default <code>IterativeResolver</code> follows symlinks when the backend implements <code>FsLink</code>. For backends without <code>FsLink</code>, it traverses directories but treats symlinks as regular files. Users can provide custom resolvers for case-insensitive matching, caching, or other behaviors.</p>
+<p><strong>Note:</strong> All built-in virtual backends (MemoryBackend, SqliteBackend) implement <code>FsLink</code>, so symlink-aware resolution works out of the box.</p>
 <h3 id="when-resolution-is-needed"><a class="header" href="#when-resolution-is-needed">When Resolution Is Needed</a></h3>
 <div class="table-wrapper">
 <table>
@@ -1418,16 +1415,15 @@ pub trait SelfResolving {}
 
 impl SelfResolving for VRootFsBackend {}
 <span class="boring">}</span></code></pre>
-<p><code>FileStorage</code> (or a dedicated wrapper) applies resolution automatically for backends that don’t implement <code>SelfResolving</code>. Symlink following is part of backend semantics: virtual backends that implement <code>FsLink</code> are resolved with symlink awareness, and there is no runtime toggle.</p>
+<p><code>FileStorage</code> applies resolution via its <code>PathResolver</code> for backends that don’t implement <code>SelfResolving</code>. The default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available. Custom resolvers can implement different behaviors (e.g., no symlink following, caching, case-insensitivity).</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, M&gt; {
-    pub fn new(backend: B) -&gt; Self { /* ... */ }
+</span>impl&lt;B: Fs, M&gt; FileStorage&lt;B, IterativeResolver, M&gt; {
+    pub fn new(backend: B) -&gt; Self { /* uses IterativeResolver */ }
 }
 
-// Canonicalization requires FsLink (FsPath: FsRead + FsLink)
-impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
-    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; { /* ... */ }
+impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
+    pub fn with_resolver(backend: B, resolver: R) -&gt; Self { /* custom resolver */ }
 }
 <span class="boring">}</span></code></pre>
 <hr>

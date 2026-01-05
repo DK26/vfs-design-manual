@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-04de7841.js";
+            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -395,7 +395,7 @@ fs.symlink("/target", "/link")?;  // ❌ Won't compile - no FsLink impl
     .build()
     .layer(backend);
 <span class="boring">}</span></code></pre>
-<p><strong>Symlink following:</strong> Part of backend semantics. FileStorage resolves paths for non-<code>SelfResolving</code> backends; OS-backed backends delegate to the OS (strict-path prevents escapes). There is no runtime toggle.</p>
+<p><strong>Symlink following:</strong> Controlled by the <code>PathResolver</code>. The default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available. Custom resolvers can implement different behaviors. OS-backed backends delegate to the OS (strict-path prevents escapes).</p>
 <hr>
 <h2 id="adr-008-filestorage-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filestorage-as-thin-ergonomic-wrapper">ADR-008: FileStorage as thin ergonomic wrapper</a></h2>
 <p><strong>Decision:</strong> <code>FileStorage&lt;B, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>

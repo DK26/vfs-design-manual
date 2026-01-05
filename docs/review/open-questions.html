@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-04de7841.js";
+            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-25c4523f.js"></script>
@@ -191,11 +191,12 @@
 <hr>
 <h2 id="symlink-security-following-vs-creating"><a class="header" href="#symlink-security-following-vs-creating">Symlink Security: Following vs Creating</a></h2>
 <p><strong>Status:</strong> Resolved</p>
-<h3 id="decision-v1"><a class="header" href="#decision-v1">Decision (v1)</a></h3>
+<h3 id="decision"><a class="header" href="#decision">Decision</a></h3>
 <ul>
-<li>Symlink support is a backend capability (via <code>FsLink</code>). There is no runtime toggle to disable following.</li>
-<li><code>FileStorage</code> resolves paths for non-<code>SelfResolving</code> backends; symlink following is inherent in that resolution.</li>
-<li><code>SelfResolving</code> backends delegate to the OS. <code>strict-path</code> prevents escapes but cannot disable following.</li>
+<li>Symlink support is a backend capability (via <code>FsLink</code>).</li>
+<li><code>FileStorage</code> resolves paths via pluggable <code>PathResolver</code> for non-<code>SelfResolving</code> backends.</li>
+<li>The default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available. Custom resolvers can implement different behaviors.</li>
+<li><code>SelfResolving</code> backends delegate to the OS. <code>strict-path</code> prevents escapes.</li>
 </ul>
 <h3 id="implications"><a class="header" href="#implications">Implications</a></h3>
 <ul>
