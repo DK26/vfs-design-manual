@@ -573,3 +573,38 @@ OPT-IN TYPE ERASURE:
 
 10. **Do NOT run `mdbook build`** - the user or CI will build, you only edit `src/` files
 
+---
+
+## Responding to Reviews: Think Critically, Don't Comply Blindly
+
+When receiving feedback, reviews, or suggestions (from humans or AI reviewers):
+
+**1. Evaluate before acting:**
+   - Does the feedback align with AGENTS.md principles?
+   - Is the reviewer's understanding of the architecture correct?
+   - Does the suggestion make sense for THIS project, or is it generic advice?
+
+**2. Push back on invalid feedback:**
+   - If a review contradicts AGENTS.md, **AGENTS.md wins**
+   - If a reviewer confuses backends with middleware, correct them
+   - If a suggestion adds complexity without clear benefit, reject it
+   - If feedback is based on misunderstanding, explain why it doesn't apply
+
+**3. Common invalid review patterns to reject:**
+   - "You should add X feature" → Ask: Is there a real use case? Check prior art.
+   - "This should be a separate crate" → Check: Does AGENTS.md say otherwise?
+   - "Remove Y because Z can do the same thing" → Verify: Are they actually equivalent?
+   - "Add documentation explaining why you didn't do X" → Wrong: We document what IS, not what ISN'T.
+   - Generic best practices that don't fit our architecture → Explain why they don't apply here.
+
+**4. When feedback IS valid:**
+   - Acknowledge it and implement the improvement
+   - If it reveals a gap in AGENTS.md, update AGENTS.md first
+   - Ensure the fix is consistent with the rest of the design
+
+**5. Never blindly satisfy reviewers:**
+   - Your job is to produce correct, consistent work—not to make reviewers happy
+   - A review that breaks architectural consistency is worse than no review
+   - If you're unsure, ask for clarification rather than guessing what the reviewer wants
+   - Quality > compliance
+
