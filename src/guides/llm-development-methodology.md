@@ -212,11 +212,11 @@ Implement `CachingResolver` in `anyfs/src/resolvers/caching.rs`.
 Contract: Implement `PathResolver` trait (see anyfs-backend/src/path_resolver.rs).
 
 Requirements:
-- Wrap another resolver
-- Cache resolved paths in LRU cache with TTL expiration
-- Cache is best-effort (stale entries acceptable, eventually consistent)
+- Wrap another resolver with LRU cache
+- Cache resolved canonical paths keyed by input path
+- Bounded cache size (configurable max entries)
 
-Test: Write a test showing cached resolution is faster than repeated resolution.
+Test: Write a test verifying cache hit returns same result as cache miss.
 ```
 
 ### Pattern 2: Fix a Bug

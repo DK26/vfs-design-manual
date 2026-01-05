@@ -1368,10 +1368,14 @@ This works, but the resolution **algorithm** is not a first-class, testable unit
 // In anyfs-backend (trait definition)
 /// Strategy trait for path resolution algorithms.
 ///
-/// Encapsulates how paths are normalized, symlinks are followed,
-/// and `..`/`.` components are resolved.
+/// Encapsulates path normalization, `..`/`.` resolution, and optionally symlink following.
+/// Symlink resolution requires the backend to implement `FsLink`. If the backend only
+/// implements `Fs`, the resolver will normalize paths and resolve `.`/`..` but cannot
+/// follow symlinks (they are treated as regular files/directories).
 pub trait PathResolver: Send + Sync {
-    /// Resolve path to canonical form (all symlinks resolved, all components exist).
+    /// Resolve path to canonical form.
+    /// If backend implements `FsLink`, symlinks are followed up to max depth.
+    /// If backend only implements `Fs`, symlinks are not followed.
     fn canonicalize(&self, path: &Path, fs: &dyn Fs) -> Result<PathBuf, FsError>;
     
     /// Like canonicalize, but allows non-existent final component.
@@ -1379,10 +1383,13 @@ pub trait PathResolver: Send + Sync {
 }
 ```
 
+**Note on symlink handling:** The trait accepts `&dyn Fs` for object safety, but implementations can attempt to downcast to `&dyn FsLink` when symlink awareness is needed. All built-in virtual backends implement `FsLink`, so this works seamlessly. For backends without `FsLink`, resolution still works but treats all entries as non-symlinks.
+
 **Built-in Implementations (in `anyfs` crate):**
 
 ```rust
 /// Default iterative resolver - walks path component by component.
+/// Follows symlinks if the backend implements FsLink.
 pub struct IterativeResolver {
     max_symlink_depth: usize,  // Default: 40
 }
@@ -1390,10 +1397,10 @@ pub struct IterativeResolver {
 /// No-op resolver for SelfResolving backends (OS handles resolution).
 pub struct NoOpResolver;
 
-/// Caching resolver for read-heavy workloads.
+/// LRU cache wrapper around another resolver.
 pub struct CachingResolver<R: PathResolver> {
     inner: R,
-    cache: Cache<PathBuf, PathBuf>,
+    cache: Cache<PathBuf, PathBuf>,  // LRU cache, bounded size
 }
 
 // Case-folding resolver is NOT built-in. Users can implement one via PathResolver
