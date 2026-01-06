@@ -80,7 +80,7 @@ The traits don't care where bytes come from - that's the backend's business.
 Current design requires `&self` methods with interior mutability. For hybrid:
 
 ```rust
-pub struct HybridBackend {
+pub struct CustomIndexedBackend {
     // SQLite needs single-writer (see "Write Queue" below)
     metadata: Arc<Mutex<Connection>>,
 
@@ -195,7 +195,7 @@ use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 
-pub struct HybridBackend {
+pub struct CustomIndexedBackend {
     /// SQLite connection (metadata)
     db: Arc<Mutex<Connection>>,
 
@@ -233,7 +233,7 @@ enum WriteCmd {
 Read operations can query SQLite and blob store directly (no queue needed):
 
 ```rust
-impl FsRead for HybridBackend {
+impl FsRead for CustomIndexedBackend {
     fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
         let path = path.as_ref();
 
@@ -310,7 +310,7 @@ impl FsRead for HybridBackend {
 Writes use a two-phase pattern: upload blob first, then commit SQLite:
 
 ```rust
-impl FsWrite for HybridBackend {
+impl FsWrite for CustomIndexedBackend {
     fn write(&self, path: &Path, data: &[u8]) -> Result<(), FsError> {
         let path = path.as_ref().to_path_buf();
 
@@ -479,7 +479,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 Blobs with `refcount = 0` are orphans and can be deleted:
 
 ```rust
-impl HybridBackend {
+impl CustomIndexedBackend {
     /// Run garbage collection (call periodically or on-demand).
     pub fn gc(&self) -> Result<GcStats, FsError> {
         let db = self.db.lock().map_err(|_| FsError::Backend("lock".into()))?;
@@ -525,7 +525,7 @@ impl HybridBackend {
 ### Creating a Snapshot
 
 ```rust
-impl HybridBackend {
+impl CustomIndexedBackend {
     /// Create a point-in-time snapshot.
     pub fn snapshot(&self, name: &str) -> Result<SnapshotId, FsError> {
         let db = self.db.lock().unwrap();
@@ -586,7 +586,7 @@ Middleware works unchanged - it wraps the hybrid backend like any other:
 ```rust
 use anyfs::{FileStorage, QuotaLayer, TracingLayer, PathFilterLayer};
 
-let backend = HybridBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
+let backend = CustomIndexedBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
 
 // Standard middleware stack
 let backend = backend
@@ -623,7 +623,7 @@ When `AsyncFs` traits exist (ADR-024), the hybrid backend can use them naturally
 
 ```rust
 #[async_trait]
-impl AsyncFsRead for HybridBackend {
+impl AsyncFsRead for CustomIndexedBackend {
     async fn read(&self, path: &Path) -> Result<Vec<u8>, FsError> {
         let blob_id = self.lookup_blob_id(path).await?;
         self.blobs.get_async(&blob_id).await  // Non-blocking!
