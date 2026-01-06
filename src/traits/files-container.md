@@ -1,4 +1,4 @@
-# FileStorage<B, M> (anyfs)
+# FileStorage<B, R, M> (anyfs)
 
 **Zero-cost ergonomic wrapper for std::fs-aligned API**
 
@@ -6,8 +6,9 @@
 
 ## Overview
 
-`FileStorage<B, M>` is a **thin wrapper** that provides a familiar std::fs-aligned API with:
+`FileStorage<B, R, M>` is a **thin wrapper** that provides a familiar std::fs-aligned API with:
 - **`B`** - Backend type (generic, zero-cost)
+- **`R`** - PathResolver type (default: `IterativeResolver`, zero-cost)
 - **`M`** - Optional marker type for compile-time safety
 
 It is the intended application-facing API: std::fs-style paths with object-safe core traits under the hood.
@@ -62,16 +63,16 @@ use anyfs::{MemoryBackend, SqliteBackend, FileStorage};
 struct Sandbox;
 struct UserData;
 
-// Specify marker in type annotation, infer backend with _
-let sandbox: FileStorage<_, Sandbox> = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage<_, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
+// Specify marker in type annotation, infer backend and resolver with _
+let sandbox: FileStorage<_, _, Sandbox> = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage<_, _, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &FileStorage<impl Fs, Sandbox>) {
+fn process_sandbox(fs: &FileStorage<impl Fs, IterativeResolver, Sandbox>) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &FileStorage<impl Fs, UserData>, name: &str, data: &[u8]) {
+fn save_user_file(fs: &FileStorage<impl Fs, IterativeResolver, UserData>, name: &str, data: &[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -249,7 +250,7 @@ let filesystems: Vec<FileStorage<Box<dyn Fs>>> = vec![
 ];
 
 // Or use type alias
-type DynFileStorage<M = ()> = FileStorage<Box<dyn Fs>, M>;
+type DynFileStorage<R = IterativeResolver, M = ()> = FileStorage<Box<dyn Fs>, R, M>;
 ```
 
 **When to use `.boxed()`:**

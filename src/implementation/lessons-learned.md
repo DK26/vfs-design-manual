@@ -315,7 +315,7 @@ impl Drop for SqliteBackend {
 
 ### AnyFS Response
 
-- **We isolate this** - core AnyFS stays pure; FUSE lives in an optional companion crate
+- **We isolate this** - core traits stay pure; FUSE lives behind feature flags (`fuse`, `winfsp`) in the `anyfs` crate
 - **Cross-platform by design** - Memory and SQLite work everywhere
 - **`VRootFsBackend` uses `strict-path`** which handles Windows/Unix
 

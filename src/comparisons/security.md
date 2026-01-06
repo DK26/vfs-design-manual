@@ -176,7 +176,7 @@ the virtual structure. There is no host filesystem to escape to.
 This means:
 - **No host filesystem access** - symlinks point to paths within the virtual structure only
 - **No TOCTOU via OS state** - resolution uses the backend's own data
-- **No runtime toggle** - symlink following is part of backend semantics (virtual backends that implement `FsLink` are resolved by `FileStorage`)
+- **Controlled by PathResolver** - the default `IterativeResolver` follows symlinks when `FsLink` is available; custom resolvers can implement different behaviors
 
 For `VRootFsBackend` (real filesystem), `strict-path::VirtualRoot` provides equivalent guarantees by validating and containing all paths before they reach the OS.
 

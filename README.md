@@ -130,10 +130,10 @@ Marker types prevent mixing containers at compile time:
 struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage<_, Sandbox> = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage<_, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
+let sandbox: FileStorage<_, _, Sandbox> = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage<_, _, UserData> = FileStorage::new(SqliteBackend::open("data.db")?);
 
-fn process_sandbox(fs: &FileStorage<impl Fs, Sandbox>) { /* only accepts Sandbox */ }
+fn process_sandbox(fs: &FileStorage<impl Fs, IterativeResolver, Sandbox>) { /* only accepts Sandbox */ }
 
 process_sandbox(&sandbox);   // OK
 process_sandbox(&userdata);  // Compile error!
@@ -244,8 +244,8 @@ Virtual backends work identically everywhere - paths are just keys, symlinks are
 | **Caching**                | LRU cache middleware for repeated reads                                                                                         |
 | **Union Filesystems**      | Overlay multiple backends (Docker-like layering)                                                                                |
 | **Snapshots**              | Clone in-memory backends for instant checkpoints                                                                                |
-| **Virtual Drive Mounting** | Planned companion crate for FUSE/WinFsp mounting (requires `FsFuse`)                                                            |
-| **Path Canonicalization**  | Optimizable symlink and `..` resolution per backend                                                                             |
+| **Virtual Drive Mounting** | Part of `anyfs` crate (behind `fuse`/`winfsp` feature flags, requires `FsFuse`)                                                 |
+| **Path Canonicalization**  | Pluggable path resolution via `PathResolver` trait                                                                              |
 | **FFI-Ready**              | Design supports Python (PyO3), C, and other language bindings                                                                   |
 | **Dynamic Middleware**     | Runtime-configured middleware stacks via `Box<dyn Fs>`                                                                          |
 

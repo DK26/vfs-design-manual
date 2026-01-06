@@ -32,7 +32,7 @@
 # Traits & APIs
 
 - [Layered Traits (anyfs-backend)](./traits/layered-traits.md)
-- [FileStorage<B, M> (anyfs)](./traits/files-container.md)
+- [FileStorage<B, R, M> (anyfs)](./traits/files-container.md)
 
 ---
 

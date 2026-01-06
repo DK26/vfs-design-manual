@@ -20,7 +20,7 @@ Anyone can:
 - **Control how a drive acts, looks, and protects itself.**
 - Implement a custom backend for their specific storage needs (Cloud, DB, RAM).
 - Compose middleware to add limits, logging, and security.
-- Use the ergonomic `FileStorage<B, M>` wrapper for a standard `std::fs`-like API.
+- Use the ergonomic `FileStorage<B, R, M>` wrapper for a standard `std::fs`-like API.
 
 ---
 
@@ -1119,8 +1119,8 @@ FileStorage<StdFsBackend, Production> // Real filesystem, production
 type SecureBackend = Tracing<Restrictions<Quota<SqliteBackend>>>;
 
 // Type aliases for common combinations
-type SandboxFs = FileStorage<MemoryBackend, Sandbox>;
-type UserDataFs = FileStorage<SecureBackend, UserData>;
+type SandboxFs = FileStorage<MemoryBackend, IterativeResolver, Sandbox>;
+type UserDataFs = FileStorage<SecureBackend, IterativeResolver, UserData>;
 
 // Clean function signatures
 fn run_agent(fs: &SandboxFs) { ... }
@@ -1349,17 +1349,17 @@ impl<B: Fs, R: PathResolver, M> FileStorage<B, R, M> {
 ### Core Methods
 
 ```rust
-impl<B: Fs + FsLink, M> FileStorage<B, M> {
+impl<B: Fs + FsLink, R: PathResolver, M> FileStorage<B, R, M> {
     /// Strict canonicalization - entire path must exist.
     ///
-    /// Resolves all symlinks and normalizes the path.
+    /// Resolves all symlinks and normalizes the path using the resolver.
     /// Returns error if any component doesn't exist.
     pub fn canonicalize(&self, path: impl AsRef<Path>) -> Result<PathBuf, FsError>;
 
     /// Soft canonicalization - resolves existing components,
     /// appends non-existent remainder lexically.
     ///
-    /// Walks path component-by-component:
+    /// Walks path component-by-component via the resolver:
     /// 1. For existing components → resolve symlinks, follow them
     /// 2. When hitting non-existent component → append remainder lexically
     ///
