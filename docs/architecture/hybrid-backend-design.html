@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Hybrid Backend Design - AnyFS Ecosystem Manual</title>
+        <title>IndexedBackend Pattern - AnyFS Ecosystem Manual</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,21 +180,21 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="hybrid-backend-design"><a class="header" href="#hybrid-backend-design">Hybrid Backend Design</a></h1>
+                        <h1 id="indexedbackend-pattern"><a class="header" href="#indexedbackend-pattern">IndexedBackend Pattern</a></h1>
 <p><strong>SQLite Metadata + Content-Addressed Blob Storage</strong></p>
-<p>This document validates that AnyFS can support hybrid backends and provides implementation patterns for this advanced use case.</p>
+<p>This document describes the IndexedBackend architecture pattern: separating filesystem metadata (stored in SQLite) from file content (stored as blobs). This enables efficient queries, large file support, and flexible storage backends.</p>
 <blockquote>
-<p><strong>Built-in Implementation:</strong> AnyFS ships <code>IndexedBackend</code> as a production-ready implementation of this pattern using local disk blobs. See the <a href="../guides/backends-guide.html#indexedbackend">Backends Guide</a> for usage. This document covers the underlying design pattern for those building custom hybrid backends (e.g., with S3, cloud storage, or custom blob stores).</p>
+<p><strong>Built-in Implementation:</strong> AnyFS ships <code>IndexedBackend</code> as a production-ready implementation using local disk blobs. See the <a href="../guides/backends-guide.html#indexedbackend">Backends Guide</a> for usage. This document covers the underlying design pattern for those building custom implementations (e.g., with S3, cloud storage, or custom blob stores).</p>
 </blockquote>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>A <strong>hybrid backend</strong> separates:</p>
+<p>The <strong>IndexedBackend pattern</strong> separates:</p>
 <ul>
 <li><strong>Metadata</strong> (directory structure, inodes, permissions) → SQLite</li>
 <li><strong>Content</strong> (file bytes) → Content-Addressed Storage (CAS)</li>
 </ul>
 <pre><code>┌─────────────────────────────────────────────────────────┐
-│            Hybrid Backend (pattern)                     │
+│            IndexedBackend (pattern)                     │
 │  ┌─────────────────────┐    ┌────────────────────────┐  │
 │  │   SQLite Metadata   │    │   Blob Store (CAS)     │  │
 │  │                     │    │                        │  │
@@ -265,7 +265,7 @@ IndexedBackend implements a simpler variant with UUID-named local blobs
 <p>Current design requires <code>&amp;self</code> methods with interior mutability. For hybrid:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub struct HybridBackend {
+</span>pub struct CustomIndexedBackend {
     // SQLite needs single-writer (see "Write Queue" below)
     metadata: Arc&lt;Mutex&lt;Connection&gt;&gt;,
 
@@ -371,7 +371,7 @@ use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 
-pub struct HybridBackend {
+pub struct CustomIndexedBackend {
     /// SQLite connection (metadata)
     db: Arc&lt;Mutex&lt;Connection&gt;&gt;,
 
@@ -407,7 +407,7 @@ enum WriteCmd {
 <p>Read operations can query SQLite and blob store directly (no queue needed):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl FsRead for HybridBackend {
+</span>impl FsRead for CustomIndexedBackend {
     fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
 
@@ -482,7 +482,7 @@ enum WriteCmd {
 <p>Writes use a two-phase pattern: upload blob first, then commit SQLite:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl FsWrite for HybridBackend {
+</span>impl FsWrite for CustomIndexedBackend {
     fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
@@ -641,7 +641,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 <p>Blobs with <code>refcount = 0</code> are orphans and can be deleted:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl HybridBackend {
+</span>impl CustomIndexedBackend {
     /// Run garbage collection (call periodically or on-demand).
     pub fn gc(&amp;self) -&gt; Result&lt;GcStats, FsError&gt; {
         let db = self.db.lock().map_err(|_| FsError::Backend("lock".into()))?;
@@ -685,7 +685,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 <h3 id="creating-a-snapshot"><a class="header" href="#creating-a-snapshot">Creating a Snapshot</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl HybridBackend {
+</span>impl CustomIndexedBackend {
     /// Create a point-in-time snapshot.
     pub fn snapshot(&amp;self, name: &amp;str) -&gt; Result&lt;SnapshotId, FsError&gt; {
         let db = self.db.lock().unwrap();
@@ -743,7 +743,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, QuotaLayer, TracingLayer, PathFilterLayer};
 
-let backend = HybridBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
+let backend = CustomIndexedBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
 
 // Standard middleware stack
 let backend = backend
@@ -781,7 +781,7 @@ fs.write("/documents/report.pdf", &amp;pdf_bytes)?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[async_trait]
-impl AsyncFsRead for HybridBackend {
+impl AsyncFsRead for CustomIndexedBackend {
     async fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let blob_id = self.lookup_blob_id(path).await?;
         self.blobs.get_async(&amp;blob_id).await  // Non-blocking!

@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -248,11 +248,11 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
 <p><strong>Key points:</strong></p>
 <ul>
 <li>Custom backends depend only on <code>anyfs-backend</code></li>
-<li><code>anyfs</code> provides built-in backends, middleware, mounting (behind feature flags), and the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper</li>
+<li><code>anyfs</code> provides built-in backends, middleware, mounting (behind feature flags), and the ergonomic <code>FileStorage&lt;B, R, M&gt;</code> wrapper</li>
 </ul>
 <hr>
 <h2 id="middleware-pattern"><a class="header" href="#middleware-pattern">Middleware Pattern</a></h2>
-<pre><code>FileStorage&lt;B, M&gt;
+<pre><code>FileStorage&lt;B, R, M&gt;
     wraps -&gt; Tracing&lt;B&gt;
         wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;

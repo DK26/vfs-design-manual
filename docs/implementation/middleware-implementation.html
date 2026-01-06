@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -1472,7 +1472,7 @@ impl&lt;Lower: FsRead + FsDir, Upper: Fs&gt; FsDir for Overlay&lt;Lower, Upper&g
 <tr><td>RateLimit</td><td>Moderate</td><td>Atomic counter + time window</td></tr>
 <tr><td>DryRun</td><td>Moderate</td><td>Log writes, return Ok without executing</td></tr>
 <tr><td>PathFilter</td><td>Moderate</td><td>Glob matching + filtered ReadDirIter</td></tr>
-<tr><td>Cache</td><td>Moderate</td><td>LRU with TTL, invalidate on writes</td></tr>
+<tr><td>Cache</td><td>Moderate</td><td>LRU cache, invalidate on writes</td></tr>
 <tr><td>Quota</td><td>High</td><td>Usage counters + QuotaWriter wrapper</td></tr>
 <tr><td>Overlay</td><td>High</td><td>Whiteout markers + merged directory listing</td></tr>
 </tbody>

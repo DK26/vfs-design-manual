@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>FileStorage&lt;B, M&gt; (anyfs) - AnyFS Ecosystem Manual</title>
+        <title>FileStorage&lt;B, R, M&gt; (anyfs) - AnyFS Ecosystem Manual</title>
 
 
         <!-- Custom HTML head -->
@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -180,13 +180,14 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="filestorageb-m-anyfs"><a class="header" href="#filestorageb-m-anyfs">FileStorage&lt;B, M&gt; (anyfs)</a></h1>
+                        <h1 id="filestorageb-r-m-anyfs"><a class="header" href="#filestorageb-r-m-anyfs">FileStorage&lt;B, R, M&gt; (anyfs)</a></h1>
 <p><strong>Zero-cost ergonomic wrapper for std::fs-aligned API</strong></p>
 <hr>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with:</p>
+<p><code>FileStorage&lt;B, R, M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with:</p>
 <ul>
 <li><strong><code>B</code></strong> - Backend type (generic, zero-cost)</li>
+<li><strong><code>R</code></strong> - PathResolver type (default: <code>IterativeResolver</code>, zero-cost)</li>
 <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
 </ul>
 <p>It is the intended application-facing API: std::fs-style paths with object-safe core traits under the hood.</p>
@@ -234,16 +235,16 @@ let fs = FileStorage::new(
 struct Sandbox;
 struct UserData;
 
-// Specify marker in type annotation, infer backend with _
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+// Specify marker in type annotation, infer backend and resolver with _
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -255,9 +256,9 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <p>Both dimensions are meaningful:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
-FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
-FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+</span>FileStorage&lt;SqliteBackend, IterativeResolver, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, IterativeResolver, Production&gt; // Real filesystem, production
 <span class="boring">}</span></code></pre>
 <h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -266,9 +267,9 @@ FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
 type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
 
 // Type aliases for common combinations
-type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
-type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
-type TenantFs&lt;T&gt; = FileStorage&lt;SecureBackend, T&gt;;
+type SandboxFs = FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, IterativeResolver, UserData&gt;;
+type TenantFs&lt;T&gt; = FileStorage&lt;SecureBackend, IterativeResolver, T&gt;;
 
 // Now signatures are clean AND informative
 fn run_agent(fs: &amp;SandboxFs) { ... }
@@ -418,7 +419,7 @@ let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
 ];
 
 // Or use type alias
-type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
+type DynFileStorage&lt;R = IterativeResolver, M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;;
 <span class="boring">}</span></code></pre>
 <p><strong>When to use <code>.boxed()</code>:</strong></p>
 <div class="table-wrapper">

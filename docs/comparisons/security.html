@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -352,7 +352,7 @@ the virtual structure. There is no host filesystem to escape to.
 <ul>
 <li><strong>No host filesystem access</strong> - symlinks point to paths within the virtual structure only</li>
 <li><strong>No TOCTOU via OS state</strong> - resolution uses the backend’s own data</li>
-<li><strong>No runtime toggle</strong> - symlink following is part of backend semantics (virtual backends that implement <code>FsLink</code> are resolved by <code>FileStorage</code>)</li>
+<li><strong>Controlled by PathResolver</strong> - the default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available; custom resolvers can implement different behaviors</li>
 </ul>
 <p>For <code>VRootFsBackend</code> (real filesystem), <code>strict-path::VirtualRoot</code> provides equivalent guarantees by validating and containing all paths before they reach the OS.</p>
 <h3 id="8-symlink-security-virtual-vs-real-backends"><a class="header" href="#8-symlink-security-virtual-vs-real-backends">8. Symlink Security: Virtual vs Real Backends</a></h3>

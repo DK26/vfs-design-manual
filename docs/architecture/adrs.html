@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -284,7 +284,7 @@
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait, <code>Layer</code> trait, <code>FsExt</code>, types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics (<code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code>)</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics (<code>FileStorage&lt;B, R, M&gt;</code>, <code>BackendStack</code>)</td></tr>
 </tbody>
 </table>
 </div>
@@ -355,7 +355,7 @@
 </ul>
 <hr>
 <h2 id="adr-007-capability-via-trait-bounds"><a class="header" href="#adr-007-capability-via-trait-bounds">ADR-007: Capability via Trait Bounds</a></h2>
-<p><strong>Decision:</strong> Symlink and hard-link capability is determined by whether the backend implements <code>FsLink</code>. There is NO runtime toggle.</p>
+<p><strong>Decision:</strong> Symlink and hard-link capability is determined by whether the backend implements <code>FsLink</code>. The default <code>PathResolver</code> (IterativeResolver) follows symlinks when <code>FsLink</code> is available.</p>
 <h3 id="the-rule"><a class="header" href="#the-rule">The Rule</a></h3>
 <div class="table-wrapper">
 <table>
@@ -398,7 +398,7 @@ fs.symlink("/target", "/link")?;  // ❌ Won't compile - no FsLink impl
 <p><strong>Symlink following:</strong> Controlled by the <code>PathResolver</code>. The default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available. Custom resolvers can implement different behaviors. OS-backed backends delegate to the OS (strict-path prevents escapes).</p>
 <hr>
 <h2 id="adr-008-filestorage-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filestorage-as-thin-ergonomic-wrapper">ADR-008: FileStorage as thin ergonomic wrapper</a></h2>
-<p><strong>Decision:</strong> <code>FileStorage&lt;B, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>
+<p><strong>Decision:</strong> <code>FileStorage&lt;B, R, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>
 <p><strong>What it does:</strong></p>
 <ul>
 <li>Provides familiar method names</li>
@@ -729,7 +729,6 @@ fs.write("/test.txt", b"hello")?;  // Logged but not written
 </span>CacheLayer::builder()
     .max_entries(1000)
     .max_entry_size(1024 * 1024)  // 1MB max per entry
-    .ttl(Duration::from_secs(60))
     .build()
     .layer(backend)
 <span class="boring">}</span></code></pre>
@@ -738,7 +737,6 @@ fs.write("/test.txt", b"hello")?;  // Logged but not written
 <li>Read operations check cache first, populate on miss.</li>
 <li>Write operations invalidate relevant cache entries.</li>
 <li>LRU eviction when max entries exceeded.</li>
-<li>TTL-based expiration for freshness.</li>
 </ul>
 <p><strong>Why:</strong></p>
 <ul>
@@ -1159,9 +1157,9 @@ SETUP (once at startup - zero-cost):
 └─────────────────────────────────────────────────────┘
 
 OPT-IN TYPE ERASURE (when explicitly needed):
-┌─────────────────────────────────────────────────────┐
-│  FileStorage::boxed() -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;&gt;   │  ← Like Tower's BoxService
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  FileStorage::boxed() -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;    │  ← Like Tower's BoxService
+└─────────────────────────────────────────────────────────────┘
 </code></pre>
 <h3 id="what-gets-boxed-and-why"><a class="header" href="#what-gets-boxed-and-why">What Gets Boxed and Why</a></h3>
 <div class="table-wrapper">
@@ -1481,15 +1479,32 @@ impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
 </table>
 </div>
 <p><strong>FileStorage Integration:</strong></p>
+<blockquote>
+<p><strong>Note:</strong> ADR-033 introduces <code>PathResolver</code> as the primary resolution strategy. <code>FsPath</code> remains
+as an optional backend optimization hook. When a backend implements both <code>FsPath</code> and the default
+traits, the backend can choose to delegate to its resolver or provide fully custom logic (e.g.,
+SQLite CTE queries).</p>
+</blockquote>
+<p>FileStorage uses <code>PathResolver</code> for its resolution (see ADR-033):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs + FsPath, M&gt; FileStorage&lt;B, M&gt; {
+</span>impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
     pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
-        self.backend.canonicalize(path.as_ref())
+        self.resolver.canonicalize(path.as_ref(), &amp;self.backend as &amp;dyn Fs)
     }
 
     pub fn soft_canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
-        self.backend.soft_canonicalize(path.as_ref())
+        self.resolver.soft_canonicalize(path.as_ref(), &amp;self.backend as &amp;dyn Fs)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Backends implementing <code>FsPath</code> can provide optimized implementations that the resolver MAY use:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsPath for SqliteBackend {
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Optimized: single CTE query instead of iterative resolution
+        self.conn.query_row(/* ... */)
     }
 }
 <span class="boring">}</span></code></pre>

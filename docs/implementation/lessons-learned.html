@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -458,7 +458,7 @@ pub enum FsError {
 <li><strong>Batch operations</strong> where possible in <code>SqliteBackend</code></li>
 <li><strong>Use transactions</strong> for multi-file operations</li>
 <li><strong>Document performance characteristics</strong> per backend</li>
-<li><strong>Keep mounting optional</strong> - core AnyFS stays a library; mount concerns live in a companion crate</li>
+<li><strong>Keep mounting optional</strong> - core AnyFS stays a library; mount concerns are behind feature flags (<code>fuse</code>, <code>winfsp</code>)</li>
 </ul>
 <p><strong>Documentation requirement:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -488,7 +488,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> FUSE mount cleanup issues.</p>
 <h3 id="anyfs-response-9"><a class="header" href="#anyfs-response-9">AnyFS Response</a></h3>
 <ul>
-<li><strong>Core stays a library</strong> - daemon/mount shutdown concerns belong in the companion crate</li>
+<li><strong>Core stays a library</strong> - daemon/mount shutdown concerns are behind feature flags</li>
 <li><strong>Ensure <code>Drop</code> implementations clean up properly</strong></li>
 <li><strong><code>SqliteBackend</code> flushes on drop</strong></li>
 </ul>
@@ -519,7 +519,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> Platform-specific FUSE variants.</p>
 <h3 id="anyfs-response-10"><a class="header" href="#anyfs-response-10">AnyFS Response</a></h3>
 <ul>
-<li><strong>We isolate this</strong> - core AnyFS stays pure; FUSE lives in an optional companion crate</li>
+<li><strong>We isolate this</strong> - core traits stay pure; FUSE lives behind feature flags (<code>fuse</code>, <code>winfsp</code>) in the <code>anyfs</code> crate</li>
 <li><strong>Cross-platform by design</strong> - Memory and SQLite work everywhere</li>
 <li><strong><code>VRootFsBackend</code> uses <code>strict-path</code></strong> which handles Windows/Unix</li>
 </ul>
@@ -562,7 +562,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Symlink complexity</td><td><code>FsLink</code> trait (compile-time)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
-<tr><td>FUSE complexity</td><td>Isolated in optional companion crate</td></tr>
+<tr><td>FUSE complexity</td><td>Isolated behind feature flags</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>
 <tr><td>Monolithic features</td><td>Composable middleware</td></tr>
 </tbody>

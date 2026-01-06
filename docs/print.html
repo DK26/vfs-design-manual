@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-25c4523f.js"></script>
+        <script src="toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -193,7 +193,7 @@
 <hr>
 <h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FileStorage&lt;B, M&gt;                      │  ← Ergonomics + type-safe marker
+│  FileStorage&lt;B, R, M&gt;                   │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                             │  ← Quotas
@@ -214,7 +214,7 @@
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait + types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + mounting + ergonomic <code>FileStorage&lt;B, M&gt;</code></td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + mounting + ergonomic <code>FileStorage&lt;B, R, M&gt;</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -300,7 +300,7 @@ fs.write("/data/file.txt", b"hello")?;
 <hr>
 <h2 id="architecture-1"><a class="header" href="#architecture-1">Architecture</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FileStorage&lt;B, M&gt;                   │  ← Ergonomics (std::fs API)
+│  FileStorage&lt;B, R, M&gt;                │  ← Ergonomics (std::fs API)
 ├─────────────────────────────────────────┤
 │  Middleware (composable):               │
 │    Quota&lt;B&gt;                    │  ← Quotas
@@ -463,11 +463,11 @@ anyfs/                      # Crate 2: backends + middleware + ergonomics
 <p><strong>Key points:</strong></p>
 <ul>
 <li>Custom backends depend only on <code>anyfs-backend</code></li>
-<li><code>anyfs</code> provides built-in backends, middleware, mounting (behind feature flags), and the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper</li>
+<li><code>anyfs</code> provides built-in backends, middleware, mounting (behind feature flags), and the ergonomic <code>FileStorage&lt;B, R, M&gt;</code> wrapper</li>
 </ul>
 <hr>
 <h2 id="middleware-pattern"><a class="header" href="#middleware-pattern">Middleware Pattern</a></h2>
-<pre><code>FileStorage&lt;B, M&gt;
+<pre><code>FileStorage&lt;B, R, M&gt;
     wraps -&gt; Tracing&lt;B&gt;
         wraps -&gt; Restrictions&lt;B&gt;
             wraps -&gt; Quota&lt;B&gt;
@@ -1084,7 +1084,6 @@ dry_run.clear();  // Clear the log
 CacheLayer::builder()
     .max_entries(1000)                          // LRU cache size
     .max_entry_size(1024 * 1024)               // 1MB max per entry
-    .ttl(std::time::Duration::from_secs(60))   // Expiration
     .build()
     .layer(backend)
 <span class="boring">}</span></code></pre>
@@ -1550,12 +1549,12 @@ backend.change_password("new-password")?;
 <li><strong>Control how a drive acts, looks, and protects itself.</strong></li>
 <li>Implement a custom backend for their specific storage needs (Cloud, DB, RAM).</li>
 <li>Compose middleware to add limits, logging, and security.</li>
-<li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
+<li>Use the ergonomic <code>FileStorage&lt;B, R, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
 </ul>
 <hr>
 <h2 id="architecture-tower-style-middleware"><a class="header" href="#architecture-tower-style-middleware">Architecture (Tower-style Middleware)</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FileStorage&lt;B, M&gt;                      │  ← Ergonomics + type-safe marker
+│  FileStorage&lt;B, R, M&gt;                   │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
 │                                         │
@@ -1636,7 +1635,7 @@ backend.change_password("new-password")?;
 struct AiSandbox;  // Marker type
 
 // Application composes secure defaults (marker in type annotation)
-let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
+let sandbox: FileStorage&lt;_, _, AiSandbox&gt; = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::builder()
             .max_total_size(50 * 1024 * 1024)
@@ -1657,7 +1656,7 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract</td><td>Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>), <code>Layer</code> trait, types, <code>FsExt</code></td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code> builder</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;B, R, M&gt;</code>, <code>BackendStack</code> builder</td></tr>
 </tbody>
 </table>
 </div>
@@ -1767,7 +1766,7 @@ print(data)  # b"Hello from Python!"
 <tr><th>Concern</th><th>Solution</th></tr>
 </thead>
 <tbody>
-<tr><td>Generics (<code>FileStorage&lt;B, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;&gt;</code> (boxed form) for FFI layer</td></tr>
+<tr><td>Generics (<code>FileStorage&lt;B, R, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;</code> (boxed form) for FFI layer</td></tr>
 <tr><td>Streaming (<code>Box&lt;dyn Read&gt;</code>)</td><td>Wrap in language-native class with <code>read(n)</code> method</td></tr>
 <tr><td>Middleware composition</td><td>Pre-build common stacks, expose as factory functions</td></tr>
 <tr><td>Error handling</td><td>Convert <code>FsError</code> to language-native exceptions</td></tr>
@@ -2488,7 +2487,6 @@ let _ = fs.read("/test.txt");       // Error: file doesn't exist
 let backend = CacheLayer::builder()
     .max_size(100 * 1024 * 1024)      // 100 MB cache
     .max_entries(10_000)              // Max 10K entries
-    .ttl(Duration::from_secs(300))    // 5 min TTL
     .build()
     .layer(SqliteBackend::open("data.db")?);
 let fs = FileStorage::new(backend);
@@ -2524,10 +2522,11 @@ let backend = Overlay::new(base, upper);
 <li>Testing with rollback capability</li>
 </ul>
 <hr>
-<h2 id="filestorageb-m-in-anyfs"><a class="header" href="#filestorageb-m-in-anyfs">FileStorage&lt;B, M&gt; (in <code>anyfs</code>)</a></h2>
-<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
+<h2 id="filestorageb-r-m-in-anyfs"><a class="header" href="#filestorageb-r-m-in-anyfs">FileStorage&lt;B, R, M&gt; (in <code>anyfs</code>)</a></h2>
+<p><code>FileStorage&lt;B, R, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
 <ul>
 <li><strong><code>B</code></strong> - Backend type (generic, no boxing)</li>
+<li><strong><code>R</code></strong> - PathResolver type (default: <code>IterativeResolver</code>)</li>
 <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
 </ul>
 <p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in via <code>.boxed()</code>.</p>
@@ -2553,16 +2552,16 @@ let content = fs.read("/documents/hello.txt")?;
 struct Sandbox;
 struct UserData;
 
-// Specify marker, infer backend with _
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+// Specify marker, infer backend and resolver with _
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -2574,9 +2573,9 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <p>Both type parameters are meaningful:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
-FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
-FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+</span>FileStorage&lt;SqliteBackend, IterativeResolver, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, IterativeResolver, Production&gt; // Real filesystem, production
 <span class="boring">}</span></code></pre>
 <h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2585,8 +2584,8 @@ FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
 type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
 
 // Type aliases for common combinations
-type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
-type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
+type SandboxFs = FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, IterativeResolver, UserData&gt;;
 
 // Clean function signatures
 fn run_agent(fs: &amp;SandboxFs) { ... }
@@ -2787,17 +2786,25 @@ impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
 <h3 id="core-methods"><a class="header" href="#core-methods">Core Methods</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
+</span>impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
     /// Strict canonicalization - entire path must exist.
     ///
-    /// Resolves all symlinks and normalizes the path.
+    /// Delegates to the PathResolver to resolve symlinks and normalize the path.
     /// Returns error if any component doesn't exist.
-    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt;;
+    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver.canonicalize(path.as_ref(), &amp;self.backend)
+    }
 
     /// Soft canonicalization - resolves existing components,
     /// appends non-existent remainder lexically.
     ///
-    /// Walks path component-by-component:
+    /// Delegates to the PathResolver.
+    pub fn soft_canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver.soft_canonicalize(path.as_ref(), &amp;self.backend)
+    }
+}
+    ///
+    /// Walks path component-by-component via the resolver:
     /// 1. For existing components → resolve symlinks, follow them
     /// 2. When hitting non-existent component → append remainder lexically
     ///
@@ -3499,7 +3506,7 @@ let fs = FileStorage::new(backend);
 <tr><td>ADR-005</td><td><a href="#anyfs--api-quick-reference">API Quick Reference</a></td></tr>
 <tr><td>ADR-006</td><td><a href="#middleware-implementation-guide">Middleware Implementation</a></td></tr>
 <tr><td>ADR-007</td><td><a href="#middleware-implementation-guide">Middleware Implementation</a></td></tr>
-<tr><td>ADR-008</td><td><a href="#filestorageb-m-anyfs">FileStorage</a></td></tr>
+<tr><td>ADR-008</td><td><a href="#filestorageb-r-m-anyfs">FileStorage</a></td></tr>
 <tr><td>ADR-009</td><td><a href="#anyfs---project-structure">Project Structure</a></td></tr>
 <tr><td>ADR-010</td><td><a href="#implementation-plan">Implementation Plan</a></td></tr>
 <tr><td>ADR-011</td><td><a href="#anyfs---design-overview">Design Overview</a></td></tr>
@@ -3585,7 +3592,7 @@ let fs = FileStorage::new(backend);
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract: <code>Fs</code> trait, <code>Layer</code> trait, <code>FsExt</code>, types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics (<code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code>)</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics (<code>FileStorage&lt;B, R, M&gt;</code>, <code>BackendStack</code>)</td></tr>
 </tbody>
 </table>
 </div>
@@ -3656,7 +3663,7 @@ let fs = FileStorage::new(backend);
 </ul>
 <hr>
 <h2 id="adr-007-capability-via-trait-bounds"><a class="header" href="#adr-007-capability-via-trait-bounds">ADR-007: Capability via Trait Bounds</a></h2>
-<p><strong>Decision:</strong> Symlink and hard-link capability is determined by whether the backend implements <code>FsLink</code>. There is NO runtime toggle.</p>
+<p><strong>Decision:</strong> Symlink and hard-link capability is determined by whether the backend implements <code>FsLink</code>. The default <code>PathResolver</code> (IterativeResolver) follows symlinks when <code>FsLink</code> is available.</p>
 <h3 id="the-rule"><a class="header" href="#the-rule">The Rule</a></h3>
 <div class="table-wrapper">
 <table>
@@ -3699,7 +3706,7 @@ fs.symlink("/target", "/link")?;  // ❌ Won't compile - no FsLink impl
 <p><strong>Symlink following:</strong> Controlled by the <code>PathResolver</code>. The default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available. Custom resolvers can implement different behaviors. OS-backed backends delegate to the OS (strict-path prevents escapes).</p>
 <hr>
 <h2 id="adr-008-filestorage-as-thin-ergonomic-wrapper"><a class="header" href="#adr-008-filestorage-as-thin-ergonomic-wrapper">ADR-008: FileStorage as thin ergonomic wrapper</a></h2>
-<p><strong>Decision:</strong> <code>FileStorage&lt;B, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>
+<p><strong>Decision:</strong> <code>FileStorage&lt;B, R, M&gt;</code> is a thin wrapper that provides std::fs-aligned ergonomics and centralized path resolution for virtual backends. It contains NO policy logic.</p>
 <p><strong>What it does:</strong></p>
 <ul>
 <li>Provides familiar method names</li>
@@ -4030,7 +4037,6 @@ fs.write("/test.txt", b"hello")?;  // Logged but not written
 </span>CacheLayer::builder()
     .max_entries(1000)
     .max_entry_size(1024 * 1024)  // 1MB max per entry
-    .ttl(Duration::from_secs(60))
     .build()
     .layer(backend)
 <span class="boring">}</span></code></pre>
@@ -4039,7 +4045,6 @@ fs.write("/test.txt", b"hello")?;  // Logged but not written
 <li>Read operations check cache first, populate on miss.</li>
 <li>Write operations invalidate relevant cache entries.</li>
 <li>LRU eviction when max entries exceeded.</li>
-<li>TTL-based expiration for freshness.</li>
 </ul>
 <p><strong>Why:</strong></p>
 <ul>
@@ -4460,9 +4465,9 @@ SETUP (once at startup - zero-cost):
 └─────────────────────────────────────────────────────┘
 
 OPT-IN TYPE ERASURE (when explicitly needed):
-┌─────────────────────────────────────────────────────┐
-│  FileStorage::boxed() -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;&gt;   │  ← Like Tower's BoxService
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  FileStorage::boxed() -&gt; FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;    │  ← Like Tower's BoxService
+└─────────────────────────────────────────────────────────────┘
 </code></pre>
 <h3 id="what-gets-boxed-and-why"><a class="header" href="#what-gets-boxed-and-why">What Gets Boxed and Why</a></h3>
 <div class="table-wrapper">
@@ -4782,15 +4787,32 @@ impl&lt;T: FsRead + FsLink&gt; FsPath for T {}
 </table>
 </div>
 <p><strong>FileStorage Integration:</strong></p>
+<blockquote>
+<p><strong>Note:</strong> ADR-033 introduces <code>PathResolver</code> as the primary resolution strategy. <code>FsPath</code> remains
+as an optional backend optimization hook. When a backend implements both <code>FsPath</code> and the default
+traits, the backend can choose to delegate to its resolver or provide fully custom logic (e.g.,
+SQLite CTE queries).</p>
+</blockquote>
+<p>FileStorage uses <code>PathResolver</code> for its resolution (see ADR-033):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs + FsPath, M&gt; FileStorage&lt;B, M&gt; {
+</span>impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
     pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
-        self.backend.canonicalize(path.as_ref())
+        self.resolver.canonicalize(path.as_ref(), &amp;self.backend as &amp;dyn Fs)
     }
 
     pub fn soft_canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
-        self.backend.soft_canonicalize(path.as_ref())
+        self.resolver.soft_canonicalize(path.as_ref(), &amp;self.backend as &amp;dyn Fs)
+    }
+}
+<span class="boring">}</span></code></pre>
+<p>Backends implementing <code>FsPath</code> can provide optimized implementations that the resolver MAY use:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl FsPath for SqliteBackend {
+    fn canonicalize(&amp;self, path: &amp;Path) -&gt; Result&lt;PathBuf, FsError&gt; {
+        // Optimized: single CTE query instead of iterative resolution
+        self.conn.query_row(/* ... */)
     }
 }
 <span class="boring">}</span></code></pre>
@@ -5112,21 +5134,21 @@ Are error messages informative?
 <p><strong>Conclusion:</strong> LLM-Oriented Architecture is not just about AI. It’s about creating a codebase where <strong>any component can be understood, tested, fixed, or replaced with only local context</strong>. This benefits LLMs, open source contributors, code reviewers, and future maintainers equally. As AI-assisted development becomes standard, LOA positions AnyFS as a reference implementation for sustainable human-AI collaboration.</p>
 <p><strong>See Also:</strong> <a href="#llm-optimized-development-methodology">LLM Development Methodology Guide</a></p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="hybrid-backend-design"><a class="header" href="#hybrid-backend-design">Hybrid Backend Design</a></h1>
+<h1 id="indexedbackend-pattern"><a class="header" href="#indexedbackend-pattern">IndexedBackend Pattern</a></h1>
 <p><strong>SQLite Metadata + Content-Addressed Blob Storage</strong></p>
-<p>This document validates that AnyFS can support hybrid backends and provides implementation patterns for this advanced use case.</p>
+<p>This document describes the IndexedBackend architecture pattern: separating filesystem metadata (stored in SQLite) from file content (stored as blobs). This enables efficient queries, large file support, and flexible storage backends.</p>
 <blockquote>
-<p><strong>Built-in Implementation:</strong> AnyFS ships <code>IndexedBackend</code> as a production-ready implementation of this pattern using local disk blobs. See the <a href="#indexedbackend">Backends Guide</a> for usage. This document covers the underlying design pattern for those building custom hybrid backends (e.g., with S3, cloud storage, or custom blob stores).</p>
+<p><strong>Built-in Implementation:</strong> AnyFS ships <code>IndexedBackend</code> as a production-ready implementation using local disk blobs. See the <a href="#indexedbackend">Backends Guide</a> for usage. This document covers the underlying design pattern for those building custom implementations (e.g., with S3, cloud storage, or custom blob stores).</p>
 </blockquote>
 <hr>
 <h2 id="overview-1"><a class="header" href="#overview-1">Overview</a></h2>
-<p>A <strong>hybrid backend</strong> separates:</p>
+<p>The <strong>IndexedBackend pattern</strong> separates:</p>
 <ul>
 <li><strong>Metadata</strong> (directory structure, inodes, permissions) → SQLite</li>
 <li><strong>Content</strong> (file bytes) → Content-Addressed Storage (CAS)</li>
 </ul>
 <pre><code>┌─────────────────────────────────────────────────────────┐
-│            Hybrid Backend (pattern)                     │
+│            IndexedBackend (pattern)                     │
 │  ┌─────────────────────┐    ┌────────────────────────┐  │
 │  │   SQLite Metadata   │    │   Blob Store (CAS)     │  │
 │  │                     │    │                        │  │
@@ -5197,7 +5219,7 @@ IndexedBackend implements a simpler variant with UUID-named local blobs
 <p>Current design requires <code>&amp;self</code> methods with interior mutability. For hybrid:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub struct HybridBackend {
+</span>pub struct CustomIndexedBackend {
     // SQLite needs single-writer (see "Write Queue" below)
     metadata: Arc&lt;Mutex&lt;Connection&gt;&gt;,
 
@@ -5303,7 +5325,7 @@ use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 
-pub struct HybridBackend {
+pub struct CustomIndexedBackend {
     /// SQLite connection (metadata)
     db: Arc&lt;Mutex&lt;Connection&gt;&gt;,
 
@@ -5339,7 +5361,7 @@ enum WriteCmd {
 <p>Read operations can query SQLite and blob store directly (no queue needed):</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl FsRead for HybridBackend {
+</span>impl FsRead for CustomIndexedBackend {
     fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let path = path.as_ref();
 
@@ -5414,7 +5436,7 @@ enum WriteCmd {
 <p>Writes use a two-phase pattern: upload blob first, then commit SQLite:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl FsWrite for HybridBackend {
+</span>impl FsWrite for CustomIndexedBackend {
     fn write(&amp;self, path: &amp;Path, data: &amp;[u8]) -&gt; Result&lt;(), FsError&gt; {
         let path = path.as_ref().to_path_buf();
 
@@ -5573,7 +5595,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 <p>Blobs with <code>refcount = 0</code> are orphans and can be deleted:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl HybridBackend {
+</span>impl CustomIndexedBackend {
     /// Run garbage collection (call periodically or on-demand).
     pub fn gc(&amp;self) -&gt; Result&lt;GcStats, FsError&gt; {
         let db = self.db.lock().map_err(|_| FsError::Backend("lock".into()))?;
@@ -5617,7 +5639,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 <h3 id="creating-a-snapshot"><a class="header" href="#creating-a-snapshot">Creating a Snapshot</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl HybridBackend {
+</span>impl CustomIndexedBackend {
     /// Create a point-in-time snapshot.
     pub fn snapshot(&amp;self, name: &amp;str) -&gt; Result&lt;SnapshotId, FsError&gt; {
         let db = self.db.lock().unwrap();
@@ -5675,7 +5697,7 @@ UPDATE blobs SET refcount = refcount + 1 WHERE blob_id = ?;
 </span><span class="boring">fn main() {
 </span>use anyfs::{FileStorage, QuotaLayer, TracingLayer, PathFilterLayer};
 
-let backend = HybridBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
+let backend = CustomIndexedBackend::open("drive.db", LocalCasBackend::new("./blobs"))?;
 
 // Standard middleware stack
 let backend = backend
@@ -5713,7 +5735,7 @@ fs.write("/documents/report.pdf", &amp;pdf_bytes)?;
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>#[async_trait]
-impl AsyncFsRead for HybridBackend {
+impl AsyncFsRead for CustomIndexedBackend {
     async fn read(&amp;self, path: &amp;Path) -&gt; Result&lt;Vec&lt;u8&gt;, FsError&gt; {
         let blob_id = self.lookup_blob_id(path).await?;
         self.blobs.get_async(&amp;blob_id).await  // Non-blocking!
@@ -6704,13 +6726,14 @@ fn mount_filesystem(fs: impl FsFuse) -&gt; Result&lt;(), FsError&gt; {
 impl&lt;B: Fs&gt; FsExt for B {}
 <span class="boring">}</span></code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="filestorageb-m-anyfs"><a class="header" href="#filestorageb-m-anyfs">FileStorage&lt;B, M&gt; (anyfs)</a></h1>
+<h1 id="filestorageb-r-m-anyfs"><a class="header" href="#filestorageb-r-m-anyfs">FileStorage&lt;B, R, M&gt; (anyfs)</a></h1>
 <p><strong>Zero-cost ergonomic wrapper for std::fs-aligned API</strong></p>
 <hr>
 <h2 id="overview-2"><a class="header" href="#overview-2">Overview</a></h2>
-<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with:</p>
+<p><code>FileStorage&lt;B, R, M&gt;</code> is a <strong>thin wrapper</strong> that provides a familiar std::fs-aligned API with:</p>
 <ul>
 <li><strong><code>B</code></strong> - Backend type (generic, zero-cost)</li>
+<li><strong><code>R</code></strong> - PathResolver type (default: <code>IterativeResolver</code>, zero-cost)</li>
 <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
 </ul>
 <p>It is the intended application-facing API: std::fs-style paths with object-safe core traits under the hood.</p>
@@ -6758,16 +6781,16 @@ let fs = FileStorage::new(
 struct Sandbox;
 struct UserData;
 
-// Specify marker in type annotation, infer backend with _
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+// Specify marker in type annotation, infer backend and resolver with _
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -6779,9 +6802,9 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <p>Both dimensions are meaningful:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
-FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
-FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+</span>FileStorage&lt;SqliteBackend, IterativeResolver, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, IterativeResolver, Production&gt; // Real filesystem, production
 <span class="boring">}</span></code></pre>
 <h3 id="type-aliases-for-clean-code-1"><a class="header" href="#type-aliases-for-clean-code-1">Type Aliases for Clean Code</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -6790,9 +6813,9 @@ FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
 type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
 
 // Type aliases for common combinations
-type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
-type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
-type TenantFs&lt;T&gt; = FileStorage&lt;SecureBackend, T&gt;;
+type SandboxFs = FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, IterativeResolver, UserData&gt;;
+type TenantFs&lt;T&gt; = FileStorage&lt;SecureBackend, IterativeResolver, T&gt;;
 
 // Now signatures are clean AND informative
 fn run_agent(fs: &amp;SandboxFs) { ... }
@@ -6942,7 +6965,7 @@ let filesystems: Vec&lt;FileStorage&lt;Box&lt;dyn Fs&gt;&gt;&gt; = vec![
 ];
 
 // Or use type alias
-type DynFileStorage&lt;M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, M&gt;;
+type DynFileStorage&lt;R = IterativeResolver, M = ()&gt; = FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;;
 <span class="boring">}</span></code></pre>
 <p><strong>When to use <code>.boxed()</code>:</strong></p>
 <div class="table-wrapper">
@@ -11531,10 +11554,10 @@ backend
 </span>struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(memory_backend);
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(sqlite_backend);
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(memory_backend);
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(sqlite_backend);
 
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { ... }
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) { ... }
 
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // COMPILE ERROR
@@ -11883,7 +11906,7 @@ the virtual structure. There is no host filesystem to escape to.
 <ul>
 <li><strong>No host filesystem access</strong> - symlinks point to paths within the virtual structure only</li>
 <li><strong>No TOCTOU via OS state</strong> - resolution uses the backend’s own data</li>
-<li><strong>No runtime toggle</strong> - symlink following is part of backend semantics (virtual backends that implement <code>FsLink</code> are resolved by <code>FileStorage</code>)</li>
+<li><strong>Controlled by PathResolver</strong> - the default <code>IterativeResolver</code> follows symlinks when <code>FsLink</code> is available; custom resolvers can implement different behaviors</li>
 </ul>
 <p>For <code>VRootFsBackend</code> (real filesystem), <code>strict-path::VirtualRoot</code> provides equivalent guarantees by validating and containing all paths before they reach the OS.</p>
 <h3 id="8-symlink-security-virtual-vs-real-backends"><a class="header" href="#8-symlink-security-virtual-vs-real-backends">8. Symlink Security: Virtual vs Real Backends</a></h3>
@@ -13139,7 +13162,7 @@ let vfs_fs: Box&lt;dyn vfs::FileSystem&gt; = Box::new(AnyFsCompat::new(anyfs_bac
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Trait (<code>Fs</code>, <code>Layer</code>) + types</td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomic wrapper (<code>FileStorage&lt;B, M&gt;</code>)</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomic wrapper (<code>FileStorage&lt;B, R, M&gt;</code>)</td></tr>
 </tbody>
 </table>
 </div>
@@ -14093,7 +14116,7 @@ Functionality and security are the primary goals; performance validation is seco
 <p>This plan describes a phased rollout of the AnyFS ecosystem:</p>
 <ul>
 <li><code>anyfs-backend</code>: Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>) + <code>Layer</code> + types</li>
-<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;B, M&gt;</code> ergonomic wrapper</li>
+<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;B, R, M&gt;</code> ergonomic wrapper</li>
 </ul>
 <hr>
 <h2 id="implementation-guidelines"><a class="header" href="#implementation-guidelines">Implementation Guidelines</a></h2>
@@ -14364,11 +14387,12 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li><code>Cache&lt;B&gt;</code> + <code>CacheLayer</code> - LRU read cache</li>
 <li><code>Overlay&lt;B1,B2&gt;</code> + <code>OverlayLayer</code> - Union filesystem</li>
 </ul>
-<h3 id="filestorageb-m-ergonomic-wrapper"><a class="header" href="#filestorageb-m-ergonomic-wrapper">FileStorage&lt;B, M&gt; (Ergonomic Wrapper)</a></h3>
+<h3 id="filestorageb-r-m-ergonomic-wrapper"><a class="header" href="#filestorageb-r-m-ergonomic-wrapper">FileStorage&lt;B, R, M&gt; (Ergonomic Wrapper)</a></h3>
 <ul>
-<li><code>FileStorage&lt;B, M&gt;</code> - Zero-cost wrapper with <code>std::fs</code>-aligned API
+<li><code>FileStorage&lt;B, R, M&gt;</code> - Zero-cost wrapper with <code>std::fs</code>-aligned API
 <ul>
 <li>Generic backend <code>B</code> (no boxing, static dispatch)</li>
+<li>Generic resolver <code>R</code> (default: <code>IterativeResolver</code>)</li>
 <li>Optional marker type <code>M</code> for compile-time container differentiation</li>
 <li><code>.boxed()</code> method for opt-in type erasure when needed</li>
 </ul>
@@ -14704,7 +14728,7 @@ let sandbox = MountHandle::mount(
 <li>Provide a familiar, low-noise CLI for navigation and file management.</li>
 <li>Keep scope intentionally small (no scripting, pipes, job control).</li>
 </ul>
-<p><strong>Command set (v1):</strong></p>
+<p><strong>Command set:</strong></p>
 <ul>
 <li><code>ls [path]</code> - list directory entries (default: current directory).</li>
 <li><code>cd &lt;path&gt;</code> - change working directory.</li>
@@ -15540,7 +15564,7 @@ impl FsLink for MemoryBackend {
 <tr><td>Quota enforcement</td><td><code>Quota&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Feature gating</td><td><code>Restrictions&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Logging</td><td><code>Tracing&lt;B&gt;</code> middleware</td></tr>
-<tr><td>Ergonomic API</td><td><code>FileStorage&lt;B, M&gt;</code> wrapper</td></tr>
+<tr><td>Ergonomic API</td><td><code>FileStorage&lt;B, R, M&gt;</code> wrapper</td></tr>
 </tbody>
 </table>
 </div>
@@ -17480,9 +17504,9 @@ Tenant B uploads same file → instantly deduped → B knows A has that file
 <p><strong>Recommendation:</strong> Only deduplicate within a tenant, not across tenants.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Pattern for any hybrid backend (e.g., IndexedBackend or custom implementations)
+</span>// Pattern for any hybrid backend (IndexedBackend or custom implementations)
 // See hybrid-backend-design.md for the full pattern
-impl HybridBackend {
+impl IndexedBackend {
     fn blob_id_for_tenant(&amp;self, tenant_id: &amp;TenantId, data: &amp;[u8]) -&gt; String {
         // Include tenant ID in hash to prevent cross-tenant dedup
         let mut hasher = Sha256::new();
@@ -18357,10 +18381,10 @@ fn test_filestorage_marker_types() {
     struct Sandbox;
     struct Production;
 
-    let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-    let prod: FileStorage&lt;_, Production&gt; = FileStorage::new(MemoryBackend::new());
+    let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+    let prod: FileStorage&lt;_, _, Production&gt; = FileStorage::new(MemoryBackend::new());
 
-    fn only_sandbox(_fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {}
+    fn only_sandbox(_fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) {}
 
     only_sandbox(&amp;sandbox);  // Compiles
     // only_sandbox(&amp;prod);  // Would not compile
@@ -22274,7 +22298,7 @@ impl&lt;Lower: FsRead + FsDir, Upper: Fs&gt; FsDir for Overlay&lt;Lower, Upper&g
 <tr><td>RateLimit</td><td>Moderate</td><td>Atomic counter + time window</td></tr>
 <tr><td>DryRun</td><td>Moderate</td><td>Log writes, return Ok without executing</td></tr>
 <tr><td>PathFilter</td><td>Moderate</td><td>Glob matching + filtered ReadDirIter</td></tr>
-<tr><td>Cache</td><td>Moderate</td><td>LRU with TTL, invalidate on writes</td></tr>
+<tr><td>Cache</td><td>Moderate</td><td>LRU cache, invalidate on writes</td></tr>
 <tr><td>Quota</td><td>High</td><td>Usage counters + QuotaWriter wrapper</td></tr>
 <tr><td>Overlay</td><td>High</td><td>Whiteout markers + merged directory listing</td></tr>
 </tbody>
@@ -22597,7 +22621,7 @@ pub enum FsError {
 <li><strong>Batch operations</strong> where possible in <code>SqliteBackend</code></li>
 <li><strong>Use transactions</strong> for multi-file operations</li>
 <li><strong>Document performance characteristics</strong> per backend</li>
-<li><strong>Keep mounting optional</strong> - core AnyFS stays a library; mount concerns live in a companion crate</li>
+<li><strong>Keep mounting optional</strong> - core AnyFS stays a library; mount concerns are behind feature flags (<code>fuse</code>, <code>winfsp</code>)</li>
 </ul>
 <p><strong>Documentation requirement:</strong></p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -22627,7 +22651,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> FUSE mount cleanup issues.</p>
 <h3 id="anyfs-response-9"><a class="header" href="#anyfs-response-9">AnyFS Response</a></h3>
 <ul>
-<li><strong>Core stays a library</strong> - daemon/mount shutdown concerns belong in the companion crate</li>
+<li><strong>Core stays a library</strong> - daemon/mount shutdown concerns are behind feature flags</li>
 <li><strong>Ensure <code>Drop</code> implementations clean up properly</strong></li>
 <li><strong><code>SqliteBackend</code> flushes on drop</strong></li>
 </ul>
@@ -22658,7 +22682,7 @@ pub struct SqliteBackend { ... }
 <p><strong>Root cause:</strong> Platform-specific FUSE variants.</p>
 <h3 id="anyfs-response-10"><a class="header" href="#anyfs-response-10">AnyFS Response</a></h3>
 <ul>
-<li><strong>We isolate this</strong> - core AnyFS stays pure; FUSE lives in an optional companion crate</li>
+<li><strong>We isolate this</strong> - core traits stay pure; FUSE lives behind feature flags (<code>fuse</code>, <code>winfsp</code>) in the <code>anyfs</code> crate</li>
 <li><strong>Cross-platform by design</strong> - Memory and SQLite work everywhere</li>
 <li><strong><code>VRootFsBackend</code> uses <code>strict-path</code></strong> which handles Windows/Unix</li>
 </ul>
@@ -22701,7 +22725,7 @@ pub struct SqliteBackend { ... }
 <tr><td>No read-only mode</td><td><code>ReadOnly&lt;B&gt;</code> middleware</td></tr>
 <tr><td>Symlink complexity</td><td><code>FsLink</code> trait (compile-time)</td></tr>
 <tr><td>Path escape via symlinks</td><td><code>strict-path</code> canonicalization</td></tr>
-<tr><td>FUSE complexity</td><td>Isolated in optional companion crate</td></tr>
+<tr><td>FUSE complexity</td><td>Isolated behind feature flags</td></tr>
 <tr><td>SQLite-only</td><td>Multiple backends</td></tr>
 <tr><td>Monolithic features</td><td>Composable middleware</td></tr>
 </tbody>
@@ -22922,21 +22946,21 @@ pub struct SqliteBackend { ... }
 <h2 id="type-system-protection-for-cross-container-operations"><a class="header" href="#type-system-protection-for-cross-container-operations">Type-System Protection for Cross-Container Operations</a></h2>
 <p><strong>Status:</strong> Resolved - Implemented via marker types</p>
 <p><strong>Question:</strong> Should we use the type system to prevent accidentally mixing data between containers?</p>
-<p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, M&gt;</code> where <code>M</code> is a marker type:</p>
+<p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, R, M&gt;</code> where <code>M</code> is a marker type:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { /* only accepts Sandbox */ }
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) { /* only accepts Sandbox */ }
 
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error!
 <span class="boring">}</span></code></pre>
-<p>See <a href="#filestorageb-m-anyfs">FileStorage&lt;B, M&gt;</a> for details.</p>
+<p>See <a href="#filestorageb-r-m-anyfs">FileStorage&lt;B, R, M&gt;</a> for details.</p>
 <hr>
 <h2 id="naming-considerations"><a class="header" href="#naming-considerations">Naming Considerations</a></h2>
 <p>Based on review feedback, the following naming concerns were raised:</p>
@@ -22999,7 +23023,7 @@ process_sandbox(&amp;userdata);  // Compile error!
 <tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
 <tr><td>Hooks/callbacks</td><td><code>Tracing</code> middleware</td></tr>
 <tr><td>FUSE mount</td><td>Part of <code>anyfs</code> crate (<code>fuse</code>, <code>winfsp</code> feature flags)</td></tr>
-<tr><td>Type-system protection</td><td><code>FileStorage&lt;B, M&gt;</code> marker types</td></tr>
+<tr><td>Type-system protection</td><td><code>FileStorage&lt;B, R, M&gt;</code> marker types</td></tr>
 <tr><td>POSIX compatibility</td><td>Not a goal</td></tr>
 <tr><td><code>truncate</code></td><td>Added to <code>FsWrite</code></td></tr>
 <tr><td><code>sync</code> / <code>fsync</code></td><td>Added to <code>FsSync</code></td></tr>

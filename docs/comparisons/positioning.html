@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -367,10 +367,10 @@ backend
 </span>struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(memory_backend);
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(sqlite_backend);
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(memory_backend);
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(sqlite_backend);
 
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { ... }
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) { ... }
 
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // COMPILE ERROR

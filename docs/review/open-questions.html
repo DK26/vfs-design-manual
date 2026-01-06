@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -386,21 +386,21 @@
 <h2 id="type-system-protection-for-cross-container-operations"><a class="header" href="#type-system-protection-for-cross-container-operations">Type-System Protection for Cross-Container Operations</a></h2>
 <p><strong>Status:</strong> Resolved - Implemented via marker types</p>
 <p><strong>Question:</strong> Should we use the type system to prevent accidentally mixing data between containers?</p>
-<p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, M&gt;</code> where <code>M</code> is a marker type:</p>
+<p><strong>Resolution:</strong> Implemented via <code>FileStorage&lt;B, R, M&gt;</code> where <code>M</code> is a marker type:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>struct Sandbox;
 struct UserData;
 
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) { /* only accepts Sandbox */ }
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) { /* only accepts Sandbox */ }
 
 process_sandbox(&amp;sandbox);   // OK
 process_sandbox(&amp;userdata);  // Compile error!
 <span class="boring">}</span></code></pre>
-<p>See <a href="../traits/files-container.html">FileStorage&lt;B, M&gt;</a> for details.</p>
+<p>See <a href="../traits/files-container.html">FileStorage&lt;B, R, M&gt;</a> for details.</p>
 <hr>
 <h2 id="naming-considerations"><a class="header" href="#naming-considerations">Naming Considerations</a></h2>
 <p>Based on review feedback, the following naming concerns were raised:</p>
@@ -463,7 +463,7 @@ process_sandbox(&amp;userdata);  // Compile error!
 <tr><td>Compression/encryption</td><td>Backend responsibility</td></tr>
 <tr><td>Hooks/callbacks</td><td><code>Tracing</code> middleware</td></tr>
 <tr><td>FUSE mount</td><td>Part of <code>anyfs</code> crate (<code>fuse</code>, <code>winfsp</code> feature flags)</td></tr>
-<tr><td>Type-system protection</td><td><code>FileStorage&lt;B, M&gt;</code> marker types</td></tr>
+<tr><td>Type-system protection</td><td><code>FileStorage&lt;B, R, M&gt;</code> marker types</td></tr>
 <tr><td>POSIX compatibility</td><td>Not a goal</td></tr>
 <tr><td><code>truncate</code></td><td>Added to <code>FsWrite</code></td></tr>
 <tr><td><code>sync</code> / <code>fsync</code></td><td>Added to <code>FsSync</code></td></tr>

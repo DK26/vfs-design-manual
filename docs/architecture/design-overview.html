@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -197,12 +197,12 @@
 <li><strong>Control how a drive acts, looks, and protects itself.</strong></li>
 <li>Implement a custom backend for their specific storage needs (Cloud, DB, RAM).</li>
 <li>Compose middleware to add limits, logging, and security.</li>
-<li>Use the ergonomic <code>FileStorage&lt;B, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
+<li>Use the ergonomic <code>FileStorage&lt;B, R, M&gt;</code> wrapper for a standard <code>std::fs</code>-like API.</li>
 </ul>
 <hr>
 <h2 id="architecture-tower-style-middleware"><a class="header" href="#architecture-tower-style-middleware">Architecture (Tower-style Middleware)</a></h2>
 <pre><code>┌─────────────────────────────────────────┐
-│  FileStorage&lt;B, M&gt;                      │  ← Ergonomics + type-safe marker
+│  FileStorage&lt;B, R, M&gt;                   │  ← Ergonomics + type-safe marker
 ├─────────────────────────────────────────┤
 │  Middleware (optional, composable):     │
 │                                         │
@@ -283,7 +283,7 @@
 struct AiSandbox;  // Marker type
 
 // Application composes secure defaults (marker in type annotation)
-let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
+let sandbox: FileStorage&lt;_, _, AiSandbox&gt; = FileStorage::new(
     MemoryBackend::new()
         .layer(QuotaLayer::builder()
             .max_total_size(50 * 1024 * 1024)
@@ -304,7 +304,7 @@ let sandbox: FileStorage&lt;_, AiSandbox&gt; = FileStorage::new(
 </thead>
 <tbody>
 <tr><td><code>anyfs-backend</code></td><td>Minimal contract</td><td>Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>), <code>Layer</code> trait, types, <code>FsExt</code></td></tr>
-<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;B, M&gt;</code>, <code>BackendStack</code> builder</td></tr>
+<tr><td><code>anyfs</code></td><td>Backends + middleware + ergonomics</td><td>Built-in backends, all middleware layers, <code>FileStorage&lt;B, R, M&gt;</code>, <code>BackendStack</code> builder</td></tr>
 </tbody>
 </table>
 </div>
@@ -414,7 +414,7 @@ print(data)  # b"Hello from Python!"
 <tr><th>Concern</th><th>Solution</th></tr>
 </thead>
 <tbody>
-<tr><td>Generics (<code>FileStorage&lt;B, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;&gt;</code> (boxed form) for FFI layer</td></tr>
+<tr><td>Generics (<code>FileStorage&lt;B, R, M&gt;</code>)</td><td>Use <code>FileStorage&lt;Box&lt;dyn Fs&gt;, R, M&gt;</code> (boxed form) for FFI layer</td></tr>
 <tr><td>Streaming (<code>Box&lt;dyn Read&gt;</code>)</td><td>Wrap in language-native class with <code>read(n)</code> method</td></tr>
 <tr><td>Middleware composition</td><td>Pre-build common stacks, expose as factory functions</td></tr>
 <tr><td>Error handling</td><td>Convert <code>FsError</code> to language-native exceptions</td></tr>
@@ -1135,7 +1135,6 @@ let _ = fs.read("/test.txt");       // Error: file doesn't exist
 let backend = CacheLayer::builder()
     .max_size(100 * 1024 * 1024)      // 100 MB cache
     .max_entries(10_000)              // Max 10K entries
-    .ttl(Duration::from_secs(300))    // 5 min TTL
     .build()
     .layer(SqliteBackend::open("data.db")?);
 let fs = FileStorage::new(backend);
@@ -1171,10 +1170,11 @@ let backend = Overlay::new(base, upper);
 <li>Testing with rollback capability</li>
 </ul>
 <hr>
-<h2 id="filestorageb-m-in-anyfs"><a class="header" href="#filestorageb-m-in-anyfs">FileStorage&lt;B, M&gt; (in <code>anyfs</code>)</a></h2>
-<p><code>FileStorage&lt;B, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
+<h2 id="filestorageb-r-m-in-anyfs"><a class="header" href="#filestorageb-r-m-in-anyfs">FileStorage&lt;B, R, M&gt; (in <code>anyfs</code>)</a></h2>
+<p><code>FileStorage&lt;B, R, M&gt;</code> is a <strong>zero-cost ergonomic wrapper</strong> with:</p>
 <ul>
 <li><strong><code>B</code></strong> - Backend type (generic, no boxing)</li>
+<li><strong><code>R</code></strong> - PathResolver type (default: <code>IterativeResolver</code>)</li>
 <li><strong><code>M</code></strong> - Optional marker type for compile-time safety</li>
 </ul>
 <p><strong>Axum-style design:</strong> Zero-cost by default, type erasure opt-in via <code>.boxed()</code>.</p>
@@ -1200,16 +1200,16 @@ let content = fs.read("/documents/hello.txt")?;
 struct Sandbox;
 struct UserData;
 
-// Specify marker, infer backend with _
-let sandbox: FileStorage&lt;_, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
-let userdata: FileStorage&lt;_, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
+// Specify marker, infer backend and resolver with _
+let sandbox: FileStorage&lt;_, _, Sandbox&gt; = FileStorage::new(MemoryBackend::new());
+let userdata: FileStorage&lt;_, _, UserData&gt; = FileStorage::new(SqliteBackend::open("data.db")?);
 
 // Type-safe function signatures prevent mixing containers
-fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, Sandbox&gt;) {
+fn process_sandbox(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, Sandbox&gt;) {
     // Can only accept Sandbox-marked containers
 }
 
-fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
+fn save_user_file(fs: &amp;FileStorage&lt;impl Fs, IterativeResolver, UserData&gt;, name: &amp;str, data: &amp;[u8]) {
     // Can only accept UserData-marked containers
 }
 
@@ -1221,9 +1221,9 @@ process_sandbox(&amp;userdata);  // Compile error! Type mismatch
 <p>Both type parameters are meaningful:</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>FileStorage&lt;SqliteBackend, TenantA&gt;   // SQLite storage for TenantA
-FileStorage&lt;MemoryBackend, Sandbox&gt;   // In-memory sandbox
-FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
+</span>FileStorage&lt;SqliteBackend, IterativeResolver, TenantA&gt;   // SQLite storage for TenantA
+FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;   // In-memory sandbox
+FileStorage&lt;StdFsBackend, IterativeResolver, Production&gt; // Real filesystem, production
 <span class="boring">}</span></code></pre>
 <h3 id="type-aliases-for-clean-code"><a class="header" href="#type-aliases-for-clean-code">Type Aliases for Clean Code</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1232,8 +1232,8 @@ FileStorage&lt;StdFsBackend, Production&gt; // Real filesystem, production
 type SecureBackend = Tracing&lt;Restrictions&lt;Quota&lt;SqliteBackend&gt;&gt;&gt;;
 
 // Type aliases for common combinations
-type SandboxFs = FileStorage&lt;MemoryBackend, Sandbox&gt;;
-type UserDataFs = FileStorage&lt;SecureBackend, UserData&gt;;
+type SandboxFs = FileStorage&lt;MemoryBackend, IterativeResolver, Sandbox&gt;;
+type UserDataFs = FileStorage&lt;SecureBackend, IterativeResolver, UserData&gt;;
 
 // Clean function signatures
 fn run_agent(fs: &amp;SandboxFs) { ... }
@@ -1434,17 +1434,25 @@ impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
 <h3 id="core-methods"><a class="header" href="#core-methods">Core Methods</a></h3>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl&lt;B: Fs + FsLink, M&gt; FileStorage&lt;B, M&gt; {
+</span>impl&lt;B: Fs, R: PathResolver, M&gt; FileStorage&lt;B, R, M&gt; {
     /// Strict canonicalization - entire path must exist.
     ///
-    /// Resolves all symlinks and normalizes the path.
+    /// Delegates to the PathResolver to resolve symlinks and normalize the path.
     /// Returns error if any component doesn't exist.
-    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt;;
+    pub fn canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver.canonicalize(path.as_ref(), &amp;self.backend)
+    }
 
     /// Soft canonicalization - resolves existing components,
     /// appends non-existent remainder lexically.
     ///
-    /// Walks path component-by-component:
+    /// Delegates to the PathResolver.
+    pub fn soft_canonicalize(&amp;self, path: impl AsRef&lt;Path&gt;) -&gt; Result&lt;PathBuf, FsError&gt; {
+        self.resolver.soft_canonicalize(path.as_ref(), &amp;self.backend)
+    }
+}
+    ///
+    /// Walks path component-by-component via the resolver:
     /// 1. For existing components → resolve symlinks, follow them
     /// 2. When hitting non-existent component → append remainder lexically
     ///

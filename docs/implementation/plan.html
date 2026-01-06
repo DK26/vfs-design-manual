@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,7 @@
 <p>This plan describes a phased rollout of the AnyFS ecosystem:</p>
 <ul>
 <li><code>anyfs-backend</code>: Layered traits (<code>Fs</code>, <code>FsFull</code>, <code>FsFuse</code>, <code>FsPosix</code>) + <code>Layer</code> + types</li>
-<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;B, M&gt;</code> ergonomic wrapper</li>
+<li><code>anyfs</code>: Built-in backends + middleware (feature-gated) + <code>FileStorage&lt;B, R, M&gt;</code> ergonomic wrapper</li>
 </ul>
 <hr>
 <h2 id="implementation-guidelines"><a class="header" href="#implementation-guidelines">Implementation Guidelines</a></h2>
@@ -455,11 +455,12 @@ pub trait FsPosix: FsFuse + FsHandles + FsLock + FsXattr {}
 <li><code>Cache&lt;B&gt;</code> + <code>CacheLayer</code> - LRU read cache</li>
 <li><code>Overlay&lt;B1,B2&gt;</code> + <code>OverlayLayer</code> - Union filesystem</li>
 </ul>
-<h3 id="filestorageb-m-ergonomic-wrapper"><a class="header" href="#filestorageb-m-ergonomic-wrapper">FileStorage&lt;B, M&gt; (Ergonomic Wrapper)</a></h3>
+<h3 id="filestorageb-r-m-ergonomic-wrapper"><a class="header" href="#filestorageb-r-m-ergonomic-wrapper">FileStorage&lt;B, R, M&gt; (Ergonomic Wrapper)</a></h3>
 <ul>
-<li><code>FileStorage&lt;B, M&gt;</code> - Zero-cost wrapper with <code>std::fs</code>-aligned API
+<li><code>FileStorage&lt;B, R, M&gt;</code> - Zero-cost wrapper with <code>std::fs</code>-aligned API
 <ul>
 <li>Generic backend <code>B</code> (no boxing, static dispatch)</li>
+<li>Generic resolver <code>R</code> (default: <code>IterativeResolver</code>)</li>
 <li>Optional marker type <code>M</code> for compile-time container differentiation</li>
 <li><code>.boxed()</code> method for opt-in type erasure when needed</li>
 </ul>
@@ -795,7 +796,7 @@ let sandbox = MountHandle::mount(
 <li>Provide a familiar, low-noise CLI for navigation and file management.</li>
 <li>Keep scope intentionally small (no scripting, pipes, job control).</li>
 </ul>
-<p><strong>Command set (v1):</strong></p>
+<p><strong>Command set:</strong></p>
 <ul>
 <li><code>ls [path]</code> - list directory entries (default: current directory).</li>
 <li><code>cd &lt;path&gt;</code> - change working directory.</li>

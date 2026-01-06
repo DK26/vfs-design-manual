@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "rust";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "../searchindex-f6aaed69.js";
+            window.path_to_searchindex_js = "../searchindex-ea1e7c9c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-25c4523f.js"></script>
+        <script src="../toc-060c2755.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -540,9 +540,9 @@ Tenant B uploads same file → instantly deduped → B knows A has that file
 <p><strong>Recommendation:</strong> Only deduplicate within a tenant, not across tenants.</p>
 <pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Pattern for any hybrid backend (e.g., IndexedBackend or custom implementations)
+</span>// Pattern for any hybrid backend (IndexedBackend or custom implementations)
 // See hybrid-backend-design.md for the full pattern
-impl HybridBackend {
+impl IndexedBackend {
     fn blob_id_for_tenant(&amp;self, tenant_id: &amp;TenantId, data: &amp;[u8]) -&gt; String {
         // Include tenant ID in hash to prevent cross-tenant dedup
         let mut hasher = Sha256::new();
